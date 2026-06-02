@@ -348,13 +348,26 @@ if ENABLE_SWAGGER:
         'SECURITY': [
             {'jwtAuth': []}
         ],
-        'SWAGGER_UI_SETTINGS': {
-            'filter': True,
-            'deepLinking': True,
-            'persistAuthorization': True,
-            'displayRequestDuration': True,
-            'syntaxHighlight': True,
-        },
+        'SWAGGER_UI_SETTINGS': '''{
+            filter: true,
+            deepLinking: true,
+            persistAuthorization: true,
+            displayRequestDuration: true,
+            syntaxHighlight: true,
+            plugins: [
+                function (system) {
+                    return {
+                        fn: {
+                            opsFilter: (taggedOps, phrase) => {
+                                return taggedOps.filter(
+                                    (tagObj, tag) => tag.toLowerCase().indexOf(phrase.toLowerCase()) !== -1
+                                );
+                            }
+                        }
+                    }
+                }
+            ]
+        }''',
         'APPEND_COMPONENTS': {
             'securitySchemes': {
                 'jwtAuth': {
