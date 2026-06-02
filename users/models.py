@@ -223,7 +223,7 @@ class User(AbstractBaseUser, PermissionsMixin):
             # 'view.doctorSchedules'
             'view.labs',
             'view.labOrders',
-            'view.sterilizationLogs'
+            'view.sterilizationLogs',
             'view.recalls',
         )
 
