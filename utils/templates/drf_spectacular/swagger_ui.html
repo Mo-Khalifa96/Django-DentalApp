@@ -71,7 +71,7 @@
     /* auth box configuration */
     body.dark-mode .swagger-ui .dialog-ux .backdrop-ux {
       background: rgba(0, 0, 0, 0.75) !important;
-      z-index: 1000;
+      /* z-index: 1000; */
     }
    
     body.dark-mode .swagger-ui .dialog-ux {
@@ -154,7 +154,7 @@
     body.ready #dark-mode-toggle {
       visibility: visible;
       opacity: 1;
-      transition: opacity 0.5s;
+      transition: opacity 0.01s;
     }
   </style>
 </head>
@@ -175,7 +175,7 @@
   {% endif %}
   <script>
     const btn = document.getElementById('dark-mode-toggle');
-    const wrper = document.getElementsByClassName('information-container wrapper')
+    const swaggerEl = document.getElementById('swagger-ui');
     const body = document.body;
 
     //Restore preference on load
@@ -189,19 +189,24 @@
       btn.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
       localStorage.setItem('swaggerDarkMode', isDark);
     });
+    const readyObserver = new MutationObserver(() => {
+      //Swagger replaces .loading-container with actual content when done
+      const isLoading = swaggerEl.querySelector('.loading-container');
+      const hasContent = swaggerEl.querySelector('.information-container');
+
+      if (!isLoading && hasContent) {
+        document.body.classList.add('ready');
+        readyObserver.disconnect();  //stop watching once ready
+      }
+    });
+    readyObserver.observe(swaggerEl, { childList: true, subtree: true });
     const observer = new MutationObserver(() => {
         const modalOpen = document.querySelector('.swagger-ui .dialog-ux');
         btn.style.zIndex = modalOpen ? '0' : '10';
-        // wrper.style.position = modalOpen ? 'static' : 'static';
-        wrper.style.zIndex = modalOpen ? '-1' : '0';
       });
     observer.observe(document.body, { childList: true, subtree: true });
 
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        document.body.classList.add('ready');
-      }, 3000);
-    });
+    
   </script>
 </body>
 
