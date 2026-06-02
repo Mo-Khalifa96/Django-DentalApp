@@ -1,0 +1,153 @@
+#docker compose file (local development)
+
+services:
+  web:
+    build: .
+    container_name: dentaltech-local-web
+    command: ./wait-for-it.sh postgres:5432 -- ./docker-entrypoint.local.sh
+    restart: always
+    env_file:
+      - .env
+    environment:
+      SERVICE: web
+      ENVIRONMENT: local  #used only in settings/**.py to decide protocol & domain
+      IS_DOCKERIZED: True
+      ENABLE_SWAGGER: True
+      DJANGO_SETTINGS_MODULE: DentalTech.settings.dev
+    ports:
+      - "8000:8000"  #direct port exposure, no nginx needed
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+      - static-data:/app/static
+      - media-data:/app/media
+    networks:
+      - dentaltech-local-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "manage.py", "check", "--database", "default"]
+      retries: 5
+      timeout: 10s
+      interval: 20s
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "1"
+
+  qcluster:
+    build: .
+    container_name: dentaltech-local-qcluster
+    command: ./wait-for-it.sh postgres:5432 -- ./docker-entrypoint.local.sh
+    profiles: ["local"]
+    restart: always
+    env_file:
+      - .env
+    environment:
+      SERVICE: qcluster
+      ENVIRONMENT: local
+      IS_DOCKERIZED: True
+      ENABLE_SWAGGER: True
+      DJANGO_SETTINGS_MODULE: DentalTech.settings.dev
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: ${DB_PORT}
+    depends_on:
+      web:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+    networks:
+      - dentaltech-local-network
+    healthcheck:
+      test: ["CMD-SHELL", "python manage.py shell -c \"from django_q.models import Task; print('OK')\" || exit 1"]
+      retries: 3
+      timeout: 10s
+      interval: 30s
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "1"
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: dentaltech-local-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - dentaltech-local-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      retries: 5
+      timeout: 10s
+      interval: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
+
+  smtp4dev:
+    image: rnwood/smtp4dev:v3
+    container_name: dentaltech-local-smtp4dev
+    ports:
+      - "5025:80"
+    restart: always
+    profiles: ["local"]
+    networks:
+      - dentaltech-local-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "1"
+
+  tests:
+    build: .
+    container_name: dentaltech-local-tests
+    command: ./wait-for-it.sh postgres:5432 -- ptw --poll -- -v -x
+    tty: true
+    profiles: ["local"]
+    env_file:
+      - .env
+    environment:
+      - ENVIRONMENT=local
+      - IS_DOCKERIZED=True
+      - DJANGO_SETTINGS_MODULE=DentalTech.settings.dev 
+      - PYTHONWARNINGS=ignore::SyntaxWarning
+    depends_on:
+      postgres:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    networks:
+      - dentaltech-local-network
+
+
+networks:
+  dentaltech-local-network:
+    driver: bridge
+
+volumes:
+  pg-data:
+  static-data:
+  media-data:

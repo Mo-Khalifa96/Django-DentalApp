@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>{{ title|default:"Swagger" }}</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% if favicon_href %}
+  <link rel="icon" href="{{ favicon_href }}">{% endif %}
+  <link rel="stylesheet" href="{{ swagger_ui_css }}">
+  <style>
+    html {
+      box-sizing: border-box;
+      overflow-y: scroll;
+    }
+
+    *,
+    *:after,
+    *:before {
+      box-sizing: inherit;
+    }
+
+    body {
+      margin: 0;
+    }
+
+    /* Dark mode styles -- only active when .dark-mode is on body */
+    body.dark-mode {
+      background: #1a1a1a !important;
+    }
+
+    body.dark-mode .swagger-ui {
+      filter: invert(85%) hue-rotate(180deg) !important;
+    }
+
+    body.dark-mode .swagger-ui .modal-ux {
+      filter: invert(100%) hue-rotate(180deg) !important;
+    }
+
+    body.dark-mode .swagger-ui .modal-ux-header {
+      filter: invert(100%) hue-rotate(180deg) !important;
+    }
+
+    body.dark-mode .swagger-ui .opblock-summary-method {
+      filter: invert(100%) hue-rotate(180deg) !important;
+    }
+
+    /* Microlight block background */
+    body.dark-mode .swagger-ui .microlight {
+        filter: none !important;
+        background: #f0f8ff !important;
+        color: #333 !important;
+    }
+
+    body.dark-mode .swagger-ui .microlight .hljs-attr {
+        color: #34a749 !important; 
+    }
+
+    body.dark-mode .swagger-ui .microlight span[style*="rgb(162, 252, 162)"] {
+        color: #000000 !important;
+    }
+
+    body.dark-mode .swagger-ui .microlight span[style*="rgb(252, 194, 140)"] {
+        color: #000000 !important;
+    }
+
+    body.dark-mode .swagger-ui img {
+      filter: invert(100%) hue-rotate(180deg) !important;
+    }
+
+    /* auth box configuration */
+    body.dark-mode .swagger-ui .dialog-ux .backdrop-ux {
+      background: rgba(0, 0, 0, 0.75) !important;
+      z-index: 1000;
+    }
+   
+    body.dark-mode .swagger-ui .dialog-ux {
+      filter: none !important;
+      position: fixed !important;
+      inset: 0 !important;
+      display: flex !important;
+      justify-content: center !important;
+      align-items: flex-start !important;
+      margin-top: 218px !important;
+    }
+    
+    body.dark-mode .swagger-ui .dialog-ux .modal-ux {
+      background: #1f1f1f !important;
+      border: 1px solid #444 !important;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45) !important;
+      color: #eee !important;
+      position: relative !important;
+      top: auto !important;
+      left: auto !important;
+      transform: none !important;
+      margin: 0 !important;
+    }
+    
+    body.dark-mode .swagger-ui .dialog-ux .modal-ux h4,
+    body.dark-mode .swagger-ui .dialog-ux .modal-ux p,
+    body.dark-mode .swagger-ui .dialog-ux .modal-ux label {
+      color: #eee !important;
+    }
+
+    body.dark-mode .swagger-ui .dialog-ux input,
+    body.dark-mode .swagger-ui .dialog-ux textarea,
+    body.dark-mode .swagger-ui .dialog-ux select {
+      background: #2b2b2b !important;
+      border-color: #555 !important;
+      color: #f2f2f2 !important;
+    }
+
+    body.dark-mode .swagger-ui .dialog-ux .btn {
+      background: #2b2b2b !important;
+      border-color: #555 !important;
+      color: #f2f2f2 !important;
+    }
+
+    .information-container.wrapper {
+      position: relative !important;
+      display: flex !important;
+      justify-content: flex-start !important;
+      padding: 15px 20px 0 !important;
+    }
+
+    /* Toggle button */
+    .information-container.wrapper #dark-mode-toggle {
+      position: static;
+      margin-left: 86.5%;
+      transform: translateY(98px);
+      z-index: 10;
+      padding: 8px 10px;
+      border: 0.1px solid #ccc;
+      border-radius: 20px;
+      background: #fff;
+      color: #333;
+      cursor: pointer;
+      font-size: 13px;
+      font-family: sans-serif;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    }
+
+    body.dark-mode .information-container.wrapper #dark-mode-toggle {
+      background: #333;
+      color: #eee;
+      border-color: #555;
+    }
+
+    body:not(.ready) #dark-mode-toggle {
+      visibility: hidden;
+      opacity: 0;
+    }
+
+    body.ready #dark-mode-toggle {
+      visibility: visible;
+      opacity: 1;
+      transition: opacity 0.5s;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="information-container wrapper">
+    <button id="dark-mode-toggle">🌙 Dark Mode</button>
+  </div>
+  <div id="swagger-ui"></div>
+  <script src="{{ swagger_ui_bundle }}"></script>
+  <script src="{{ swagger_ui_standalone }}"></script>
+  {% if script_url %}
+  <script src="{{ script_url }}"></script>
+  {% else %}
+  <script>
+    {% include template_name_js %}
+  </script>
+  {% endif %}
+  <script>
+    const btn = document.getElementById('dark-mode-toggle');
+    const wrper = document.getElementsByClassName('information-container wrapper')
+    const body = document.body;
+
+    //Restore preference on load
+    if (localStorage.getItem('swaggerDarkMode') === 'true') {
+      body.classList.add('dark-mode');
+      btn.textContent = '☀️ Light Mode';
+    }
+
+    btn.addEventListener('click', () => {
+      const isDark = body.classList.toggle('dark-mode');
+      btn.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+      localStorage.setItem('swaggerDarkMode', isDark);
+    });
+    const observer = new MutationObserver(() => {
+        const modalOpen = document.querySelector('.swagger-ui .dialog-ux');
+        btn.style.zIndex = modalOpen ? '0' : '10';
+        // wrper.style.position = modalOpen ? 'static' : 'static';
+        wrper.style.zIndex = modalOpen ? '-1' : '0';
+      });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        document.body.classList.add('ready');
+      }, 300);
+    });
+  </script>
+</body>
+
+</html>

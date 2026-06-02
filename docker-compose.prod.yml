@@ -1,0 +1,287 @@
+#docker compose file (for production)
+
+services:
+  web:
+    build: .
+    container_name: dentaltech-web
+    command: ./wait-for-it.sh postgres:5432 -- ./docker-entrypoint.prod.sh
+    restart: always
+    env_file:
+      - .env
+    environment:
+      SERVICE: web
+      ENVIRONMENT: production
+      DJANGO_SETTINGS_MODULE: DentalTech.settings.prod
+    ports: []  #no ports exposure; services now use nginx not local ports
+    volumes:
+      - ./logs:/app/logs
+      - static-data:/app/static
+      - media-data:/app/media
+      - gunicorn-socket:/run/gunicorn
+    networks:
+      - dentaltech-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--unix-socket", "/run/gunicorn/gunicorn.sock", "http://localhost/health/"]
+      retries: 10
+      timeout: 10s
+      interval: 30s
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          cpus: '${WEB_CPU_LIMIT:-1.0}'
+          memory: '${WEB_RAM_LIMIT:-500M}'
+        reservations:
+          cpus: '${WEB_CPU_RESERVE:-0.25}'
+          memory: '${WEB_RAM_RESERVE:-250M}'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 127.0.0.11
+
+  qcluster:
+    build: .
+    container_name: dentaltech-qcluster
+    command: ./wait-for-it.sh postgres:5432 -- ./docker-entrypoint.prod.sh
+    restart: always
+    env_file:
+      - .env
+    environment:
+      SERVICE: qcluster
+      ENVIRONMENT: production
+      DJANGO_SETTINGS_MODULE: DentalTech.settings.prod
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: ${DB_PORT}
+    depends_on:
+      web:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - dentaltech-network
+    healthcheck:
+      test: ["CMD-SHELL", "python manage.py shell -c \"from django_q.models import Task; print('OK')\" || exit 1"]
+      retries: 8
+      timeout: 10s
+      interval: 30s
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '${QCLUSTER_CPU_LIMIT:-0.5}'
+          memory: '${QCLUSTER_RAM_LIMIT:-500M}'
+        reservations:
+          cpus: '${QCLUSTER_CPU_RESERVE:-0.1}'  #NOTE - not sure about this one
+          memory: '${QCLUSTER_RAM_RESERVE:-200M}'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "1"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 127.0.0.11
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: dentaltech-postgres
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      retries: 15
+      timeout: 10s
+      interval: 5s
+    ports: []
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - dentaltech-network
+    deploy:
+      resources:
+        limits:
+          cpus: '${POSTGRES_CPU_LIMIT:-0.75}'
+          memory: '${POSTGRES_RAM_LIMIT:-500M}'
+        reservations:
+          cpus: '${POSTGRES_CPU_RESERVE:-0.25}'
+          memory: '${POSTGRES_RAM_RESERVE:-250M}'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 127.0.0.11
+
+  postgres-backup:
+    build:
+      context: .
+      dockerfile: backup.Dockerfile
+    container_name: dentaltech-postgres-backup
+    restart: always
+    command: ./database-backup-cron.sh
+    env_file:
+      - .env
+    environment:
+      - SERVICE=postgres-backup
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      #S3 Configuration
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - S3_BUCKET=${S3_BUCKET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backups:/backups
+      - ./logs:/app/logs
+    networks:
+      - dentaltech-network
+    deploy:
+      resources:
+        limits:
+          cpus: '${PGBACKUP_CPU_LIMIT:-0.3}'
+          memory: '${PGBACKUP_RAM_LIMIT:-150M}'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "1"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 127.0.0.11
+
+  nginx:
+    build:
+      context: ./nginx
+    container_name: dentaltech-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health/"]
+      retries: 5
+      timeout: 10s
+      interval: 30s
+      start_period: 60s
+    depends_on:
+      web:
+        condition: service_healthy
+    volumes:
+      - static-data:/app/static
+      - media-data:/app/media
+      - gunicorn-socket:/run/gunicorn
+      - ./nginx/ssl:/var/www/certbot
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+    networks:
+      - dentaltech-network
+    deploy:
+      resources:
+        limits:
+          cpus: '${NGINX_CPU_LIMIT:-0.2}'
+          memory: '${NGINX_RAM_LIMIT:-128M}'
+        reservations:
+          cpus: '${NGINX_CPU_RESERVE:-0.05}'
+          memory: '${NGINX_RAM_RESERVE:-32M}'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 127.0.0.11
+
+  certbot:
+    image: certbot/certbot
+    container_name: dentaltech-certbot
+    restart: always
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+      - ./nginx/ssl:/var/www/certbot
+      - ./renew-certs.sh:/renew-certs.sh
+    networks:
+      - dentaltech-network
+    entrypoint: /bin/sh -c
+    command: >
+      "chmod +x /renew-certs.sh;
+      trap exit TERM;
+      while :; do
+        /renew-certs.sh;
+        sleep 12h & wait $${!};
+      done"
+    depends_on:
+      nginx:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '${CERTBOT_CPU_LIMIT:-0.1}'
+          memory: '${CERTBOT_RAM_LIMIT:-64M}'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "2m"
+        max-file: "1"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 127.0.0.11
+
+volumes:
+  pg-data:
+  gunicorn-socket:
+  static-data:
+  media-data:
+  certbot-etc:
+  certbot-var:
+
+networks:
+  dentaltech-network:
+    driver: bridge
+
+
+# Container File System:
+#   /
+#   ├── app/                     ← Working directory (WORKDIR /app)
+#   │   ├── database-backup.sh   
+#   │   ├── manage.py
+#   │   ├── DentalTech/
+#   │   └── logs/                ← Mounted from host ./app/logs/
+#   │       ├── general.log
+#   │       └── backup.log
+#   ├── backups/                 ← Mounted from host ./backups/ (root level)
+#   │   └── backup_20250829.sql.gz
+#   ├── usr/
+#   ├── var/
+#   └── etc/

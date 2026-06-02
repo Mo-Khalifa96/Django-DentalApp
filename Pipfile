@@ -1,0 +1,35 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+django = "*"
+requests = "*"
+djangorestframework = "*"
+psycopg = {extras = ["binary"], version = "*"}
+django-environ = "*"
+python-dotenv = "*"
+django-filter = "*"
+dj-database-url = "*"
+djangorestframework-simplejwt = "*"
+django-cors-headers = "*"
+django-q2 = "*"
+gunicorn = "*"
+pillow = "*"
+locust = "*"
+drf-spectacular = "*"
+psutil = "*"
+croniter = "*"
+
+[dev-packages]
+pytest = "*"
+pytest-watch = "*"
+pytest-django = "*"
+django-debug-toolbar = "*"
+django-silk = "*"
+faker = "*"
+twilio = "*"
+
+[requires]
+python_version = "3.12"
