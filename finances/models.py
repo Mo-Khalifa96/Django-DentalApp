@@ -211,6 +211,7 @@ class Transaction(models.Model):
     @transaction.atomic
     def save(self, *args, **kwargs):
         if self._state.adding:
+            # self.date = self.date or self.visit.date
             self.branchName = getattr(self.branch, 'name', None)
             self.patientName = self.patient.name
             self.billDescription = self.bill.description

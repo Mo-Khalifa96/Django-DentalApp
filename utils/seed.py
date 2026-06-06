@@ -711,7 +711,7 @@ def seed_transactions(bills, num_transactions=100):
             bill=bill,
             patient=bill.patient,
             branch=bill.branch,
-            date=_random_past_date(years_back=1),
+            date=faker.date_between(start_date=f'-{2}m', end_date='today'),
             amount=Decimal(str(round(random.uniform(50, float(bill.totalAmount)), 2))),
             currency='USD',
             method=random.choice(payment_methods),
