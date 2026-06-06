@@ -43,7 +43,7 @@ class UserManager(BaseUserManager):
     def delete_user(self, request_user, user):
         '''Custom method to soft-delete users.'''
         from patients.models import Patient, Appointment
-        
+
         #Handle related models if user is Dentist
         if user.role == 'dentist':
             Patient.all_objects.filter(doctor_id=user.id).update(doctor=None)
@@ -123,7 +123,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         # ), 
 
         #Dashboard permissions 
-        'dashboard': ('view.calender'),
+        'dashboard': (
+            'view.calender',
+            'view.clinicalAnalytics',
+            'view.financialAnalytics'
+        ),
+
+        'waiting-room': ('view.waitingRoom'),
 
         #Patients permissions
         'patients': (
@@ -244,6 +250,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         #Default sidebar permissions 
         'sidebar': (
             'view.calender',
+            'view.waitingRoom',
             'view.patients',
             'view.appointments',
             'view.procedures',
@@ -256,6 +263,8 @@ class User(AbstractBaseUser, PermissionsMixin):
             'view.doctorSchedules',
             'view.sterilizationLogs',
             'view.recalls',
+            'view.clinicalAnalytics',
+            'view.financialAnalytics',
             'view.settings',
             'view.preferences',
         )
@@ -275,26 +284,27 @@ class User(AbstractBaseUser, PermissionsMixin):
         
         'dentist': [
             perm for perm in USER_PERMISSIONS 
-            if perm not in ('delete.patient', 'send.whatsappMessage', 'view.settings')
+            if perm not in ('delete.patient', 'view.financialAnalytics', 'view.waitingRoom', 
+                            'send.whatsappMessage', 'view.settings')
         ], 
 
         #NOTE - view.patientDetail extends to detal-chart detail view
         #     - update.patient extends to dental-chart update view
 
         'receptionist': [
-            'view.calender', 'view.patients', 'create.patient', 'update.patient', 
+            'view.calender', 'view.waitingRoom', 'view.patients', 'create.patient', 'update.patient', 
             'view.appointments', 'view.appointmentDetail', 'create.appointment', 
             'update.appointment', 'delete.appointment', 'view.recalls', 'create.recall', 
             'update.recall', 'delete.recall', 'send.whatsappMessage', 'create.bill', 
             'update.bill', 'create.transaction', 'create.invoice', 'update.invoice',
-            'view.doctorSchedules', 'view.preferences'
+            'view.doctorSchedules', 'view.clinicalAnalytics', 'view.preferences'
         ],
         
         'assistant': [  
             'view.calender', 'view.inventory', 'create.inventory', 'update.inventory', 
             'delete.inventory', 'view.labs', 'view.labOrders', 'view.labOrderDetail', 
             'create.labOrder', 'update.labOrder', 'view.sterilizationLogs', 'create.sterilizationLog', 
-            'update.sterilizationLog', 'view.doctorSchedules', 'view.preferences'
+            'update.sterilizationLog', 'view.doctorSchedules', 'view.clinicalAnalytics', 'view.preferences'
         ],
 
         'accountant': [
@@ -302,7 +312,7 @@ class User(AbstractBaseUser, PermissionsMixin):
             'view.transactions', 'create.transaction', 'delete.transaction',
             'view.invoices', 'create.invoice', 'update.invoice', 'delete.invoice',
             'view.labOrders', 'view.labOrderDetail', 'view.doctorSchedules', 
-            'view.preferences'
+            'view.clinicalAnalytics', 'view.financialAnalytics', 'view.preferences'
         ]
     }
 

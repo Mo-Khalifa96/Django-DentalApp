@@ -257,5 +257,4 @@ class UsersOptionsSerializer(serializers.Serializer):
             {'value': choice.value, 'label': str(choice.label)}
             for choice in User.UserRoles
         ]
-    
 

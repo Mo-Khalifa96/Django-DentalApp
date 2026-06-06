@@ -12,20 +12,22 @@ from clinic.docs import dashboard_stats_schema, dashboard_options_schema
 #Dashboard Statistics serializer
 @dashboard_stats_schema
 class DashboardStatisticsSerializer(UserPermissionsMixin, serializers.Serializer):
-    patientsTotal = serializers.IntegerField()  #new 
-    patientsNew = serializers.IntegerField()   #monthly by default -- is newPatientsThisMonth
-    appointmentsCount = serializers.IntegerField()
-    appointmentsCompleted = serializers.IntegerField()  #monthly by default
-    revenue = serializers.FloatField()  #monthly by default -- taken from 'paid' field on Visits model
-    outstanding = serializers.FloatField()  #new -- total not paid
+    patientsTotal = serializers.IntegerField(allow_null=True)  #total patients (irrespective of time period) 
+    patientsNew = serializers.IntegerField(allow_null=True)   #monthly by default -- is newPatientsThisMonth
+    appointmentsCount = serializers.IntegerField(allow_null=True)  #monthly by default -- total appointments
+    appointmentsCompleted = serializers.IntegerField(allow_null=True)  #monthly by default -- total appointments completed
+    revenue = serializers.FloatField(allow_null=True)  #monthly by default -- taken from 'Transactions' model
+    outstanding = serializers.FloatField(allow_null=True)  #total not paid (irrespective of time period) -- taken from Bills model
     # currency = serializers.CharField(allow_blank=True, allow_null=True)
 
     def get_fields(self):
         fields = super().get_fields()
-        request = self.context.get('request')
+        user = self.context.get('request').user
 
-        #Revenue and outstanding should not be shown to non-Admin users 
-        if getattr(request.user, 'role', None) in ('dentist', 'receptionist', 'assistant'):
+        #Revenue and outstanding removed for users without permission
+        # if getattr(user, 'role', None) in ('dentist', 'receptionist', 'assistant'):
+        if getattr(user, 'role', None) != 'admin' and\
+         'view.financialAnalytics' not in getattr(user, 'userPermissions', []):
             fields.pop('revenue', None)
             fields.pop('outstanding', None)
             # fields.pop('currency', None)

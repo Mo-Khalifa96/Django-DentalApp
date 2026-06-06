@@ -4,7 +4,7 @@ from rest_framework import status, generics
 from rest_framework.response import Response
 from clinic.filters import WaitingRoomFilter
 from utils.mixins import BranchToSerializerMixin
-from users.permissions import AdminOrReceptionist
+from users.permissions import WaitingRoomPermission
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
@@ -17,7 +17,7 @@ from clinic.serializers.waiting_room import (WaitingRoomSerializer, UpdateWaitin
 @extend_schema(tags=['Waiting Room'])
 class ListCreateWaitingRoomItemsAPIViews(FilterListCreateAPIView):
     serializer_class = WaitingRoomSerializer
-    permission_classes = [AdminOrReceptionist]
+    permission_classes = [WaitingRoomPermission]
     ordering = ['-arrivedAt']
     filterset_class = WaitingRoomFilter
     filter_backends = [DjangoFilterBackend]
@@ -35,7 +35,7 @@ class ListCreateWaitingRoomItemsAPIViews(FilterListCreateAPIView):
 @extend_schema(tags=['Waiting Room'])
 class UpdateDeleteWaitingRoomItemAPIViews(RetrieveUpdateDeleteAPIView):
     queryset = WaitingRoom.objects.select_related('appointment').all()
-    permission_classes = [AdminOrReceptionist]
+    permission_classes = [WaitingRoomPermission]
     lookup_url_kwarg = 'id'
     lookup_field = 'id'
 

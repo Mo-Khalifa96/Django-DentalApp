@@ -428,6 +428,7 @@ if settings.ENABLE_SWAGGER:
                                             'description': 'Basic permissions for side/bottom bar icons.',
                                             'properties': {
                                                 'view.calender': {'type': 'boolean'},
+                                                'view.waitingRoom': {'type': 'boolean'},
                                                 'view.patients': {'type': 'boolean'},
                                                 'view.appointments': {'type': 'boolean'},
                                                 'view.procedures': {'type': 'boolean'},
@@ -440,6 +441,8 @@ if settings.ENABLE_SWAGGER:
                                                 'view.doctorSchedules': {'type': 'boolean'},
                                                 'view.sterilizationLogs': {'type': 'boolean'},
                                                 'view.recalls': {'type': 'boolean'},
+                                                'view.clinicalAnalytics': {'type': 'boolean'},
+                                                'view.financialAnalytics': {'type': 'boolean'},
                                                 'view.settings': {'type': 'boolean'},
                                                 'view.preferences': {'type': 'boolean'}
                                             },

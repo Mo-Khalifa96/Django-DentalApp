@@ -51,6 +51,16 @@ def _build_permissions_lookup(permissions_dict):
     return lookup
 
     #Output would look like this:
+        # 'dashboard': {
+        #   'view': 'view.calender',
+        #   'view': 'view.clinicalAnalytics',
+        #   'view': 'view.financialAnalytics',
+        # },
+        #
+        # 'waiting-room': {
+        #   'view': 'view.waitingRoom'
+        # },
+        #
         # {'patients': {
         #   'view': ['view.patients', 'view.patientDetail'],
         #   'create': 'create.patient',
@@ -141,6 +151,11 @@ def _build_permissions_lookup(permissions_dict):
         #
         # 'doctor-schedules': {
         #   'view': 'view.doctorSchedules'
+        # },
+        #
+        # 'settings': {
+        #   'view': 'view.settings',
+        #   'view': 'view.preferences'
         # },
         #}
 

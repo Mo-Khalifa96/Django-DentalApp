@@ -6,11 +6,11 @@ from utils.swagger_utils import (extend_schema, extend_schema_serializer,
 dashboard_stats_schema = extend_schema_serializer(
     examples=[
         OpenApiExample(
-            name='Admin Response (200 OK)',
+            name='Response (200 OK) -- full access',
             description=(
-                'Returns statistics for the dashboard for admin users.\n'
+                'Returns full statistics for the dashboard for Admin users and users with permission to view financial analytics.\n'
                 'Without date parameters, defaults to current-day / current-week / current-month windows.\n'
-                'Providing `startDate` and/or `endDate` overrides all aggregations to that range.\n\n',
+                'Providing `dateRange` overrides the relevant aggregations to the specified range.\n\n',
             ),
             response_only=True,
             value={
@@ -18,7 +18,7 @@ dashboard_stats_schema = extend_schema_serializer(
                 'data': {
                     'patientsTotal': 340,
                     'patientsNew': 12,
-                    'appointmentsToday': 18,
+                    'appointmentsCount': 18,
                     'appointmentsCompleted': 11,
                     'revenue': 47500.00,
                     'outstanding': 8200.00,
@@ -27,6 +27,7 @@ dashboard_stats_schema = extend_schema_serializer(
                 'metadata': {
                     'userPermissions': {
                         'view.calender': True,
+                        'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
                         'view.procedures': True,
@@ -39,6 +40,8 @@ dashboard_stats_schema = extend_schema_serializer(
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': True,
+                        'view.clinicalAnalytics': True,
+                        'view.financialAnalytics': True,
                         'view.settings': True,
                         'view.preferences': True
                     }
@@ -46,24 +49,20 @@ dashboard_stats_schema = extend_schema_serializer(
             }
         ),
         OpenApiExample(
-            name='Non-Admin Response (200 OK)',
+            name='Response (200 OK) -- no financial analytics',
             description=(
-                'Returns statistics for the dashboard for non-admin users (revenueThisMonth removed).\n'
+                'Returns statistics for the dashboard without financial analytics fields for users without the financial analytics permission.\n'
                 'Without date parameters, defaults to current-day / current-week / current-month windows.\n'
-                'Providing `startDate` and/or `endDate` overrides all aggregations to that range.\n\n',
+                'Providing `dateRange` overrides the relevant aggregations to the specified range.\n\n',
             ),
             response_only=True,
             value={
                 'success': True, 
-                'data': {
-                    'patientsTotal': 340,
-                    'patientsNew': 12,
-                    'appointmentsToday': 18,
-                    'appointmentsCompleted': 11,
-                },
+                'data': {},
                 'metadata': {
                     'userPermissions': {
                         'view.calender': True,
+                        'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
                         'view.procedures': False,
@@ -76,6 +75,46 @@ dashboard_stats_schema = extend_schema_serializer(
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': False,
+                        'view.clinicalAnalytics': True,
+                        'view.financialAnalytics': False,
+                        'view.settings': True,
+                        'view.preferences': True
+                    }
+                }
+            }
+        ),
+        OpenApiExample(
+            name='Response (200 OK) -- no analytics',
+            description=(
+                'Returns nothing for users without neither clinical nor financial analytics permission.\n'
+            ),
+            response_only=True,
+            value={
+                'success': True, 
+                'data': {
+                    'patientsTotal': 340,
+                    'patientsNew': 12,
+                    'appointmentsCount': 18,
+                    'appointmentsCompleted': 11,
+                },
+                'metadata': {
+                    'userPermissions': {
+                        'view.calender': True,
+                        'view.waitingRoom': True,
+                        'view.patients': True,
+                        'view.appointments': True,
+                        'view.procedures': False,
+                        'view.inventory': True,
+                        'view.labs': True,
+                        'view.labOrders': True,
+                        'view.bills': False,
+                        'view.transactions': False,
+                        'view.invoices': False,
+                        'view.doctorSchedules': True,
+                        'view.sterilizationLogs': True,
+                        'view.recalls': False,
+                        'view.clinicalAnalytics': True,
+                        'view.financialAnalytics': False,
                         'view.settings': True,
                         'view.preferences': True
                     }

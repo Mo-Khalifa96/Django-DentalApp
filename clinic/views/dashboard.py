@@ -34,6 +34,11 @@ class DashboardStatisticsAPIView(GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        #Exclude users without required permission
+        if getattr(request.user, 'role', None) != 'admin' and\
+         'view.clinicalAnalytics' not in getattr(request.user, 'userPermissions', []):
+            return Response({}, status=status.HTTP_200_OK)
+        
         #Get date today and work days window
         today = date.today()  #date today 
         days_since_saturday = (today.weekday() + 2) % 7

@@ -78,6 +78,9 @@ def get_login_schema():
 permissions_field_schema = extend_schema_field({
     'type': 'object', 'properties': {
         'view.calender': {'type': 'boolean'},
+        'view.clinicalAnalytics': {'type': 'boolean'},
+        'view.financialAnalytics': {'type': 'boolean'},
+        'view.waitingRoom': {'type': 'boolean'},
         'view.patients': {'type': 'boolean'},
         'view.patientDetail': {'type': 'boolean'},
         'create.patient': {'type': 'boolean'},
@@ -156,6 +159,9 @@ retrieve_user_schema = extend_schema_serializer(
                     'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
                     'permissions': {
                         'view.calender': True,
+                        'view.clinicalAnalytics': True,
+                        'view.financialAnalytics': False,
+                        'view.waitingRoom': True,
                         'view.patients': True,
                         'view.patientDetail': True,
                         'create.patient': True,
@@ -219,6 +225,7 @@ retrieve_user_schema = extend_schema_serializer(
                     'metadata': {
                         'userPermissions': {
                             'view.calender': True,
+                            'view.waitingRoom': True,
                             'view.patients': True,
                             'view.appointments': True,
                             'view.procedures': True,
@@ -231,6 +238,8 @@ retrieve_user_schema = extend_schema_serializer(
                             'view.doctorSchedules': True,
                             'view.sterilizationLogs': True,
                             'view.recalls': True,
+                            'view.clinicalAnalytics': True,
+                            'view.financialAnalytics': False,
                             'view.settings': True,
                             'view.preferences': True
                         }
@@ -257,6 +266,7 @@ retrieve_user_schema = extend_schema_serializer(
                     'metadata': {
                         'userPermissions': {
                             'view.calender': True,
+                            'view.waitingRoom': True,
                             'view.patients': True,
                             'view.appointments': True,
                             'view.procedures': True,
@@ -269,6 +279,8 @@ retrieve_user_schema = extend_schema_serializer(
                             'view.doctorSchedules': True,
                             'view.sterilizationLogs': True,
                             'view.recalls': True,
+                            'view.clinicalAnalytics': True,
+                            'view.financialAnalytics': False,
                             'view.settings': False,
                             'view.preferences': True,
                         }
@@ -298,6 +310,9 @@ update_user_schema = extend_schema_serializer(
                 'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
                 'permissions': {
                     'view.calender': True,
+                    'view.clinicalAnalytics': True,
+                    'view.financialAnalytics': False,
+                    'view.waitingRoom': True,
                     'view.patients': True,
                     'view.patientDetail': True,
                     'create.patient': True,
@@ -390,6 +405,9 @@ update_user_schema = extend_schema_serializer(
                     'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
                     'permissions': {
                         'view.calender': True,
+                        'view.clinicalAnalytics': True,
+                        'view.financialAnalytics': False,
+                        'view.waitingRoom': True,
                         'view.patients': True,
                         'view.patientDetail': True,
                         'create.patient': True,

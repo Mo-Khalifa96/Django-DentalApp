@@ -44,10 +44,11 @@ class DoctorSchedulePermissions(BasePermission):
 
 
 #Admin or receptionist only permission -- for waiting room
-class AdminOrReceptionist(BasePermission):
+class WaitingRoomPermission(BasePermission):
     def has_permission(self, request, view):
         if request.user or request.user.is_authenticated:
-            if request.user.role in ('admin', 'receptionist'):
+            if request.user.role == 'admin' or \
+             request.user.has_special_permission('view.waitingRoom'):
                 return True
         return False
     
