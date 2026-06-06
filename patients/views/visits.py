@@ -51,7 +51,7 @@ class ListCreateVisitsAPIView(ListCreateAPIView):
         user = self.request.user
         #Fetch patient visits for GET
         patient_visits = Visit.objects.select_related('patient', 'doctor')\
-         .prefetch_related('patient_xrays').filter(patient_id=self.kwargs['id'])
+         .prefetch_related('patient__patient_xrays').filter(patient_id=self.kwargs['id'])
         
         if getattr(user, 'role', None) == 'dentist':
             return patient_visits.filter(doctor=user)

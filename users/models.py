@@ -304,7 +304,8 @@ class User(AbstractBaseUser, PermissionsMixin):
             'view.calender', 'view.inventory', 'create.inventory', 'update.inventory', 
             'delete.inventory', 'view.labs', 'view.labOrders', 'view.labOrderDetail', 
             'create.labOrder', 'update.labOrder', 'view.sterilizationLogs', 'create.sterilizationLog', 
-            'update.sterilizationLog', 'view.doctorSchedules', 'view.clinicalAnalytics', 'view.preferences'
+            'update.sterilizationLog', 'view.doctorSchedules', 'view.clinicalAnalytics', 
+            'view.preferences'
         ],
 
         'accountant': [
