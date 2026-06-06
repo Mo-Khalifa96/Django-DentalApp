@@ -53,7 +53,7 @@ class UserManager(BaseUserManager):
 
         #If request user is admin delete permenantly
         if request_user == 'admin':
-            user.delete()
+            user.delete()  #TODO - not sure it's a good idea
         else:
             user.set_unusable_password() 
             user.is_deleted = True
@@ -362,9 +362,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         #save user changes
         super().save(*args, **kwargs)
 
-        # #seeding condition -- remove later
-        # if self.branches.count() == 0 and self.branch:
-        #         self.branches.add(self.branch)
+        #seeding condition -- remove later [TODO]
+        if self.branches.count() == 0 and self.branch:
+            self.branches.add(self.branch)
 
     @staticmethod
     def format_array(array):
