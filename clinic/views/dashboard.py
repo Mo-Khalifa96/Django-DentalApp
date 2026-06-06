@@ -60,7 +60,7 @@ class DashboardStatisticsAPIView(GenericAPIView):
         appointments = Appointment.objects.only('id', 'patient', 'date', 'branch').filter(branch_filter).exclude(status='cancelled')
         patients = Patient.objects.only('id', 'createdAt', 'branch').filter(branch_filter)
         # visits = Visit.objects.only('id', 'cost', 'paid').filter(patient__branch=branch_filter)
-        transactions = Transaction.objectsonly('id', 'amount', 'branch').filter(branch_filter)
+        transactions = Transaction.objects.only('id', 'amount', 'branch').filter(branch_filter)
         bills = Bill.objects.only('id', 'totalAmount', 'branch').filter(branch_filter)
 
 
