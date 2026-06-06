@@ -31,7 +31,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'name': self.user.name,
             'role': self.user.role,
             'specialization': self.user.specialization,
-            'branchId': getattr(self.user.branch, 'id', None)
+            'activeBranchId': getattr(self.user.branch, 'id', None),
+            'branchIds': self.user.branches.values_list('id', flat=True) or []
         }
         return validated_data
 

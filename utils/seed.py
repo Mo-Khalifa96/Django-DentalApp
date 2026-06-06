@@ -206,6 +206,7 @@ def seed_users(branches, num_users=10):
         branch=branches[0],
         is_staff=True,
     )
+    admin.branches.set(branches)
     users.append(admin)
 
     #Create two known dentists
@@ -262,7 +263,7 @@ def seed_users(branches, num_users=10):
     )
     users.append(accountant)
 
-    for i in range(num_users - 6):   #accounting for the 5 users created above
+    for i in range(num_users - 6):   #accounting for the 6 users created above
         role = roles_pool[i % len(roles_pool)]
         branch = random.choices(branches, weights=[70, 15, 15])[0]
         name = faker.name()

@@ -78,6 +78,7 @@ class CreateTreatmentPlanSerializer(TreatmentPlanSerializer):
             TreatmentPlanItem(
                 treatmentPlan=treatment_plan,
                 procedure=item['procedure'],
+                procedureName=item['procedure'].name,
                 toothNumber=item.get('toothNumber'),
                 price=item['price'],
                 session=item.get('session'),
@@ -132,7 +133,7 @@ class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
         #delete and update items
         if updated_items is not None:  #or, use <<if 'treatment_items' in validated_data:>> if you want to allow deletion
             #Delete existing items and recreate 
-            instance.items.all().delete()
+            instance.treatment_items.all().delete()
 
             #recreate treatment items from the data passed
             TreatmentPlanItem.objects.bulk_create(
@@ -140,6 +141,7 @@ class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
                 TreatmentPlanItem(
                     treatmentPlan=instance,
                     procedure=item['procedure'],
+                    procedureName=item['procedure'].name,
                     toothNumber=item.get('toothNumber'),
                     price=item['price'],
                     session=item.get('session'),

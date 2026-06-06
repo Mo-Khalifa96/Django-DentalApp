@@ -53,8 +53,13 @@ def get_login_schema():
                                 'name': 'Dr. Layla Hassan',
                                 'role': 'dentist',
                                 'specialization': 'General Dentistry',
-                                'branchId': 'ebe27408-2fb9-42b2-977a-fbaa1bf0a396',
-                            }
+                                'activeBranchId': 'f8c1df87-88d5-4516-9498-7d3273d28db2',
+                                'branchIds': [
+                                    'f8c1df87-88d5-4516-9498-7d3273d28db2',
+                                    '4b003dd4-f654-4ac3-8dc4-07bd2c7bd7f3',
+                                    '908be626-8934-4093-a93f-1541d50ceb29'
+                                    ]
+                                }
                         }
                     ),
                     OpenApiExample(
@@ -140,6 +145,7 @@ permissions_field_schema = extend_schema_field({
         'view.preferences': {'type': 'boolean'}
         }})
 
+
 #Schema for retrieve user serializer
 retrieve_user_schema = extend_schema_serializer(
     examples=[
@@ -155,7 +161,12 @@ retrieve_user_schema = extend_schema_serializer(
                     'name': 'Dr. Layla Hassan',
                     'role': 'dentist',
                     'specialization': 'General Dentistry',
-                    'branchId': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                    'activeBranchId': 'f8c1df87-88d5-4516-9498-7d3273d28db2',
+                    'branchIds': [
+                        'f8c1df87-88d5-4516-9498-7d3273d28db2',
+                        '4b003dd4-f654-4ac3-8dc4-07bd2c7bd7f3',
+                        '908be626-8934-4093-a93f-1541d50ceb29'
+                    ],
                     'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
                     'permissions': {
                         'view.calender': True,
@@ -259,7 +270,12 @@ retrieve_user_schema = extend_schema_serializer(
                     'name': 'Dr. Layla Hassan',
                     'role': 'dentist',
                     'specialization': 'General Dentistry',
-                    'branchId': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                    'activeBranchId': 'f8c1df87-88d5-4516-9498-7d3273d28db2',
+                    'branchIds': [
+                        'f8c1df87-88d5-4516-9498-7d3273d28db2',
+                        '4b003dd4-f654-4ac3-8dc4-07bd2c7bd7f3',
+                        '908be626-8934-4093-a93f-1541d50ceb29'
+                    ],
                     'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
                     'isActive': True,
                     'createdAt': '2026-04-24T23:33:54.610Z',
@@ -291,13 +307,14 @@ retrieve_user_schema = extend_schema_serializer(
     ]
 )
 
+
 #Schema for update user serializer
 update_user_schema = extend_schema_serializer(
     examples=[
         OpenApiExample(
             name='Admin Request',
             request_only=True,
-            description='Full update request for admin (*NOTE:* password fields are removed for non-account owners.)',
+            description='Full update request for admin (*NOTE:* password fields are removed for non-account owners).',
             value={
                 'email': 'dr.layla@dentaltech.com',
                 'currentPassword': 'currentPassword123',
@@ -306,7 +323,10 @@ update_user_schema = extend_schema_serializer(
                 'name': 'Dr. Layla Hassan',
                 'role': 'dentist',
                 'specialization': 'General Dentistry',
-                'branchId': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                'branchIds': [
+                        '4b003dd4-f654-4ac3-8dc4-07bd2c7bd7f3',
+                        '908be626-8934-4093-a93f-1541d50ceb29'
+                    ],
                 'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
                 'permissions': {
                     'view.calender': True,
@@ -401,7 +421,10 @@ update_user_schema = extend_schema_serializer(
                     'name': 'Dr. Layla Hassan',
                     'role': 'dentist',
                     'specialization': 'General Dentistry',
-                    'branchId': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                    'branchIds': [
+                        '4b003dd4-f654-4ac3-8dc4-07bd2c7bd7f3',
+                        '908be626-8934-4093-a93f-1541d50ceb29'
+                    ],
                     'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
                     'permissions': {
                         'view.calender': True,
@@ -486,6 +509,7 @@ update_user_schema = extend_schema_serializer(
         ),
     ]
 )
+
 
 #Schema for users options serializer
 users_options_schema = extend_schema_serializer(

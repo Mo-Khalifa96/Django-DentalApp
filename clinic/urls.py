@@ -1,8 +1,8 @@
 from django.urls import path
 from clinic.views.dashboard import DashboardStatisticsAPIView, DashboardAppointmentTodayAPIView, DashboardOptionsAPIView
-from clinic.views.branches import ListCreateBranchesAPIViews, RetrieveUpdateDeleteBranchesAPIViews, RetrieveBranchOptionsAPIView
 from clinic.views.procedures import ListCreateProceduresAPIViews, RetrieveUpdateDeleteProceduresAPIViews, RetrieveProcedureOptionsAPIView
 from clinic.views.waiting_room import ListCreateWaitingRoomItemsAPIViews, UpdateDeleteWaitingRoomItemAPIViews,RetrieveWaitingRoomOptionsAPIView 
+from clinic.views.branches import ListCreateBranchesAPIViews, RetrieveUpdateDeleteBranchesAPIViews, RetrieveBranchOptionsAPIView
 from clinic.views.inventory import (ListCreateInventoryAPIViews, RetrieveUpdateDeleteInventoryAPIViews,
                                   RetrieveInventoryOptionsAPIView)
 from clinic.views.labs import (ListCreateLabsAPIView, RetrieveUpdateDeleteLabAPIView, ListCreateLabOrdersAPIView,

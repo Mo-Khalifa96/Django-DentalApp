@@ -1,9 +1,10 @@
 from django.urls import path
-from users.views.users import (RetrieveUserProfileAPIView, ListCreateUserAPIView,
-                              RetrieveUpdateDeleteUserAPIView, RetrieveUsersOptionsAPIView)
 from users.views.auth import (TokenObtainPairView, TokenRefreshView, TokenVerifyView, 
                               TokenBlacklistView,  ChangePasswordAPIView, ResetEmailAPIView, 
                               ResetPasswordAPIView)
+from users.views.users import (RetrieveUserProfileAPIView, ListCreateUserAPIView,
+                              RetrieveUpdateDeleteUserAPIView, RetrieveUsersOptionsAPIView,
+                              SetActiveBranchAPIView)
 from users.views.doctor_schedules import (ListDoctorsSchedulesAPIView, CRUD_DoctorScheduleAPIView,
                                           CreateScheduleExceptionAPIView, DeleteScheduleExceptionAPIView,
                                           RetrieveDoctorSchedulesOptionsAPIView)
@@ -29,6 +30,9 @@ urlpatterns = [
     path('users/', ListCreateUserAPIView.as_view(), name='list_create_users'),
     path('users/<uuid:id>/', RetrieveUpdateDeleteUserAPIView.as_view(), name='retrieve_update_delete_user'),
     path('users/options/', RetrieveUsersOptionsAPIView.as_view(), name='users_options'),
+
+    #Set active branch url
+    path('activate-branch/', SetActiveBranchAPIView.as_view(), name='set_active_branch'),
 
     #Doctor schedules urls
     path('doctor-schedules/', ListDoctorsSchedulesAPIView.as_view(), name='list_doctors_schedules'),

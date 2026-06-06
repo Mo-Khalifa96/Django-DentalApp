@@ -1,17 +1,21 @@
 from utils.base_views import *
 from users.models import User
+from clinic.models import Branch
 from users.filters import UsersFilter
 from users.permissions import AdminOnly
 from rest_framework import status, generics 
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 from utils.filters import CustomOrderingFilter
 from rest_framework.filters import SearchFilter
 from django.utils.translation import gettext_lazy as _
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
 from users.serializers.users import (CreateUserSerializer, ListUsersSerializer, RetrieveUserSerializer, 
-                                     UpdateUserSerializer, UsersOptionsSerializer)
+                                     UpdateUserSerializer, SetActiveBranchSerializer, UsersOptionsSerializer)
+
 
 
 #USERS API VIEWS 
@@ -73,6 +77,33 @@ class RetrieveUpdateDeleteUserAPIView(RetrieveUpdateDeleteAPIView):
         User.objects.delete_user(request_user=request.user, user=user)
         return Response({}, status=status.HTTP_204_NO_CONTENT)
     
+
+#Set active branch API view 
+@extend_schema(tags=['Users'])
+class SetActiveBranchAPIView(generics.GenericAPIView):
+    queryset = User.objects.all()
+    serializer_class = SetActiveBranchSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        #get current user and branch
+        user = request.user
+        branchId = request.data.get('branchId')
+        if not branchId and Branch.objects.exists():
+            raise ValidationError({'branchId': _('Branch ID is required to activate user branch.')})
+
+        #Verify branch exists
+        active_branch = get_object_or_404(Branch.objects.only('id'), id=branchId)
+
+        #Verify branch belongs to the user
+        if not user.branches or not user.branches.filter(id=branchId).exists():
+            raise PermissionDenied(_('Permission denied. You do not belong to this branch.'))
+        
+        #Assign active branch
+        user.branch = active_branch
+        user.save(update_fields=['branch', 'updatedAt'])
+        return Response({'success': True}, status=status.HTTP_200_OK)
+
 
 #API view for serving choices data 
 @extend_schema(

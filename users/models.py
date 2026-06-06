@@ -79,9 +79,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     specialization = models.CharField(max_length=255, blank=True, null=True)
     avatar = models.ImageField(upload_to='user_avatars/', blank=True, null=True, validators=[validate_image_size])
     userPermissions = ArrayField(models.CharField(max_length=100), default=list, blank=True)
-    #Many-to-One relationship to the Branch model (i.e., many users, one branch)
+    #Many-to-One relationship to the Branch model (i.e., many users, one branch) -- for active branch
     branch = models.ForeignKey('clinic.Branch', related_name='branch_users', blank=True,
                                 null=True, on_delete=models.SET_NULL, db_index=True)
+    
+    #Many-to-Many relationship to branch for allowing multiple branches per user
+    branches = models.ManyToManyField('clinic.Branch', related_name='related_users', db_index=True)
+
     #other fields 
     isActive = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=True)
@@ -129,7 +133,7 @@ class User(AbstractBaseUser, PermissionsMixin):
             'view.financialAnalytics'
         ),
 
-        'waiting-room': ('view.waitingRoom'),
+        'waiting-room': ('view.waitingRoom',),
 
         #Patients permissions
         'patients': (
@@ -143,7 +147,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         #Patient visit history permissions
         'visits': (
             'view.visits',
-            'create.visit'
+            'create.visit',
         ),
 
         #Appointments permissions 
@@ -345,6 +349,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         if self._state.adding and not self.userPermissions and self.role:
             self.userPermissions = self.DEFAULT_ROLE_PERMISSIONS.get(self.role, [])
 
+        #triggers on save and update
         elif self.userPermissions:
             if isinstance(self.userPermissions, dict):
                 self.userPermissions = [perm for perm, val in self.userPermissions.items() if val]
@@ -353,8 +358,13 @@ class User(AbstractBaseUser, PermissionsMixin):
                     self.userPermissions = list(json.loads(self.userPermissions))
                 except (json.JSONDecodeError, TypeError):
                     self.userPermissions = self.format_array(self.userPermissions)
-
+        
+        #save user changes
         super().save(*args, **kwargs)
+
+        # #seeding condition -- remove later
+        # if self.branches.count() == 0 and self.branch:
+        #         self.branches.add(self.branch)
 
     @staticmethod
     def format_array(array):

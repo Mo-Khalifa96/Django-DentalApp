@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.utils import timezone
 from django.db import models, transaction
 from django.core.validators import MinValueValidator
+from django.contrib.postgres.fields import ArrayField
 from patients.validators import validate_phone_number
 from django.utils.translation import gettext_lazy as _
 
@@ -93,6 +94,8 @@ class Bill(models.Model):
     branchName = models.CharField(max_length=255, blank=True, null=True)
     patientName = models.CharField(max_length=255, blank=True, null=True)
     treatmentTitle = models.CharField(max_length=255, blank=True, null=True)
+    procedures = ArrayField(models.CharField(max_length=500), default=list, blank=True, null=True)
+    createdBy = models.CharField(max_length=255, blank=True, null=True)
     isDeleted = models.BooleanField(default=False)   #Soft delete field
 
     #Objects after filtering by manager
@@ -105,7 +108,7 @@ class Bill(models.Model):
     class Meta: 
         db_table = 'Bills'
         verbose_name_plural = 'Bills'
-        ordering = ['-isDeleted', 'branch__name', '-updatedAt']
+        ordering = ['-isDeleted', '-branch__isMain', 'branch__name', '-updatedAt']
 
     def __str__(self):
         return self.description
@@ -115,12 +118,18 @@ class Bill(models.Model):
         if self._state.adding:
             self.branchName = getattr(self.branch, 'name', None)
             self.patientName = self.patient.name
-        if self.treatment:  #only treatmentId will be updateable
-            self.treatmentTitle = self.treatment.title
-    
+        if self.treatment:  #only treatment will be updateable
+            self.treatmentTitle = getattr(self.treatment, 'title', self.treatmentTitle)
+            if self.treatment.treatment_items.exists():
+                self.procedures = [
+                    item.procedureName for item in self.treatment.treatment_items.all()
+                    if item.procedureName
+                ]
+
         #save changes 
         super().save(*args, **kwargs)
 
+    #Model function to auto-generate invoices from a bill
     @classmethod
     def generate_invoice(cls, billId):   
         #TODO - handle billId validation in the serializer
@@ -203,7 +212,7 @@ class Transaction(models.Model):
     class Meta: 
         db_table = 'Transactions'
         verbose_name_plural = 'Transactions'
-        ordering = ['-isDeleted', 'branch__name', '-date', 'patient__name']
+        ordering = ['-isDeleted', '-branch__isMain', 'branch__name', '-date', 'patient__name']
 
     def __str__(self):
         return f'[{self.date}] {self.method} transaction -- {self.billDescription}'
@@ -291,7 +300,7 @@ class Invoice(models.Model):
     class Meta: 
         db_table = 'Invoices'
         verbose_name_plural = 'Invoices'
-        ordering = ['-isDeleted', 'branch__name', 'issuedAt', 'submittedAt', 'patient__name']
+        ordering = ['-isDeleted', '-branch__isMain', 'branch__name', 'issuedAt', 'submittedAt', 'patient__name']
 
     def __str__(self):
         return self.invoiceNumber

@@ -9,22 +9,32 @@ from django.utils.translation import gettext_lazy as _
 from utils.mixins import UserPermissionsMixin, ValidateBranchMixin
 from django.contrib.auth.password_validation import validate_password
 from users.docs import permissions_field_schema, retrieve_user_schema, update_user_schema, users_options_schema
+from utils.swagger_utils import extend_schema_serializer, OpenApiExample
 
 
 #USERS SERIALIZERS
+#List users serializer 
+class ListUsersSerializer(serializers.ModelSerializer):
+    branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'name', 'role', 'specialization', 'branchIds', 'isActive', 'createdAt']
+
+
 #Create user serializer 
 class CreateUserSerializer(serializers.ModelSerializer, ValidateBranchMixin):
     password = serializers.CharField(write_only=True)
     password2 = serializers.CharField(write_only=True)
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
+    branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', queryset=Branch.objects.all(), required=False, allow_null=True)
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'name', 'role', 'specialization', 'branchId', 'avatar', 
+        fields = ['id', 'email', 'name', 'role', 'specialization', 'branchIds', 'avatar', 
                   'password', 'password2', 'createdAt']
         read_only_fields = ['id', 'createdAt']
         extra_kwargs = {'specialization': {'required': False},  'avatar': {'required': False},
-                        'branchId': {'required': False}}
+                        'branchIds': {'required': False}}
     
     def validate(self, data):
         '''Validates passwords during user creation.'''
@@ -48,21 +58,25 @@ class CreateUserSerializer(serializers.ModelSerializer, ValidateBranchMixin):
         #handle user's password 
         password = validated_data.pop('password', None)   #get password
         validated_data.pop('password2', None)   #Remove password 2 
+        #fetch branches for manual setting
+        branches = validated_data.pop('branches', [])
 
         #Create new user 
         user = User(**validated_data)
         user.set_password(password)
         user.save()
 
+        #set user branches 
+        if branches:
+            user.branches.set(branches)
+
+            #if only one branch added, assign it as active branch
+            if len(branches) == 1:
+                user.branch = branches[0]
+                user.save(update_fields=['branch', 'updatedAt'])
+        
+        #return created user
         return user 
-
-#List users serializer 
-class ListUsersSerializer(serializers.ModelSerializer):
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
-
-    class Meta:
-        model = User
-        fields = ['id', 'email', 'name', 'role', 'specialization', 'branchId', 'isActive', 'createdAt']
 
 
 #Retrieve user profile serializer 
@@ -70,12 +84,13 @@ class ListUsersSerializer(serializers.ModelSerializer):
 class RetrieveUserSerializer(UserPermissionsMixin, serializers.ModelSerializer):
     permissions = serializers.SerializerMethodField()
     avatar = serializers.ImageField(use_url=True, read_only=True)
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
+    branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', read_only=True)
+    activeBranchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
 
     class Meta: 
         model = User
-        fields = ['id', 'email', 'name', 'role', 'specialization',  'branchId', 
-                  'avatar', 'permissions', 'isActive', 'createdAt']
+        fields = ['id', 'email', 'name', 'role', 'specialization', 'activeBranchId', 
+                  'branchIds', 'avatar', 'permissions', 'isActive', 'createdAt']
 
     @permissions_field_schema
     def get_permissions(self, obj):   
@@ -101,16 +116,16 @@ class UpdateUserSerializer(serializers.ModelSerializer):
     newPassword2 = serializers.CharField(write_only=True, required=False, allow_blank=True)
     avatar = serializers.ImageField(use_url=True, required=False, allow_empty_file=True)
     permissions = serializers.DictField(child=serializers.BooleanField(required=False), required=False, allow_empty=True)
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
+    branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', queryset=Branch.objects.all(), required=False, allow_null=True)
 
     class Meta:
         model = User
         fields = ['id', 'email', 'currentPassword', 'newPassword', 'newPassword2', 'name', 'role', 
-                  'specialization', 'branchId', 'avatar', 'permissions', 'isActive', 'updatedAt']
+                  'specialization', 'branchIds', 'avatar', 'permissions', 'isActive', 'updatedAt']
         read_only_fields = ['id', 'updatedAt']
         extra_kwargs = {field: {'required': False} for field in 
             ('email', 'currentPassword', 'newPassword', 'newPassword2', 'name', 'role', 'specialization',
-             'branchId', 'avatar', 'permissions', 'isActive')
+             'branchIds', 'avatar', 'permissions', 'isActive')
             }
 
     def get_fields(self):
@@ -122,7 +137,7 @@ class UpdateUserSerializer(serializers.ModelSerializer):
         if getattr(request.user, 'role', None) != 'admin':
             fields.pop('role', None)
             fields.pop('permissions', None)
-            fields.pop('branch', None)
+            fields.pop('branchIds', None)
 
         #Prevent user/admin from changing another's password
         if getattr(request.user, 'id', None) != user_id:
@@ -188,13 +203,21 @@ class UpdateUserSerializer(serializers.ModelSerializer):
         validated_data.pop('newPassword2', None)
         newPassword = validated_data.pop('newPassword', None)
         assigned_permissions = validated_data.pop('permissions', None)
+        
+        #flag and handle branches
+        delete_branches = (self.context.get('request').method == 'PUT' and 
+                           'branches' in validated_data and 
+                           not validated_data['branches'] and
+                           instance.branches.exists())
+
+        branches = validated_data.pop('branches', [])
 
         #Track fields to update 
         update_fields = []
 
         #Update basic fields
         for field, value in validated_data.items():
-            if hasattr(instance, field) and value:
+            if hasattr(instance, field) and value is not None:
                 setattr(instance, field, value)
                 update_fields.append(field)
 
@@ -227,6 +250,20 @@ class UpdateUserSerializer(serializers.ModelSerializer):
         #update user 
         update_fields.append('updatedAt')
         instance.save(update_fields=update_fields)
+
+        #handle branches setting manually
+        if branches:
+            instance.branches.set(branches)
+
+            #update active branch if conditions are met
+            if not instance.branch and len(branches) == 1:
+                instance.branch = branches[0]
+                instance.save(update_fields=['branch', 'updatedAt'])
+
+        elif delete_branches:
+            #delete on PUT request
+            instance.branches.clear()
+
         return instance 
 
 
@@ -258,3 +295,17 @@ class UsersOptionsSerializer(serializers.Serializer):
             for choice in User.UserRoles
         ]
 
+
+#Set active branch serializer
+@extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            name='Response',
+            response_only=True,
+            value={'success': True}
+        )
+    ]
+)
+class SetActiveBranchSerializer(serializers.Serializer):
+    branchId = serializers.PrimaryKeyRelatedField(queryset=Branch.objects.all(), write_only=True, required=True)
+    success = serializers.BooleanField(read_only=True)

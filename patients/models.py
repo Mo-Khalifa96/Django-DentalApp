@@ -464,13 +464,6 @@ class TreatmentPlanItem(models.Model):
         db_table = 'TreatmentPlanItems'
         verbose_name_plural = 'TreatmentPlanItems'
 
-    @transaction.atomic 
-    def save(self, *args, **kwargs):
-        if self._state.adding:
-            self.procedureName = self.procedure.name
-        #save appointment to database 
-        super().save(*args, **kwargs)
-
 
 #Patient Recalls Manager
 class PatientRecallsManager(models.Manager):
