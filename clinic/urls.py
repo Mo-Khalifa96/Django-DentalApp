@@ -20,8 +20,8 @@ urlpatterns = [
 
     #Branches urls
     path('branches/', ListCreateBranchesAPIViews.as_view(), name='list_create_branches'),
-    path('branches/<uuid:id>', RetrieveUpdateDeleteBranchesAPIViews.as_view(), name='retrieve_update_delete_branch'),
-    path('branches/options', RetrieveBranchOptionsAPIView.as_view(), name='branches_options'),
+    path('branches/<uuid:id>/', RetrieveUpdateDeleteBranchesAPIViews.as_view(), name='retrieve_update_delete_branch'),
+    path('branches/options/', RetrieveBranchOptionsAPIView.as_view(), name='branches_options'),
 
     #Waiting room urls 
     path('waiting-room/', ListCreateWaitingRoomItemsAPIViews.as_view(), name='list_create_waiting_room_items'),

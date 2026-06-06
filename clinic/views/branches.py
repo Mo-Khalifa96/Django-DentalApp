@@ -45,7 +45,7 @@ class RetrieveUpdateDeleteBranchesAPIViews(RetrieveUpdateDeleteAPIView):
     def destroy(self, request, *args, **kwargs):
         #soft delete branch
         branch = self.get_object()
-        Branch.objects.delete_branch(branch=branch)
+        Branch.objects.delete_branch(user=request.user, branch=branch)
         return Response({}, status=status.HTTP_204_NO_CONTENT)
 
 

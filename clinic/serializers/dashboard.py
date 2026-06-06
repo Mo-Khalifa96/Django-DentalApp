@@ -25,7 +25,7 @@ class DashboardStatisticsSerializer(UserPermissionsMixin, serializers.Serializer
         request = self.context.get('request')
 
         #Revenue and outstanding should not be shown to non-Admin users 
-        if getattr(request.user, 'role', None) != 'admin':
+        if getattr(request.user, 'role', None) in ('dentist', 'receptionist', 'assistant'):
             fields.pop('revenue', None)
             fields.pop('outstanding', None)
             # fields.pop('currency', None)
@@ -36,6 +36,13 @@ class DashboardQueryParamSerializer(serializers.Serializer):
     branchId = serializers.UUIDField(required=False, allow_null=True)
     dateRange = serializers.ChoiceField(choices=(('today', 'today'), ('week', 'week'), ('month', 'month')),
                                         required=False, allow_blank=True)
+    
+    def validate_branchId(self, branchId):
+        user = self.context.get('request').user
+        if branchId and getattr(user, 'role', None) != 'admin':
+            if (not user.branch and Branch.objects.exists()) or (user.branch.id != branchId):
+                raise serializers.ValidationError(_('Invalid branch ID. You do not have access to this branch.'))
+        return branchId
 
 
 #Dashboard Appointments Today serializer

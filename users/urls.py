@@ -36,6 +36,6 @@ urlpatterns = [
             http_method_names=['get', 'post', 'put', 'delete', 'options']
         ), name='CRUD_doctor_schedule'),
     path('doctor-schedule/<uuid:doctorId>/exceptions/', CreateScheduleExceptionAPIView.as_view(), name='create_schedule_exception'),
-    path('doctor-schedule/<uuid:doctorId>/exceptions/<str:date>', DeleteScheduleExceptionAPIView.as_view(), name='delete_schedule_exception'),
+    path('doctor-schedule/<uuid:doctorId>/exceptions/<str:date>/', DeleteScheduleExceptionAPIView.as_view(), name='delete_schedule_exception'),
     path('doctor-schedules/options/', RetrieveDoctorSchedulesOptionsAPIView.as_view(), name='doctor_schedules_options'),
 ]

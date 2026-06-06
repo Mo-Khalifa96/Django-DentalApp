@@ -27,13 +27,15 @@ class BranchManager(models.Manager):
         return super().get_queryset().filter(is_deleted=False)
     
     @transaction.atomic 
-    def delete_branch(self, branch):
+    def delete_branch(self, user, branch):
         '''Custom method to soft-delete branches.'''
-        #Set is_deleted flag to True 
-        branch.is_deleted = True
-        #other code...
-        #save changes
-        branch.save()
+        if user.role == 'admin':
+            branch.delete()
+        else:
+            #Set is_deleted flag to True 
+            branch.is_deleted = True
+            #save changes
+            branch.save()
         return True 
 
 
@@ -355,8 +357,9 @@ class LabOrder(models.Model):
     @transaction.atomic
     def save(self, *args, **kwargs):
         #Assign dates on creation and updates
-        if self._state.adding and not self.sentDate:
-            self.sentDate = timezone.localtime(timezone.now()).date 
+        if self._state.adding:
+            if not self.sentDate:
+                self.sentDate = timezone.localtime(timezone.now()).date 
             self.labName = self.lab.name
             self.procedureName = self.procedure.name
             self.patientName = self.patient.name

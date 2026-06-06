@@ -70,11 +70,11 @@ class RetrieveUpdateDeleteUserAPIView(RetrieveUpdateDeleteAPIView):
     def destroy(self, request, *args, **kwargs):
         user = self.get_object()
         #soft delete user
-        User.objects.delete_user(user=user)
+        User.objects.delete_user(request_user=request.user, user=user)
         return Response({}, status=status.HTTP_204_NO_CONTENT)
     
 
-#API View for serving choices data 
+#API view for serving choices data 
 @extend_schema(
     tags=['Users'],
     parameters=[

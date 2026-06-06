@@ -20,27 +20,30 @@ class PatientsManager(models.Manager):
         return super().get_queryset().filter(is_deleted=False)  #filter out soft-deleted patients
     
     @transaction.atomic 
-    def delete_patient(self, patient):
+    def delete_patient(self, user, patient):
         '''Custom method to soft-delete patients.'''
-        #Set is_deleted flag to True 
-        patient.is_deleted = True
+        if user.role == 'admin':
+            patient.delete()
+            
+        else:
+            #Set is_deleted flag to True
+            patient.is_deleted = True
+            patient.status = 'inactive'
 
-        #Delete patient's x-rays 
-        xrays = patient.patient_xrays.all()
-        for xray in xrays:
-            xray.image.delete(save=False)
-        xrays.delete()  #delete xrays
+            #Delete patient's x-rays 
+            xrays = patient.patient_xrays.all()
+            for xray in xrays:
+                xray.image.delete(save=False)
+            xrays.delete()  #delete xrays
 
-        #Delete messages 
-        patient.patient_reminders.all().delete()
+            #Delete reminder messages 
+            patient.patient_reminders.all().delete()
 
-        #save changes
-        patient.save()
+            #save changes
+            patient.save()
+
         return True 
 
-    # @transaction.atomic 
-    # def delete_patient_permanently(self, patient):
-    #     pass  -- unused 
 
 #PATIENTS MODEL 
 class Patient(models.Model):
@@ -196,12 +199,12 @@ class Visit(models.Model):
     #Many-to-One relationship to the Patient model (i.e., many visits, one patient)
     patient = models.ForeignKey(Patient, related_name='patient_visits', on_delete=models.CASCADE, db_index=True)
 
-    #Other visit fields 
+    #Other visit fields
     date = models.DateField()
     type = models.CharField(max_length=50, choices=VisitTypeChoices.choices)
     procedures = ArrayField(models.CharField(max_length=500), default=list)
-    cost = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
-    paid = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
+    cost = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)], blank=True, null=True)
+    paid = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)], blank=True, null=True)  
     currency = models.CharField(max_length=5, blank=True, null=True)
     xray = models.BooleanField(default=False)  # xrayUrls will be served by serializer using 'patient' field and rel. to Xray
     notes = models.TextField(blank=True, null=True)
@@ -278,7 +281,7 @@ class Appointment(models.Model):
     doctor = models.ForeignKey('users.User', related_name='doctor_appointments', on_delete=models.SET_NULL, null=True, db_index=True)
     #Many-to-One relationship to the Patient model (i.e., many appointments, one patient)
     patient = models.ForeignKey(Patient, related_name='patient_appointments', on_delete=models.CASCADE, db_index=True)
-    #Many-to-One relationship to the Procedure model (i.e., many appointments, one procedure) -- #NOTE, may need to change to ManyToMany(); to be confirmed...
+    #Many-to-One relationship to the Procedure model (i.e., many appointments, one procedure) -- #TODO: may need to change to ManyToMany(); to be confirmed...
     procedure = models.ForeignKey(Procedure, related_name='related_appointments', on_delete=models.SET_NULL, null=True, db_index=True)
     #Many-to-One relationship to the Branch model (i.e., many appointments, one branch)
     branch = models.ForeignKey(Branch, related_name='branch_appointments', blank=True,
@@ -412,7 +415,6 @@ class TreatmentPlan(models.Model):
     status = models.CharField(max_length=50, choices=TreatmentStatusChoices.choices, default=TreatmentStatusChoices.ACTIVE)
     currency = models.CharField(max_length=5, blank=True, null=True)
     totalCost = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
-    paidAmount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)], blank=True, null=True)
     installmentMonths = models.PositiveSmallIntegerField(choices=InstallmentMonthsChoices.choices, blank=True, null=True)
     sessions = models.PositiveSmallIntegerField(blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -446,7 +448,7 @@ class TreatmentPlanItem(models.Model):
         COMPLETED = 'completed', _('completed')
         
     #Many-to-One relationship to the TreatmentPlan model (i.e., many items, one treatmentPlan)
-    treatmentPlan = models.ForeignKey(TreatmentPlan, related_name='items', on_delete=models.CASCADE)
+    treatmentPlan = models.ForeignKey(TreatmentPlan, related_name='treatment_items', on_delete=models.CASCADE)
     #Many-to-One relationship to the Procedure model (i.e., many items can reference the same procedure)
     procedure = models.ForeignKey(Procedure, related_name='treatment_items', on_delete=models.SET_NULL, null=True)
     toothNumber = models.CharField(max_length=3, blank=True, null=True, validators=[validate_toothNumber])

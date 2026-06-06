@@ -5,6 +5,7 @@ import django
 from faker import Faker
 from pathlib import Path
 from decimal import Decimal
+from itertools import zip_longest
 from datetime import datetime, date, time, timedelta
 
 #Add project root to sys.path
@@ -21,9 +22,9 @@ from django.db import transaction
 from django.utils import timezone
 from patients.validators import FDI_PERMANENT
 from users.models import User, DoctorSchedule, DoctorScheduleException
+from finances.models import ClinicalTaxConfig, Bill, Transaction, Invoice, InvoiceItem
 from clinic.models import Branch, Procedure, Inventory, Lab, LabOrder, WaitingRoom, SterilizationLog
 from patients.models import Patient, Visit, Appointment, TreatmentPlan, TreatmentPlanItem, PatientRecall
-
 
 #Instantiate faker
 faker = Faker()
@@ -446,7 +447,7 @@ def seed_treatment_plans(patients, doctors, procedures, num_plans=60):
         plan_procedures = random.sample(procedures, k=random.randint(1, 4))
 
         #Build items data first to calculate totalCost
-        items_data = [
+        treatment_items = [
             {
                 'procedure': proc,
                 'session': i+1,
@@ -459,15 +460,13 @@ def seed_treatment_plans(patients, doctors, procedures, num_plans=60):
         ]
 
         num_installments = random.choices(installment_options, weights=installments_weights)[0]
-        paidAmount = sum(item['price'] for item in items_data) if num_installments==1 else None
 
         plan = TreatmentPlan(
             doctor=doctor,
             patient=patient,
             currency='USD',
-            paidAmount=paidAmount,
-            totalCost=sum(item['price'] for item in items_data),
-            sessions=sum(item['session'] for item in items_data),
+            totalCost=sum(item['price'] for item in treatment_items),
+            sessions=sum(item['session'] for item in treatment_items),
             status=random.choices(statuses, weights=status_weights)[0],
             title=faker.text(max_nb_chars=70) if random.random() < 0.85 else None,
             installmentMonths=num_installments
@@ -484,7 +483,7 @@ def seed_treatment_plans(patients, doctors, procedures, num_plans=60):
                 status=item['status'],
                 notes=item['notes']
             )
-            for item in items_data
+            for item in treatment_items
         ])
         count += 1
 
@@ -614,6 +613,180 @@ def seed_inventory(branches):
     return list(Inventory.objects.all())
 
 
+def seed_clinical_tax_configs(branches):
+    print('Seeding clinical tax configs...')
+
+    created = 0
+    for branch in branches:
+        _, was_created = ClinicalTaxConfig.all_objects.get_or_create(
+            branch=branch,
+            defaults={
+                'clinicName': f'DentalTech {branch.name}',
+                'taxId': faker.bothify('TAX-########') if random.random() < 0.7 else None,
+                'activityCode': faker.bothify('ACT-####'),
+                'commercialReg': faker.bothify('CR-########'),
+                'address': branch.address,
+                'phone': _random_phone(),
+            }
+        )
+        if was_created:
+            created += 1
+
+    print(f'  Created {created} clinical tax configs.')
+    return list(ClinicalTaxConfig.all_objects.all())
+
+
+def seed_bills(visits, treatments, num_bills=80):
+    '''
+    Create bills individually so that Bill.save() fires and snapshots patient/branch data.
+    Bill.visits is a ManyToManyField, so visits are attached after the bill is saved.
+    '''
+    print('Seeding bills...')
+
+    # Only use visits whose patient has a branch, since Bill.branch is required on save()
+    eligible_visits = [visit for visit in visits if visit.patient_id and visit.patient.branch_id]
+    if not eligible_visits:
+        print('  No eligible visits for bills. Skipping.')
+        return []
+
+    # Group visits by patient so a bill can bundle multiple visits for the same patient
+    visits_by_patient = {}
+    for visit in eligible_visits:
+        visits_by_patient.setdefault(visit.patient_id, []).append(visit)
+
+    count = 0
+    bills = []
+
+    for _ in range(num_bills):
+        base_visit = random.choice(eligible_visits)
+        patient = base_visit.patient
+        patient_visits = visits_by_patient.get(base_visit.patient_id, [base_visit])
+
+        selected_visits = random.sample(
+            patient_visits,
+            k=random.randint(1, min(3, len(patient_visits)))
+        )
+
+        subtotal = Decimal(str(round(random.uniform(100, 3000), 2)))
+        discount = (
+            Decimal(str(round(random.uniform(0, float(subtotal) * 0.2), 2)))
+            if random.random() < 0.3 else Decimal('0')
+        )
+        total_amount = subtotal - discount
+
+        bill = Bill(
+            patient=patient,
+            treatment=random.choice(treatments) if random.random() < 0.4 else None,
+            branch=patient.branch,
+            description=faker.text(max_nb_chars=150),
+            subtotal=subtotal,
+            totalAmount=total_amount,
+            discount=discount,
+            currency='USD',
+        )
+        bill.save()
+        bill.visits.set(selected_visits)
+
+        bills.append(bill)
+        count += 1
+
+    print(f'  Created {count} bills.')
+    return list(Bill.all_objects.all())
+
+
+def seed_transactions(bills, num_transactions=100):
+    print('Seeding transactions...')
+
+    payment_methods = [c[0] for c in Transaction.PaymentMethodChoices.choices]
+    eligible_bills = [b for b in bills if getattr(b, 'branch_id', None) and getattr(b, 'patient_id', None)]
+    if not eligible_bills:
+        print('  No eligible bills for transactions. Skipping.')
+        return []
+
+    count = 0
+    for _ in range(num_transactions):
+        bill = random.choice(eligible_bills)
+
+        txn = Transaction(
+            bill=bill,
+            patient=bill.patient,
+            branch=bill.branch,
+            date=_random_past_date(years_back=1),
+            amount=Decimal(str(round(random.uniform(50, float(bill.totalAmount)), 2))),
+            currency='USD',
+            method=random.choice(payment_methods),
+            note=faker.text(max_nb_chars=100) if random.random() < 0.3 else None,
+        )
+        txn.save()
+        count += 1
+
+    print(f'  Created {count} transactions.')
+    return list(Transaction.all_objects.all())
+
+
+def seed_invoices(bills, patients, num_invoices=100):
+    '''
+    Create invoices individually so that Invoice.save() fires and snapshots bill/patient/branch data.
+    '''
+    print('Seeding invoices...')
+    
+    statuses = [
+        Invoice.InvoiceStatusChoices.ISSUED,
+        Invoice.InvoiceStatusChoices.SUBMITTED,
+        Invoice.InvoiceStatusChoices.ACCEPTED,
+        Invoice.InvoiceStatusChoices.REJECTED,
+    ]
+
+    status_weights = [40, 30, 20, 10]
+    tax_codes = [c[0] for c in InvoiceItem.TaxCodeChoices.choices]
+    count = 0
+
+    for bill, _ in zip_longest(list(bills), range(num_invoices)):
+        if bill:
+            #auto-generate invoice from bill
+            Bill.generate_invoice(billId=bill.id)
+            count += 1
+            continue
+        
+        #If no bill, generate custom invoice
+        bill = None
+        patient = random.choice(patients) 
+        branch = patient.branch or None
+        subtotal = Decimal(str(round(random.uniform(150, 3000), 2)))
+        discount = Decimal('0') if random.random() < 0.25 else Decimal(str(round(float(subtotal)*random.uniform(0.05, 0.3), 2)))
+        tax = Decimal('0') if random.random() < 0.2 else Decimal(str(round(float(subtotal) * 0.12, 2)))
+        total = subtotal + tax - discount
+
+        invoice = Invoice(
+            patient=patient,
+            bill=bill,
+            branch=branch,
+            subtotal=subtotal,
+            tax=tax,
+            discount=discount,
+            total=total,
+            currency='USD',
+            status=random.choices(statuses, weights=status_weights)[0],
+        )
+        invoice.save()
+
+        InvoiceItem.objects.bulk_create([
+            InvoiceItem(
+                invoice=invoice,
+                taxCode=random.choice(tax_codes) if random.random() < 0.7 else None,
+                description=faker.text(max_nb_chars=150),
+                quantity=random.randint(1, 3),
+                unitPrice=Decimal(str(round(random.uniform(50, 500), 2))),
+                total=Decimal(str(round(random.uniform(50, 1000), 2))),
+            )
+            for _ in range(random.randint(1, 3))
+        ])
+        count += 1
+
+    print(f'  Created {count} invoices (with items).')
+    return list(Invoice.all_objects.all())
+
+
 def seed_waiting_room(appointments, num_entries=10):
     '''
     Create waiting room entries for past appointments.
@@ -671,6 +844,7 @@ def seed_doctor_schedules(doctors):
 
         DoctorSchedule.objects.create(
             doctor=doctor,
+            branch=doctor.branch,
             workingDays=random.choice(days_pool),
             startTime=time(random.choice([8, 9, 10]), 0),
             endTime=time(random.choice([17, 18, 19]), 0),
@@ -765,8 +939,8 @@ def seed_sterilization_logs(branches, users, num_logs=50):
 @transaction.atomic
 def run_seed(num_users=10, num_patients=80, num_visits=150,
              num_appointments=120, num_plans=60, num_recalls=60, 
-             num_lab_orders=40, num_waiting_room=10, num_schedule_exceptions=30, 
-             num_sterilization_logs=50):
+             num_lab_orders=40, num_bills=80, num_invoices=100, num_transactions=100,
+             num_waiting_room=10, num_schedule_exceptions=30, num_sterilization_logs=50):
 
     print('\n', '=' * 50)
     print('  Starting data seeding...')
@@ -784,6 +958,10 @@ def run_seed(num_users=10, num_patients=80, num_visits=150,
     DoctorSchedule.all_objects.all().delete()  # cascades to DoctorScheduleException
     LabOrder.all_objects.all().delete()
     Lab.all_objects.all().delete()
+    Invoice.all_objects.all().delete()   # cascades to InvoiceItem
+    Transaction.all_objects.all().delete()
+    Bill.all_objects.all().delete()
+    ClinicalTaxConfig.all_objects.all().delete()
     SterilizationLog.objects.all().delete()
     WaitingRoom.all_objects.all().delete()
     Branch.objects.all().delete()
@@ -798,15 +976,19 @@ def run_seed(num_users=10, num_patients=80, num_visits=150,
     seed_schedule_exceptions(doctors, num_schedule_exceptions)
     procedures = seed_procedures(branches)
     patients = seed_patients(doctors, num_patients)
-    seed_visits(patients, doctors, num_visits)
+    visits = seed_visits(patients, doctors, num_visits)
     appointments = seed_appointments(patients, doctors, procedures, num_appointments)
-    seed_treatment_plans(patients, doctors, procedures, num_plans)
+    treatments = seed_treatment_plans(patients, doctors, procedures, num_plans)
     seed_patient_recalls(patients, branches, num_recalls)
     seed_inventory(branches)
     labs = seed_labs(branches)
     seed_lab_orders(labs, patients, procedures, branches, num_lab_orders)
+    seed_clinical_tax_configs(branches)
+    bills = seed_bills(visits, treatments, num_bills)
+    seed_transactions(bills, num_transactions)
+    seed_invoices(bills, patients, num_invoices)
     seed_waiting_room(appointments, num_waiting_room)
-    sterilization_logs = seed_sterilization_logs(branches, users, num_sterilization_logs)
+    seed_sterilization_logs(branches, users, num_sterilization_logs)
 
     #Summary
     print('\n', '=' * 50)
@@ -824,10 +1006,14 @@ def run_seed(num_users=10, num_patients=80, num_visits=150,
     print(f'  Patient Recalls:     {PatientRecall.objects.count()}')
     print(f'  Waiting Room:        {WaitingRoom.objects.count()}')
     print(f'  Procedures:          {Procedure.objects.count()}')
-    print(f'  Labs:                {Lab.objects.count()}')
-    print(f'  Lab Orders:          {LabOrder.objects.count()}')
     print(f'  Inventory Items:     {Inventory.objects.count()}')
     print(f'  Low Stock Items:     {Inventory.objects.filter(currentStock__lt=F("minStock")).count()}')
+    print(f'  Labs:                {Lab.objects.count()}')
+    print(f'  Lab Orders:          {LabOrder.objects.count()}')
+    print(f'  Tax Configs:         {ClinicalTaxConfig.all_objects.count()}')
+    print(f'  Bills:               {Bill.objects.count()}')
+    print(f'  Transactions:        {Transaction.objects.count()}')
+    print(f'  Invoices:            {Invoice.objects.count()}')
     print(f'  Sterilization Logs:  {SterilizationLog.objects.count()}')
     print('=' * 50, '\n')
 
@@ -842,6 +1028,9 @@ if __name__ == '__main__':
                      num_plans=60,
                      num_recalls=60,
                      num_lab_orders=40,
+                     num_bills=80, 
+                     num_invoices=100,
+                     num_transactions=100,
                      num_waiting_room=10,
                      num_schedule_exceptions=30, 
                      num_sterilization_logs=50

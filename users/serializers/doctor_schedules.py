@@ -1,10 +1,10 @@
 from django.db import transaction
 from rest_framework import serializers
-from utils.mixins import UserPermissionsMixin
 from clinic.models import Branch, WorkingDaysLookUp
 from utils.swagger_utils import extend_schema_field
 from users.docs import doctor_schedules_options_schema
 from django.utils.translation import gettext_lazy as _
+from utils.mixins import UserPermissionsMixin, ValidateBranchMixin
 from users.models import User, DoctorSchedule, DoctorScheduleException
 
 
@@ -30,7 +30,7 @@ class DoctorExceptionsSerializer(serializers.ModelSerializer):
 class DoctorScheduleSerializer(UserPermissionsMixin, serializers.ModelSerializer):
     doctorName = serializers.CharField(source='doctor.name', read_only=True)
     doctorId = serializers.PrimaryKeyRelatedField(source='doctor', read_only=True)
-    branchId = serializers.PrimaryKeyRelatedField(source='doctor.branch', read_only=True)
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     workingDays = serializers.ListField(child=serializers.ChoiceField(choices=WorkingDaysLookUp.choices))
     exceptions = DoctorExceptionsSerializer(many=True, required=False, allow_empty=True)
 
@@ -48,6 +48,9 @@ class DoctorScheduleSerializer(UserPermissionsMixin, serializers.ModelSerializer
 
         #Get doctor from serializer context
         validated_data['doctor_id'] = self.context.get('doctor_id')
+
+        #Add doctor's branch
+        validated_data['branch'] = getattr(self.request.user, 'branch', None)
 
         #Create doctor schedule 
         schedule = DoctorSchedule.objects.create(**validated_data)

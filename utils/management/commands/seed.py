@@ -12,6 +12,9 @@ class Command(BaseCommand):
                          num_plans=60,
                          num_recalls=60,
                          num_lab_orders=40,
+                         num_bills=80, 
+                         num_invoices=100,
+                         num_transactions=100,
                          num_waiting_room=10,
                          num_schedule_exceptions=30,
                          num_sterilization_logs=50

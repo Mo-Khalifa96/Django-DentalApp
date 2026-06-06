@@ -26,9 +26,9 @@ INSTALLED_APPS = [
     'users',
     'clinic',
     'patients',
-    'finance',
     'services',
     'utils.apps.UtilsConfig',
+    'finances.apps.FinancesConfig',
     'rest_framework_simplejwt',
     'rest_framework',
     'django_filters',
@@ -302,7 +302,7 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
-        'finance': {
+        'finances': {
             'handlers': ['console', 'general_file', 'errors_file'],
             'filters': ['django_q_filter'],
             'level': 'INFO',

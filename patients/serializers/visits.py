@@ -24,7 +24,8 @@ class PatientVisitSerializer(serializers.ModelSerializer):
                   'cost', 'paid', 'notes', 'xray', 'xrayUploads', 'xrayUrls', 'createdAt']
         read_only_fields = ['id', 'patientName', 'doctorId', 'doctorName', 'xrayUrls', 'createdAt']
         extra_kwargs = {
-            'currency': {'required': False}, 'xray': {'default': False}, 'notes': {'required': False},
+            'currency': {'required': False}, 'cost': {'required': False}, 'paid': {'required': False}, 
+            'xray': {'default': False}, 'notes': {'required': False}
         }
 
     @extend_schema_field(serializers.ListField(child=serializers.URLField()))

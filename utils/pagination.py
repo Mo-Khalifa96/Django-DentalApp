@@ -49,8 +49,7 @@ class DashboardAppointmentsPagination(PageNumberPagination):
         #Get user permissions
         user_permissions = 'N/A'
         if self.request and self.request.user:
-            category = get_category_from_url(self.request)
-            user_permissions = self.request.user.get_user_permissions(category)
+            user_permissions = self.request.user.get_user_permissions()  #defaults/sidebar perms
 
         return Response({
             'success': True,
@@ -71,8 +70,7 @@ class TreatmentPlansPagination(PageNumberPagination):
         #Get user permissions
         user_permissions = 'N/A'
         if self.request and self.request.user:
-            category = get_category_from_url(self.request)
-            user_permissions = self.request.user.get_user_permissions(category)
+            user_permissions = self.request.user.get_user_permissions('treatment-plans')
 
         return Response({
             'success': True,

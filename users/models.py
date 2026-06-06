@@ -40,28 +40,27 @@ class UserManager(BaseUserManager):
         return self.get(**{f'{self.model.USERNAME_FIELD}__iexact': self.normalize_full_email(username)})
 
     @transaction.atomic
-    def delete_user(self, user):
+    def delete_user(self, request_user, user):
         '''Custom method to soft-delete users.'''
         from patients.models import Patient, Appointment
-        user.is_deleted = True
-        user.save(update_fields=['is_deleted'])
+        
         #Handle related models if user is Dentist
         if user.role == 'dentist':
             Patient.all_objects.filter(doctor_id=user.id).update(doctor=None)
             Appointment.objects.filter(
                 doctor_id=user.id, status__in=['pending', 'confirmed']
                 ).update(doctor=None)
+
+        #If request user is admin delete permenantly
+        if request_user == 'admin':
+            user.delete()
+        else:
+            user.set_unusable_password() 
+            user.is_deleted = True
+            user.isActive = False
+            user.save(update_fields=['password', 'is_deleted', 'isActive', 'updatedAt'])
         return True
 
-    
-    @transaction.atomic
-    def delete_user_permanently(self, user_id):
-        try:
-            user = self.model.all_objects.get(id=user_id)
-            user.delete()
-            return True 
-        except self.model.DoesNotExist:
-            return False 
 
 #USERS MODEL 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -123,6 +122,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         #     'delete.branch',  
         # ), 
 
+        #Dashboard permissions 
+        'dashboard': ('view.calender'),
+
         #Patients permissions
         'patients': (
             'view.patients',
@@ -131,7 +133,6 @@ class User(AbstractBaseUser, PermissionsMixin):
             'update.patient',    #extends to dental chart 
             'delete.patient'
         ),
-
 
         #Patient visit history permissions
         'visits': (
@@ -173,15 +174,6 @@ class User(AbstractBaseUser, PermissionsMixin):
             'delete.inventory'
         ),
 
-        #Doctor schedules permissions
-        'doctor-schedules': (
-            'view.doctorSchedules',
-            'view.doctorScheduleDetial',
-            'create.doctorSchedule',
-            'update.doctorSchedule',
-            'delete.doctorSchedule',
-        ),
-
         #Labs permissions
         'labs': (
             'view.labs',
@@ -199,6 +191,29 @@ class User(AbstractBaseUser, PermissionsMixin):
             'delete.labOrder',
         ),
 
+        #Billing permissions
+        'bills': (
+            'view.bills',  #admin/accountant/doctor(if patient)
+            'create.bill',  #all except assistant (unless bills are created for labs)
+            'update.bill',  #admin/accountant/doctor(if patient)
+            'delete.bill'  #admin/accountant/doctor(if patient) -- admin views them
+        ),
+
+        #Transactions permissions
+        'transactions': (
+            'view.transactions',  #admin/accountant/doctor(if patient)
+            'create.transaction', #all except assistant (unless bills are created for labs)
+            'delete.transaction'  #admin/accountant/doctor(if patient) -- admin views them
+        ),
+
+        #Invoices permissions
+        'invoices': (
+            'view.invoices',  #admin/accountant/doctor(if patient)
+            'create.invoice', #all except assistant (unless bills are created for labs)
+            'update.invoice', #admin/accountant/doctor(if patient)
+            'delete.invoice' #admin/accountant/doctor(if patient) -- admin views them
+        ),
+
         #Sterilization logs permissions 
         'sterilization-logs': (
             'view.sterilizationLogs',
@@ -207,6 +222,7 @@ class User(AbstractBaseUser, PermissionsMixin):
             'delete.sterilizationLog'
         ),
 
+        #Patient recalls permissions
         'patient-recalls': (
             'view.recalls',
             'create.recall',
@@ -214,17 +230,34 @@ class User(AbstractBaseUser, PermissionsMixin):
             'delete.recall'
         ),
 
+        #Doctor schedules permissions
+        'doctor-schedules': (
+            'view.doctorSchedules',
+            # 'view.doctorScheduleDetial',
+        ),
+
+        'settings': (
+            'view.settings',
+            'view.preferences',
+        ),
+
         #Default sidebar permissions 
         'sidebar': (
+            'view.calender',
             'view.patients',
             'view.appointments',
             'view.procedures',
             'view.inventory',
-            # 'view.doctorSchedules'
             'view.labs',
             'view.labOrders',
+            'view.bills',
+            'view.transactions',
+            'view.invoices',
+            'view.doctorSchedules',
             'view.sterilizationLogs',
             'view.recalls',
+            'view.settings',
+            'view.preferences',
         )
 
     }
@@ -242,26 +275,35 @@ class User(AbstractBaseUser, PermissionsMixin):
         
         'dentist': [
             perm for perm in USER_PERMISSIONS 
-            if perm not in ('delete.patient', 'send.whatsappMessage')
+            if perm not in ('delete.patient', 'send.whatsappMessage', 'view.settings')
         ], 
 
         #NOTE - view.patientDetail extends to detal-chart detail view
         #     - update.patient extends to dental-chart update view
 
         'receptionist': [
-            'view.patients', 'create.patient', 'update.patient', 'view.appointments', 
-            'view.appointmentDetail', 'create.appointment', 'update.appointment', 
-            'delete.appointment', 'view.recalls', 'create.recall', 'update.recall',
-            'delete.recall', 'send.whatsappMessage'
+            'view.calender', 'view.patients', 'create.patient', 'update.patient', 
+            'view.appointments', 'view.appointmentDetail', 'create.appointment', 
+            'update.appointment', 'delete.appointment', 'view.recalls', 'create.recall', 
+            'update.recall', 'delete.recall', 'send.whatsappMessage', 'create.bill', 
+            'update.bill', 'create.transaction', 'create.invoice', 'update.invoice',
+            'view.doctorSchedules', 'view.preferences'
         ],
         
         'assistant': [  
-            'view.inventory', 'create.inventory', 'update.inventory', 'delete.inventory',
-            'view.labs', 'view.labOrders', 'view.labOrderDetail', 'create.labOrder', 'update.labOrder',
-            'view.sterilizationLogs', 'create.sterilizationLog', 'update.sterilizationLog',
-        ], 
+            'view.calender', 'view.inventory', 'create.inventory', 'update.inventory', 
+            'delete.inventory', 'view.labs', 'view.labOrders', 'view.labOrderDetail', 
+            'create.labOrder', 'update.labOrder', 'view.sterilizationLogs', 'create.sterilizationLog', 
+            'update.sterilizationLog', 'view.doctorSchedules', 'view.preferences'
+        ],
 
-        'accountant': []  #TODO - to be defined later
+        'accountant': [
+            'view.bills', 'create.bill', 'update.bill', 'delete.bill',
+            'view.transactions', 'create.transaction', 'delete.transaction',
+            'view.invoices', 'create.invoice', 'update.invoice', 'delete.invoice',
+            'view.labOrders', 'view.labOrderDetail', 'view.doctorSchedules', 
+            'view.preferences'
+        ]
     }
 
 
@@ -325,7 +367,11 @@ class User(AbstractBaseUser, PermissionsMixin):
        
         if not perm_category:
             perm_category = 'sidebar'
-        available_permissions = list(self.USER_PERMISSIONS_DICT['sidebar']) + list(self.USER_PERMISSIONS_DICT[perm_category])
+        category_perms_lookup = set(self.USER_PERMISSIONS_DICT[perm_category])
+        available_permissions = [
+            perm for perm in self.USER_PERMISSIONS_DICT['sidebar']
+             if perm not in category_perms_lookup
+         ] + list(self.USER_PERMISSIONS_DICT[perm_category])
         available_permissions = list(dict.fromkeys(available_permissions))
         return {permission: permission in self.userPermissions 
                 for permission in available_permissions
@@ -348,6 +394,9 @@ class DoctorSchedule(models.Model):
     endTime = models.TimeField()
     breakStart = models.TimeField(blank=True, null=True)
     breakEnd = models.TimeField(blank=True, null=True)
+    #Many-to-one relationship to the Branch model (i.e., one branch, many schedules)
+    branch = models.ForeignKey('clinic.Branch', related_name='branch_schedules', blank=True, 
+                                    null=True, on_delete=models.CASCADE, db_index=True)  
 
     #Objects after filtering by manager
     objects = DoctorSchedulesManager()
@@ -361,7 +410,7 @@ class DoctorSchedule(models.Model):
     class Meta:
         db_table = 'DoctorSchedules'
         verbose_name_plural = 'DoctorSchedules'
-        ordering = ['doctor__name', '-startTime']
+        ordering = ['branch__name', 'doctor__name']
 
     def __str__(self):
         return f'{self.doctor.name}\'s Schedule'

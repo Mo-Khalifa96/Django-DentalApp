@@ -40,10 +40,9 @@ class ResponseMixin:
         return response
 
 
-#Validate branch mixin -- to serializers 
-class ValidateBranchMixin:
+#Validate branch mixin -- to serializers  
+class ValidateBranchMixin:    #TODO
     def validate_branchId(self, branch):
-        print("VALIDATION METHOD TRIGGERED!")   #TODO - test this function
         if not branch:
             user = self.context['request'].user
             if user.branch:
@@ -68,7 +67,7 @@ class BranchToSerializerMixin:
 
 
 #Mixin to pass branch id to filter using custom method
-class BranchToFilterMixin:
+class BranchToFilterMixin:  #TODO
     def get_extra_filterset_kwargs(self):
         if self.request.method == 'GET': #and getattr(user, 'role', None) != 'admin':
             user = self.request.user 
@@ -83,22 +82,16 @@ class BranchToFilterMixin:
         return None
 
 
-#Mixin to filter querysets by branch -- used with List views
-class FilterByBranchMixin:
+#Mixin to filter querysets by branch
+# used with List views if preloaded qs needs to be 
+# restricted by branch
+class FilterByBranchMixin:  #TODO
     def filter_by_branch(self, queryset, branch_field='branch_id'):
         #get user
         user = self.request.user
-        
-        #get branch from query params
-        branchId = self.request.query_params.get('branchId')
-        
-        if branchId:
-            #verify branch exists then filter by branch
-            get_object_or_404(Branch.objects.only('id'), id=branchId)
-            return queryset.filter(**{branch_field: branchId})
-        
-        #otherwise, try filtering by the user's branch
-        elif getattr(user, 'branch_id', None):
+
+        #filter queryset by the user's branch
+        if getattr(user, 'branch_id', None):
             return queryset.filter(**{branch_field: user.branch_id})
        
        #else, check if clinic has no branches

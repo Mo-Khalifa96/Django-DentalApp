@@ -8,7 +8,7 @@ from patients.docs import patient_recalls_options_schema
 
 
 #SERIALIZERS FOR PATIENT RECALLS
-#Patient recalls serializer -- base serializer 
+#Patient recalls serializer -- base serializer
 class PatientRecallSerializer(serializers.ModelSerializer):
     patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
     patientName = serializers.CharField(source='patient.name', read_only=True)
@@ -18,7 +18,7 @@ class PatientRecallSerializer(serializers.ModelSerializer):
         model = PatientRecall
         fields = ['id', 'patientId', 'patientName', 'phone', 'type', 'dueDate', 'notes', 
                   'status', 'contactedAt', 'branchId', 'createdAt', 'updatedAt']
-        
+
 
 #Create patient recall serializer
 class CreatePatientRecallSerializer(PatientRecallSerializer, ValidateBranchMixin):

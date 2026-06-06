@@ -24,7 +24,7 @@ class ListCreateTreatmentPlansAPIView(ListCreateAPIView):
     permission_classes = [PatientDataPermissions]
     ordering = ['-createdAt']  #default order of fields
     ordering_fields = ['status', 'createdAt']  #order by status and createdAt
-    search_fields = ['title', 'items__procedure__name']  #search by title and procedure name
+    search_fields = ['title', 'procedureName']  #search by title and procedure name
     filterset_class = TreatmentPlansFilter  #filters by status 
     filter_backends = [DjangoFilterBackend, SearchFilter, CustomOrderingFilter]
     pagination_class = TreatmentPlansPagination
@@ -32,6 +32,7 @@ class ListCreateTreatmentPlansAPIView(ListCreateAPIView):
     lookup_field = 'id'
 
     def initial(self, request, *args, **kwargs):
+        #self.required_permission = 'view.treatments' if request.method == 'GET' else 'create.treatments'
         self.required_permission = get_required_permission('treatment-plans', request, self)
         super().initial(request, *args, **kwargs)
 
@@ -40,7 +41,7 @@ class ListCreateTreatmentPlansAPIView(ListCreateAPIView):
             patient = Patient.objects.prefetch_related('patient_treatmentplans').get(id=self.kwargs['id'])
         except Patient.DoesNotExist:
             raise NotFound('The requested patient was not found or does not exist.')
-        return patient.patient_treatmentplans.prefetch_related('items', 'items__procedure').all()
+        return patient.patient_treatmentplans.prefetch_related('treatment_items', 'treatment_items__procedure').all()
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -70,12 +71,12 @@ class RetrieveUpdateDeleteTreatmentPlanAPIView(RetrieveUpdateDeleteAPIView):
     def get_object(self):
         try:
             if self.kwargs.get('id'):
-                obj = TreatmentPlan.objects.prefetch_related('items').get(
+                obj = TreatmentPlan.objects.prefetch_related('treatment_items').get(
                     id=self.kwargs['treatmentId'],
                     patient_id=self.kwargs['id'],
                 )
             else:
-                obj = TreatmentPlan.objects.prefetch_related('items').get(
+                obj = TreatmentPlan.objects.prefetch_related('treatment_items').get(
                     id=self.kwargs['treatmentId']
                 )
         except TreatmentPlan.DoesNotExist:
@@ -94,7 +95,7 @@ class RetrieveUpdateDeleteTreatmentPlanAPIView(RetrieveUpdateDeleteAPIView):
 #API view to retrieve a single treatment plan independent of patient
 @extend_schema(tags=['Treatment Plans'])
 class LookupTreatmentPlanAPIView(RetrieveAPIView):
-    queryset = TreatmentPlan.objects.prefetch_related('items').all()
+    queryset = TreatmentPlan.objects.prefetch_related('treatment_items', 'treatment_items__procedure').all()
     serializer_class = TreatmentPlanSerializer
     permission_classes = [PatientDataPermissions]
     required_permission = 'view.treatments'

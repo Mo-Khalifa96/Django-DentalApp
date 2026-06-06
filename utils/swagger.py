@@ -7,10 +7,11 @@ if settings.ENABLE_SWAGGER:
     from django_filters import CharFilter, ChoiceFilter, DateFilter, BooleanFilter
     from django_filters.rest_framework import DjangoFilterBackend
     from drf_spectacular.extensions import OpenApiFilterExtension
+    from users.utils import category_patterns
 
     field_map = {'patient__name': 'patientName', 'doctor__name': 'doctorName', 
                 'procedure__name': 'procedureName', 'lab__name': 'labName',
-                'items__procedure__name': 'procedureName'}
+                'treatment_items__procedure__name': 'procedureName'}
     
     CHAR_SEARCH_FIELDS = {
         'ListCreateSterilizationLogsAPIView': ['instrumentSets'],
@@ -426,15 +427,21 @@ if settings.ENABLE_SWAGGER:
                                             'type': 'object',
                                             'description': 'Basic permissions for side/bottom bar icons.',
                                             'properties': {
+                                                'view.calender': {'type': 'boolean'},
                                                 'view.patients': {'type': 'boolean'},
                                                 'view.appointments': {'type': 'boolean'},
                                                 'view.procedures': {'type': 'boolean'},
                                                 'view.inventory': {'type': 'boolean'},
-                                                # 'view.doctorSchedules': {'type': 'boolean'},
                                                 'view.labs': {'type': 'boolean'},
                                                 'view.labOrders': {'type': 'boolean'},
+                                                'view.bills': {'type': 'boolean'},
+                                                'view.transactions': {'type': 'boolean'},
+                                                'view.invoices': {'type': 'boolean'},
+                                                'view.doctorSchedules': {'type': 'boolean'},
                                                 'view.sterilizationLogs': {'type': 'boolean'},
                                                 'view.recalls': {'type': 'boolean'},
+                                                'view.settings': {'type': 'boolean'},
+                                                'view.preferences': {'type': 'boolean'}
                                             },
                                         },
                                     }
@@ -725,22 +732,7 @@ if settings.ENABLE_SWAGGER:
 
 
     def _get_category_from_path(path):
-        category_patterns = {
-            r'/treatment-plans/': 'treatment-plans',
-            r'/visits/': 'visits', 
-            r'/patients/': 'patients',
-            r'/appointments/': 'appointments',
-            r'/procedures/': 'procedures',
-            # r'/doctor-schedules/': 'doctor-schedules',
-            r'/inventory/': 'inventory',
-            r'/lab-orders/': 'lab-orders',
-            r'/labs/': 'labs',
-            r'recalls': 'patient-recalls',
-            r'sterilization/': 'sterilization-logs',
-        }
-        
         for pattern, category in category_patterns.items():
             if pattern in path:
                 return category
         return None
-

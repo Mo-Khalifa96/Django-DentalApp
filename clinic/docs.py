@@ -16,25 +16,31 @@ dashboard_stats_schema = extend_schema_serializer(
             value={
                 'success': True, 
                 'data': {
-                    "patientsTotal": 340,
-                    "patientsNew": 12,
-                    "appointmentsToday": 18,
-                    "appointmentsCompleted": 11,
-                    "revenue": 47500.00,
-                    "outstanding": 8200.00,
-                    # "currency": 'SAR',
+                    'patientsTotal': 340,
+                    'patientsNew': 12,
+                    'appointmentsToday': 18,
+                    'appointmentsCompleted': 11,
+                    'revenue': 47500.00,
+                    'outstanding': 8200.00,
+                    # 'currency': 'SAR',
                 },
-                "metadata": {
-                    "userPermissions": {
-                        "view.patients": True,
-                        "view.appointments": True,
-                        "view.procedures": True,
-                        "view.inventory": True,
-                        # "view.doctorSchedules": True,
-                        "view.labs": True,
-                        "view.labOrders": True,
-                        "view.sterilizationLogs": True,
-                        "view.recalls": True,
+                'metadata': {
+                    'userPermissions': {
+                        'view.calender': True,
+                        'view.patients': True,
+                        'view.appointments': True,
+                        'view.procedures': True,
+                        'view.inventory': True,
+                        'view.labs': True,
+                        'view.labOrders': True,
+                        'view.bills': True,
+                        'view.transactions': True,
+                        'view.invoices': True,
+                        'view.doctorSchedules': True,
+                        'view.sterilizationLogs': True,
+                        'view.recalls': True,
+                        'view.settings': True,
+                        'view.preferences': True
                     }
                 }
             }
@@ -50,22 +56,28 @@ dashboard_stats_schema = extend_schema_serializer(
             value={
                 'success': True, 
                 'data': {
-                    "patientsTotal": 340,
-                    "patientsNew": 12,
-                    "appointmentsToday": 18,
-                    "appointmentsCompleted": 11,
+                    'patientsTotal': 340,
+                    'patientsNew': 12,
+                    'appointmentsToday': 18,
+                    'appointmentsCompleted': 11,
                 },
-                "metadata": {
-                    "userPermissions": {
-                        "view.patients": True,
-                        "view.appointments": True,
-                        "view.procedures": True,
-                        "view.inventory": True,
-                        # "view.doctorSchedules": True,
-                        "view.labs": True,
-                        "view.labOrders": True,
-                        "view.sterilizationLogs": True,
-                        "view.recalls": True,
+                'metadata': {
+                    'userPermissions': {
+                        'view.calender': True,
+                        'view.patients': True,
+                        'view.appointments': True,
+                        'view.procedures': False,
+                        'view.inventory': True,
+                        'view.labs': True,
+                        'view.labOrders': True,
+                        'view.bills': False,
+                        'view.transactions': False,
+                        'view.invoices': False,
+                        'view.doctorSchedules': True,
+                        'view.sterilizationLogs': True,
+                        'view.recalls': False,
+                        'view.settings': True,
+                        'view.preferences': True
                     }
                 }
             }
@@ -75,10 +87,10 @@ dashboard_stats_schema = extend_schema_serializer(
             description='Validation error: Invalid branch id.',
             response_only=True,
             value={
-                "success": False,
-                "error": {
-                    "code": "VALIDATION_ERROR",
-                    "message": "Branch does not exist.",
+                'success': False,
+                'error': {
+                    'code': 'VALIDATION_ERROR',
+                    'message': 'Branch does not exist.',
                 }
             }
         ),
@@ -87,10 +99,10 @@ dashboard_stats_schema = extend_schema_serializer(
             description='Validation error: Invalid date range.',
             response_only=True,
             value={
-                "success": False,
-                "error": {
-                    "code": "VALIDATION_ERROR",
-                    "message": 'Invalide date range query. Expected: [today, week, month].',
+                'success': False,
+                'error': {
+                    'code': 'VALIDATION_ERROR',
+                    'message': 'Invalide date range query. Expected: [today, week, month].',
                 }
             }
         )
@@ -108,10 +120,10 @@ dashboard_options_schema = extend_schema_serializer(
                     {'branchId': '9ca1d622-94af-4ea5-b87a-bf9f6611d6ab', 'name': 'Main Branch'}, 
                     {'branchId': '8ef5c0eb-ab95-4d13-a1b4-04f634534587', 'name': 'Heliopolis Branch'},
                 ],
-                "doctorChoices": [
-                    {"doctorId": "8d9e0abc-7abb-4497-a2ed-19737c92a229", "doctorName": "Layla Hassan"},
-                    {"doctorId": "ec4ebe94-c8a6-45d5-8cc6-675cef7bbafe", "doctorName": "Ahmed Hassan"}, 
-                    {"doctorId": "0078af5e-7b68-4c29-9c81-04c8665fee68", "doctorName": "Ghassan Mattar"}
+                'doctorChoices': [
+                    {'doctorId': '8d9e0abc-7abb-4497-a2ed-19737c92a229', 'doctorName': 'Layla Hassan'},
+                    {'doctorId': 'ec4ebe94-c8a6-45d5-8cc6-675cef7bbafe', 'doctorName': 'Ahmed Hassan'}, 
+                    {'doctorId': '0078af5e-7b68-4c29-9c81-04c8665fee68', 'doctorName': 'Ghassan Mattar'}
                 ],
             }
         )
@@ -206,10 +218,10 @@ waiting_room_options_schema = extend_schema_serializer(
                     {'branchId': '9ca1d622-94af-4ea5-b87a-bf9f6611d6ab', 'name': 'Main Branch'},
                     {'branchId': '8ef5c0eb-ab95-4d13-a1b4-04f634534587', 'name': 'Heliopolis Branch'},
                 ],
-                "doctorChoices": [
-                    {"doctorId": "8d9e0abc-7abb-4497-a2ed-19737c92a229", "doctorName": "Layla Hassan"},
-                    {"doctorId": "ec4ebe94-c8a6-45d5-8cc6-675cef7bbafe", "doctorName": "Ahmed Hassan"}, 
-                    {"doctorId": "0078af5e-7b68-4c29-9c81-04c8665fee68", "doctorName": "Ghassan Mattar"}
+                'doctorChoices': [
+                    {'doctorId': '8d9e0abc-7abb-4497-a2ed-19737c92a229', 'doctorName': 'Layla Hassan'},
+                    {'doctorId': 'ec4ebe94-c8a6-45d5-8cc6-675cef7bbafe', 'doctorName': 'Ahmed Hassan'}, 
+                    {'doctorId': '0078af5e-7b68-4c29-9c81-04c8665fee68', 'doctorName': 'Ghassan Mattar'}
                 ],
                 'statusChoices': [
                     {'value': 'waiting', 'label': 'Waiting'},
@@ -239,16 +251,16 @@ labs_options_schema = extend_schema_serializer(
                     {'branchId': '8ef5c0eb-ab95-4d13-a1b4-04f634534587', 'name': 'Heliopolis Branch'},
                 ],
                 'labChoices': [
-                    {"labId": "373b6f45-a50b-496b-90bd-814cae5ed93d", "name": "Heliopolis Dental Lab "}, 
-                    {"labId": "0994c96a-92fa-4451-b6e0-045c91ff050f", "name": "Dental Technologies Lab"}, 
+                    {'labId': '373b6f45-a50b-496b-90bd-814cae5ed93d', 'name': 'Heliopolis Dental Lab '}, 
+                    {'labId': '0994c96a-92fa-4451-b6e0-045c91ff050f', 'name': 'Dental Technologies Lab'}, 
                 ],
                 'patientChoices': [
-                    {"patientId": "41f1c0fd-3b69-4289-9a8a-83eb205702c3", "name": "Ahmed Khaled"},
-                    {"patientId": "ea0b1f0f-df7e-4a0a-9bb6-67ecfa1ecef4", "name": "Khaled Ahmed"},
+                    {'patientId': '41f1c0fd-3b69-4289-9a8a-83eb205702c3', 'name': 'Ahmed Khaled'},
+                    {'patientId': 'ea0b1f0f-df7e-4a0a-9bb6-67ecfa1ecef4', 'name': 'Khaled Ahmed'},
                 ],
-                "procedureChoices": [
-                    {"procedureId": "373b6f45-a50b-496b-90bd-814cae5ed93d", "name": "Dental Implant"}, 
-                    {"procedureId": "ed87388f-3037-47e1-86ea-b78a5d37e115", "name": "Dental Crown (Ceramic)"}
+                'procedureChoices': [
+                    {'procedureId': '373b6f45-a50b-496b-90bd-814cae5ed93d', 'name': 'Dental Implant'}, 
+                    {'procedureId': 'ed87388f-3037-47e1-86ea-b78a5d37e115', 'name': 'Dental Crown (Ceramic)'}
                 ],
                 'orderStatus': [
                     {'value': 'sent', 'label': 'Sent'},
@@ -256,12 +268,12 @@ labs_options_schema = extend_schema_serializer(
                     {'value': 'delivered', 'label': 'Delivered'},
                     {'value': 'received', 'label': 'Received'},
                 ],
-                "validToothNumbers": [
-                    {"value": "11", "label": "11"},
-                    {"value": "12", "label": "12"},
-                    {"value": "13", "label": "13"},
-                    {"value": "n", "label": "n"},
-                    {"value": "85", "label": "85"},
+                'validToothNumbers': [
+                    {'value': '11', 'label': '11'},
+                    {'value': '12', 'label': '12'},
+                    {'value': '13', 'label': '13'},
+                    {'value': 'n', 'label': 'n'},
+                    {'value': '85', 'label': '85'},
                 ],
             }
         )
@@ -280,7 +292,7 @@ sterilization_logs_options_schema = extend_schema_serializer(
                     {'branchId': '9ca1d622-94af-4ea5-b87a-bf9f6611d6ab', 'name': 'Main Branch'},
                     {'branchId': '8ef5c0eb-ab95-4d13-a1b4-04f634534587', 'name': 'Heliopolis Branch'},
                 ],
-                "cycleTypeChoices": [
+                'cycleTypeChoices': [
                     {'value': 'pre_vacuum', 'label': 'Pre-vacuum'},
                     {'value': 'gravity', 'label': 'Gravity'},
                     {'value': 'flash_immediate', 'label': 'Flash/Immediate'},

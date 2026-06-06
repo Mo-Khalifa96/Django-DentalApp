@@ -14,15 +14,33 @@ logger = logging.getLogger(__name__)
 class AdminOnly(BasePermission):
     def has_permission(self, request, view):
         if request.user and request.user.is_authenticated: 
-            if request.user.role != 'admin':
+            if request.user.role == 'admin':
+                return True 
+        return False 
+    
+    def has_object_permission(self, request, view, obj):
+        return self.has_permission(request, view)
+
+
+#Dentist only permission
+class DoctorSchedulePermissions(BasePermission):
+    def has_permission(self, request, view):
+        if request.user and request.user.is_authenticated:
+            if request.user.role not in ('admin', 'dentist'):
                 return False 
             else:
                 return True
         else:
-            return False 
-    
+            return False
+
     def has_object_permission(self, request, view, obj):
-        return self.has_permission(request, view)
+        if request.user.role == 'admin':
+            return True
+        if hasattr(obj, 'doctor'):
+            return obj.doctor == request.user 
+        elif hasattr(obj, 'schedule') and obj.schedule:
+            return obj.schedule.doctor == request.user
+        return False 
 
 
 #Admin or receptionist only permission -- for waiting room
@@ -61,8 +79,8 @@ class DentistOfPatientOnly(BasePermission):
 #System user-specific permission class with view-level permission mapping
 class SystemUserPermissions(BasePermission):
     '''
-    Generic permission class that gets the required permission from the view and checks
-    it against user assigned permissions.
+    Generic permission class that gets the required permission from the view 
+    and checks it against user assigned permissions.
     '''
 
     def has_permission(self, request, view):
@@ -72,7 +90,8 @@ class SystemUserPermissions(BasePermission):
             
         if not request.user or not request.user.is_authenticated:
             return False
-        elif request.user.role == 'admin':
+        
+        if request.user.role == 'admin':
             return True
     
         #Get required permission from view (if any)

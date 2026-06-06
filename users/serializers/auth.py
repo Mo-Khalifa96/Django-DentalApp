@@ -4,20 +4,28 @@ from rest_framework import serializers
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from django.utils.translation import gettext_lazy as _
-from django.core.exceptions import ValidationError
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework.exceptions import ValidationError, AuthenticationFailed
+from django.core.exceptions import ValidationError as django_ValidationError
 
 
 #AUTH SERIALIZERS
 #Serializer for the obtain token pair view
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
-    def validate(self, attrs):
-        data = super().validate(attrs)
+    def validate(self, data):
+        #Validate user is active or not soft-deleted
+        user = User.all_objects.filter(email__iexact=data.get('email')).first()
+        if user and user.is_deleted:
+            raise AuthenticationFailed(_('Account is inactive. Reset your password to reactivate your account.'))
+
+        #Validate data with parent serializer's validate() method
+        validated_data = super().validate(data)
+
         #Add user data to response
-        data['user'] = {
+        validated_data['user'] = {
             'id': str(self.user.id),
             'email': self.user.email,
             'name': self.user.name,
@@ -25,7 +33,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'specialization': self.user.specialization,
             'branchId': getattr(self.user.branch, 'id', None)
         }
-        return data
+        return validated_data
 
 
 #Serializers for handling password changes and resets 
@@ -77,8 +85,8 @@ class ResetEmailSerializer(serializers.Serializer):
     email = serializers.CharField(write_only=True)
 
     def validate_email(self, email):
-        if not User.objects.filter(email__iexact=email):
-            raise serializers.ValidationError('Email is incorrect or does not exist.')
+        if not User.all_objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError(_('Email is incorrect or does not exist.'))
         return email 
 
 
@@ -113,7 +121,7 @@ class ResetPasswordSerializer(serializers.Serializer):
             user_id = force_str(urlsafe_base64_decode(uid))
             
             #save user for later update/saving
-            self.user = User.objects.get(pk=user_id)
+            self.user = User.all_objects.get(pk=user_id)
 
         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
             raise serializers.ValidationError({'uid': _('Invalid reset link.')})
@@ -123,7 +131,7 @@ class ResetPasswordSerializer(serializers.Serializer):
         
         try:
             validate_password(newPassword, self.user)
-        except ValidationError as exc:
+        except (django_ValidationError, ValidationError) as exc:
             raise serializers.ValidationError({'newPassword': exc.messages})
         
         data['uid'] = uid 
@@ -135,6 +143,8 @@ class ResetPasswordSerializer(serializers.Serializer):
     @transaction.atomic
     def save(self, **kwargs):
         self.user.set_password(self.validated_data['newPassword'])
-        self.user.save(update_fields=['password'])
+        self.user.is_deleted = False
+        self.user.isActive = True
+        self.user.save(update_fields=['password', 'is_deleted', 'isActive', 'updatedAt'])
         return self.user
     

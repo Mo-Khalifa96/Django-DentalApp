@@ -11,7 +11,7 @@ urlpatterns = [
     path('api/', include('users.urls')),
     path('api/', include('clinic.urls')),
     path('api/', include('patients.urls')),
-    path('api/', include('finance.urls')),
+    path('api/', include('finances.urls')),
     path('api/', include('services.urls')),
     path('', lambda request: HttpResponse('HOME')),
     path('health/', lambda request: HttpResponse('OK')),

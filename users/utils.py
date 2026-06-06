@@ -8,7 +8,9 @@ category_patterns = {
     r'/patients/': 'patients',
     r'/appointments/': 'appointments',
     r'/procedures/': 'procedures',
-    # r'/doctor-schedules/': 'doctor-schedules',
+    r'/bills/': 'bills',
+    r'/transactions/': 'transactions',
+    r'invoices/': 'invoices',
     r'/inventory/': 'inventory',
     r'/lab-orders/': 'lab-orders',
     r'/labs/': 'labs',
@@ -53,73 +55,108 @@ def _build_permissions_lookup(permissions_dict):
         #   'view': ['view.patients', 'view.patientDetail'],
         #   'create': 'create.patient',
         #   'update': 'update.patient',
-        #   'delete': 'delete.patient'},
+        #   'delete': 'delete.patient'
+        # },
         #
         # 'visits': {
-        #   'view': 'view.visits', 'create': 'create.visit'},
+        #   'view': 'view.visits', 'create': 'create.visit'
+        # },
         #
         # 'appointments': {
         #   'view': ['view.appointments', 'view.appointmentDetail'],
         #   'create': 'create.appointment',
         #   'update': 'update.appointment',
         #   'delete': 'delete.appointment',
-        #   'send': 'send.whatsappMessage'},
+        #   'send': 'send.whatsappMessage'
+        # },
         #
         # 'treatment-plans': {
         #   'view': 'view.treatments',
         #   'create': 'create.treatment',
         #   'update': 'update.treatment',
-        #   'delete': 'delete.treatment'},
+        #   'delete': 'delete.treatment'
+        # },
         #
         # 'procedures': {
         #   'view': 'view.procedures',
         #   'create': 'create.procedure',
         #   'update': 'update.procedure',
-        #   'delete': 'delete.procedure'},
+        #   'delete': 'delete.procedure'
+        # },
         #
         # 'inventory': {
         #   'view': 'view.inventory',
         #   'create': 'create.inventory',
         #   'update': 'update.inventory',
-        #   'delete': 'delete.inventory'}
-        #
-        # 'doctor-schedules': {
-        #   'view': ['view.doctorSchedules', 'view.doctorScheduleDetail'],
-        #   'create': 'create.doctorSchedule',
-        #   'update': 'update.doctorSchedule',
-        #   'delete': 'delete.doctorSchedule'}
+        #   'delete': 'delete.inventory'
+        # },
         #
         # 'labs: {
         #   'view': 'view.labs',
         #   'create': 'create.labs',
         #   'update': 'update.labs',
-        #   'delete': 'delete.labs'}
+        #   'delete': 'delete.labs'
+        # },
         #
         # 'lab-orders: {
         #   'view': ['view.labOrders', 'view.labOrderDetail'],
         #   'create': 'create.labOrder',
         #   'update': 'update.labOrder',
-        #   'delete': 'delete.labOrder'},
+        #   'delete': 'delete.labOrder'
+        # },
+        #
+        # 'bills: {
+        #   'view': 'view.bills',
+        #   'create': 'create.bill',
+        #   'update': 'update.bill',
+        #   'delete': 'delete.bill'
+        # },
+        #
+        # 'transactions: {
+        #   'view': 'view.transactions',
+        #   'create': 'create.transaction',
+        #   'delete': 'delete.transaction'
+        # },
+        #
+        # 'invoices: {
+        #   'view': 'view.invoices',
+        #   'create': 'create.invoice',
+        #   'update': 'update.invoice',
+        #   'delete': 'delete.invoice'
+        # },
         #
         # 'sterilization-logs': {
         #   'view': 'view.sterilizationLogs',
         #   'create': 'create.sterilizationLog',
         #   'update': 'update.sterilizationLog',
-        #   'delete': 'delete.sterilizationLog'},
+        #   'delete': 'delete.sterilizationLog'
+        # },
         #
         # 'patient-recalls': {
         #   'view': 'view.recalls',
         #   'create': 'create.recall',
         #   'update': 'update.recall',
-        #   'delete': 'delete.recall'},
-        # }
+        #   'delete': 'delete.recall'
+        # },
+        #
+        # 'doctor-schedules': {
+        #   'view': 'view.doctorSchedules'
+        # },
+        #}
 
 #Get user permissions lookup dictionary 
 USER_PERMISSIONS_LOOKUP = _build_permissions_lookup(User.USER_PERMISSIONS_DICT)
 
 #Function to quickly determine required permission
 def get_required_permission(category, request, view=None):
-    '''Determines required permission based on category and request method.'''
+    '''
+    Determines required permission based on category and request method.\n
+    *important*: this function cannot be used with each of:
+        * calender
+        * doctor-schedules
+        * send whatsapp message
+        * settings and preferences
+    '''
 
     req_method = request.method
     is_detail = bool(getattr(view, 'lookup_url_kwarg', None))
@@ -130,7 +167,7 @@ def get_required_permission(category, request, view=None):
             return perms['view'][1 if is_detail else 0]
         return perms['view']
     elif req_method in ('PUT', 'PATCH'):
-        return perms['update']   #NOTE - if you separate update treatment from update status only use similar logic to 'GET' but with another conditional
+        return perms['update']
     elif req_method == 'POST':
         return perms['create']
     elif req_method == 'DELETE':

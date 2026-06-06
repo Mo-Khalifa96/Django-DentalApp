@@ -3,6 +3,7 @@ from patients.models import Patient, Visit
 from rest_framework import status, generics
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from users.utils import get_required_permission
 from utils.filters import CustomOrderingFilter
 from patients.filters import VisitsFilter
 from rest_framework.filters import SearchFilter
@@ -33,7 +34,8 @@ class ListCreateVisitsAPIView(ListCreateAPIView):
 
     def initial(self, request, *args, **kwargs):
         #determine required permission
-        self.required_permission = 'view.visits' if request.method == 'GET' else 'create.visit'
+        #self.required_permission = 'view.visits' if request.method == 'GET' else 'create.visit'
+        self.required_permission = get_required_permission('visits', request, self)
         super().initial(request, *args, **kwargs)
 
     def get_patient(self):

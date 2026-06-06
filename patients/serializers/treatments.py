@@ -29,11 +29,11 @@ class TreatmentPlanItemsSerializer(serializers.ModelSerializer):
 #Base treatment plans serializer for retrieving patient procedure and treatment plan
 class TreatmentPlanSerializer(UserPermissionsMixin, serializers.ModelSerializer):
     patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
-    items = TreatmentPlanItemsSerializer(many=True, required=True, allow_empty=False)
+    items = TreatmentPlanItemsSerializer(many=True, source='treatment_items', required=True, allow_empty=False)
 
     class Meta:
         model = TreatmentPlan
-        fields = ['id', 'patientId', 'title', 'status', 'items', 'currency', 'totalCost', 'paidAmount', 
+        fields = ['id', 'patientId', 'title', 'status', 'items', 'currency', 'totalCost', 
                   'installmentMonths', 'sessions', 'createdAt']
         read_only_fields = ['id', 'patientId', 'createdAt']
 
@@ -41,13 +41,13 @@ class TreatmentPlanSerializer(UserPermissionsMixin, serializers.ModelSerializer)
 #Create treatment plan serializer
 class CreateTreatmentPlanSerializer(TreatmentPlanSerializer):
     class Meta(TreatmentPlanSerializer.Meta):
-        fields = ['id', 'patientId', 'title', 'status', 'items', 'currency', 'totalCost', 'paidAmount', 
+        fields = ['id', 'patientId', 'title', 'status', 'items', 'currency', 'totalCost', 
                   'installmentMonths', 'sessions', 'createdAt']
         read_only_fields = ['id', 'patientId', 'createdAt']
 
     #validate total cost against treatment items
     def validate(self, data):
-        items = data.get('items', [])
+        items = data.get('treatment_items', [])
         totalCost = data.get('totalCost')
         total_from_prices = Decimal(str(sum(float(item['price']) for item in items if items)))
         if total_from_prices != totalCost or round(float(total_from_prices),2) != round(float(totalCost),2):
@@ -68,7 +68,7 @@ class CreateTreatmentPlanSerializer(TreatmentPlanSerializer):
         validated_data['patient_id'] = self.context.get('patient_id')  #uses foreign key for efficiency
 
         #Extract treatment items to handle their creation separately
-        items_data = validated_data.pop('items', [])
+        items_data = validated_data.pop('treatment_items', [])
 
         #Create treatment plan
         treatment_plan = TreatmentPlan.objects.create(**validated_data)
@@ -102,19 +102,19 @@ class UpdateTreatmentPlanItemsSerializer(TreatmentPlanItemsSerializer):
 
 #Update treatment plan serializer 
 class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
-    items = UpdateTreatmentPlanItemsSerializer(many=True, required=False, allow_empty=False)
+    items = UpdateTreatmentPlanItemsSerializer(many=True, source='treatment_items', required=False, allow_empty=False)
 
     class Meta(TreatmentPlanSerializer.Meta):
-        fields = ['id', 'patientId', 'title', 'status', 'items', 'totalCost', 'paidAmount', 'installmentMonths', 'sessions']
+        fields = ['id', 'patientId', 'title', 'status', 'items', 'totalCost', 'installmentMonths', 'sessions']
         read_only_fields = ['id', 'patientId']
         extra_kwargs = {field: {'required': False} for field in 
-            ('title', 'status', 'items', 'totalCost', 'paidAmount', 'installmentMonths', 'sessions')
+            ('title', 'status', 'items', 'totalCost', 'installmentMonths', 'sessions')
             }
 
     #validate total cost against treatment items
     def validate(self, data):
-        if 'items' in data:
-            items = data.get('items', [])
+        if 'treatment_items' in data:
+            items = data.get('treatment_items', [])
             #re-calculate total cost if not provided
             totalCost_new = Decimal(str(sum(float(item['price']) for item in items if items)))
             totalCost = data.get('totalCost', totalCost_new)
@@ -127,10 +127,10 @@ class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
     @transaction.atomic
     def update(self, instance, validated_data): 
         #fetch updated items (if any)
-        updated_items = validated_data.pop('items', None)
+        updated_items = validated_data.pop('treatment_items', None)
         
         #delete and update items
-        if updated_items is not None:  #or, use <<if 'items' in validated_data:>> if you want to allow deletion
+        if updated_items is not None:  #or, use <<if 'treatment_items' in validated_data:>> if you want to allow deletion
             #Delete existing items and recreate 
             instance.items.all().delete()
 

@@ -211,7 +211,7 @@ def visit_factory():
 def treatment_plan_factory():
     from patients.models import TreatmentPlan, TreatmentPlanItem
 
-    def create_treatment_plan(patient, procedure, doctor=None, items=None, **overrides):
+    def create_treatment_plan(patient, procedure, doctor=None, treatment_items=None, **overrides):
         treatment_plan = TreatmentPlan.objects.create(
             patient=patient,
             doctor=doctor,
@@ -223,7 +223,7 @@ def treatment_plan_factory():
             **overrides,
         )
 
-        items = items or [
+        items = treatment_items or [
             {
                 'procedure': procedure,
                 'toothNumber': '11',

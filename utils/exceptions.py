@@ -27,52 +27,6 @@ class InvalidPhoneNumberError(APIException):
 
 
 #GLOBAL EXCEPTION HANDLER 
-#Define helper functions for message and code extraction
-def _extract_code(exc):
-    '''Extracts a single uppercase string code from any exception type.'''
-    try:
-        codes = exc.get_codes()
-        
-        if isinstance(codes, list):
-            return str(codes[0]).upper()
-        elif isinstance(codes, dict):
-            try:
-                return str(codes['code']).upper()
-            except (KeyError, TypeError):
-                return 'ERROR'
-        return str(codes).upper()
-    
-    except Exception:
-        return 'NOT_FOUND' if isinstance(exc, Http404) else 'ERROR'
-
-def _extract_messages(messages):
-    '''Normalizes field messages to a single string regardless of input type.'''
-    if isinstance(messages, ErrorDetail):
-        return str(messages)
-
-    #Handle dict-nested field errors
-    if isinstance(messages, dict):
-        #collapse non_field_errors into single string message
-        if len(messages) == 1 and 'non_field_errors' in messages:
-            return _extract_messages(messages['non_field_errors'])
-        
-        #Handle validation errors for field errors
-        return {
-            field: _extract_messages(value)
-            for field, value in messages.items()
-        }
-
-    #Handle list-nested error messages 
-    if isinstance(messages, list):
-        normalized_messages = [_extract_messages(item) for item in messages]
-        #Flatten only plain message lists, not nested serializer lists
-        if all(not isinstance(item, (dict, list)) for item in normalized_messages):
-            return normalized_messages[0] if len(normalized_messages) == 1 else normalized_messages
-        return normalized_messages
-
-    #Fallback 
-    return str(messages)
-
 #Define global exception handler 
 def DentalTechExceptionHandler(exc, context):  
     '''Main (global) exception handler for the system.'''
@@ -168,3 +122,48 @@ def DentalTechExceptionHandler(exc, context):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
+#Define helper functions for message and code extraction
+def _extract_code(exc):
+    '''Extracts a single uppercase string code from any exception type.'''
+    try:
+        codes = exc.get_codes()
+        
+        if isinstance(codes, list):
+            return str(codes[0]).upper()
+        elif isinstance(codes, dict):
+            try:
+                return str(codes['code']).upper()
+            except (KeyError, TypeError):
+                return 'ERROR'
+        return str(codes).upper()
+    
+    except Exception:
+        return 'NOT_FOUND' if isinstance(exc, Http404) else 'ERROR'
+
+def _extract_messages(messages):
+    '''Normalizes field messages to a single string regardless of input type.'''
+    if isinstance(messages, ErrorDetail):
+        return str(messages)
+
+    #Handle dict-nested field errors
+    if isinstance(messages, dict):
+        #collapse non_field_errors into single string message
+        if len(messages) == 1 and 'non_field_errors' in messages:
+            return _extract_messages(messages['non_field_errors'])
+        
+        #Handle validation errors for field errors
+        return {
+            field: _extract_messages(value)
+            for field, value in messages.items()
+        }
+
+    #Handle list-nested error messages 
+    if isinstance(messages, list):
+        normalized_messages = [_extract_messages(item) for item in messages]
+        #Flatten only plain message lists, not nested serializer lists
+        if all(not isinstance(item, (dict, list)) for item in normalized_messages):
+            return normalized_messages[0] if len(normalized_messages) == 1 else normalized_messages
+        return normalized_messages
+
+    #Fallback 
+    return str(messages)

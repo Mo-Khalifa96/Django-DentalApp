@@ -86,7 +86,7 @@ class RetrieveUpdateDeletePatientAPIView(RetrieveUpdateDeleteAPIView):
     def destroy(self, request, *args, **kwargs):
         patient = self.get_object()
         #soft delete patient
-        Patient.objects.delete_patient(patient=patient)
+        Patient.objects.delete_patient(user=request.user, patient=patient)
         return Response({}, status=status.HTTP_204_NO_CONTENT)
     
 

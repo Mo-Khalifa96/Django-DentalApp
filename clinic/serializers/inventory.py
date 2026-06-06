@@ -59,7 +59,7 @@ class InventoryOptionsSerializer(serializers.Serializer):
         serializers.ListField(
             child=serializers.DictField(child=serializers.CharField())
     ))
-    def get_availableCategories(self, obj):
+    def get_categoryChoices(self, obj):
         branchId = self.context.get('branchId')
         if not branchId and Branch.objects.exists():
             return []
