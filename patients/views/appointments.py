@@ -24,7 +24,7 @@ from patients.serializers.appointments import (AppointmentSerializer, RetrieveAp
 @extend_schema(tags=['Appointments'])
 class ListCreateAppointmentsAPIView(FilterListCreateAPIView, BranchToFilterMixin):
     permission_classes = [PatientDataPermissions]
-    ordering = ['-date', 'startTime', 'endTime']  #default order of fields
+    ordering = ['branch__name', '-date', 'startTime', 'endTime']  #default order of fields
     ordering_fields = ['date', 'startTime', 'endTime', 'status']  
     search_fields = ['patient__name', 'doctor__name', 'procedure__name', 'room']
     filterset_class = AppointmentsFilter

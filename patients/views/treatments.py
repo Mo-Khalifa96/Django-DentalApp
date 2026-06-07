@@ -1,16 +1,17 @@
 from utils.base_views import *
-from patients.models import Patient, TreatmentPlan
 from rest_framework import status, generics
 from rest_framework.response import Response
+from utils.filters import CustomOrderingFilter
 from rest_framework.exceptions import NotFound
 from users.utils import get_required_permission
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.filters import SearchFilter
+from utils.mixins import BranchToSerializerMixin
+from patients.filters import TreatmentPlansFilter
+from patients.models import Patient, TreatmentPlan
 from users.permissions import PatientDataPermissions
 from utils.pagination import TreatmentPlansPagination
-from patients.filters import TreatmentPlansFilter
-from utils.filters import CustomOrderingFilter
-from utils.mixins import BranchToSerializerMixin
+from rest_framework.permissions import IsAuthenticated
+from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
 from patients.serializers.treatments import (TreatmentPlanSerializer, CreateTreatmentPlanSerializer, 
@@ -24,7 +25,7 @@ class ListCreateTreatmentPlansAPIView(ListCreateAPIView):
     permission_classes = [PatientDataPermissions]
     ordering = ['-createdAt']  #default order of fields
     ordering_fields = ['status', 'createdAt']  #order by status and createdAt
-    search_fields = ['title', 'procedureName']  #search by title and procedure name
+    search_fields = ['title', 'treatment_items__procedureName']  #search by title and procedure name
     filterset_class = TreatmentPlansFilter  #filters by status 
     filter_backends = [DjangoFilterBackend, SearchFilter, CustomOrderingFilter]
     pagination_class = TreatmentPlansPagination
@@ -32,6 +33,11 @@ class ListCreateTreatmentPlansAPIView(ListCreateAPIView):
     lookup_field = 'id'
 
     def initial(self, request, *args, **kwargs):
+        #re-order data for admins
+        if getattr(request.user, 'role', None) == 'admin':
+            self.ordering = ['branch__name', 'patient__name', '-createdAt']
+        
+        #determine required permission
         #self.required_permission = 'view.treatments' if request.method == 'GET' else 'create.treatments'
         self.required_permission = get_required_permission('treatment-plans', request, self)
         super().initial(request, *args, **kwargs)
@@ -40,8 +46,10 @@ class ListCreateTreatmentPlansAPIView(ListCreateAPIView):
         try:
             patient = Patient.objects.prefetch_related('patient_treatmentplans').get(id=self.kwargs['id'])
         except Patient.DoesNotExist:
-            raise NotFound('The requested patient was not found or does not exist.')
-        return patient.patient_treatmentplans.prefetch_related('treatment_items', 'treatment_items__procedure').all()
+            raise NotFound(_('The requested patient was not found or does not exist.'))
+        return patient.patient_treatmentplans\
+            .prefetch_related('treatment_items', 
+             'treatment_items__procedure').all()
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -80,7 +88,7 @@ class RetrieveUpdateDeleteTreatmentPlanAPIView(RetrieveUpdateDeleteAPIView):
                     id=self.kwargs['treatmentId']
                 )
         except TreatmentPlan.DoesNotExist:
-            raise NotFound('The requested treatment plan was not found or does not exist.')  
+            raise NotFound(_('The requested treatment plan was not found or does not exist.'))
         
         #check object permission and return treatment plan
         self.check_object_permissions(self.request, obj)

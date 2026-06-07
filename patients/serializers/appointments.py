@@ -18,7 +18,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
     doctorId = serializers.PrimaryKeyRelatedField(source='doctor', queryset=User.objects.all())
     procedureId = serializers.PrimaryKeyRelatedField(source='procedure', queryset=Procedure.objects.all())
     branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
-    # doctorName = serializers.CharField(source='doctor.name', read_only=True)
 
     class Meta:
         model = Appointment

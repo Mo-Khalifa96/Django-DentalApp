@@ -23,12 +23,11 @@ from patients.serializers.patients import (ListPatientSerializer, RetrievePatien
 class ListCreatePatientsAPIView(FilterListCreateAPIView, BranchToFilterMixin):
     #queryset = Patient.objects.all()
     permission_classes = [PatientDataPermissions]
-    ordering = ['name']  #default order of fields
+    ordering = ['branch__name', 'name']  #default order of fields
     ordering_fields = ['name', 'lastVisit', 'nextAppointment', 'createdAt']  #sorting fields
     search_fields = ['name', 'phone', 'email']  #search fields
     filterset_class = PatientsFilter  #filters by status, insurance, and branch
     filter_backends = [CustomDjangoFilterBackend, SearchFilter, CustomOrderingFilter]
-
 
     def initial(self, request, *args, **kwargs):
         #determine required permission

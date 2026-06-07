@@ -18,16 +18,14 @@ class PatientsFilter(FilterSet):
     def __init__(self, *args, **kwargs):
         branch_id = kwargs.pop('branch_id', None)
         super().__init__(*args, **kwargs)
-        #Initialize insurance choices for insurance filter 
-        #Get available insurance providers
-        if branch_id:
-            insurance_providers = Patient.objects.filter(branch_id=branch_id)\
+        #Initialize insurance choices for insurance filter
+        #filter by branch (if provided)
+        insurance_filter = {'branch_id': branch_id} if branch_id else {}
+        insurance_providers = Patient.objects.filter(**insurance_filter)\
                 .values_list('insurance', flat=True)\
                 .distinct().order_by('insurance')
-        else:
-            insurance_providers = Patient.objects.values_list('insurance', flat=True)\
-                .distinct().order_by('insurance')
-
+        
+        #populate field choices with available insurance providers
         self.filters['insurance'].field.choices = [(provider, provider) for provider in insurance_providers]
 
 
@@ -59,20 +57,18 @@ class AppointmentsFilter(FilterSet):
     def __init__(self, *args, **kwargs):
         branch_id = kwargs.pop('branch_id', None)
         super().__init__(*args, **kwargs)
-        if branch_id:
-            #Get patient names list
-            patient_names = Patient.objects.filter(branch_id=branch_id)\
+
+        #filter by branch (if provided)
+        patients_filter = {'branch_id': branch_id} if branch_id else {}
+        users_filters = {'role': 'dentist', 'branch_id': branch_id} if branch_id else {'role': 'dentist'}
+        
+        #fetch available choices
+        patient_names = Patient.objects.filter(**patients_filter)\
                 .values_list('name', flat=True).distinct().order_by('name')
-            #Get doctor names list
-            doctor_names = User.objects.filter(role='Dentist', branch_id=branch_id)\
-                .values_list('name', flat=True).distinct().order_by('name')
-        else:
-            #Get patient names list
-            patient_names = Patient.objects.values_list('name', flat=True).distinct().order_by('name')
-            #Get doctor names list
-            doctor_names = User.objects.filter(role='Dentist')\
-                .values_list('name', flat=True).distinct().order_by('name')
-                
+        #Get doctor names list
+        doctor_names = User.objects.filter(**users_filters)\
+            .values_list('name', flat=True).distinct().order_by('name')
+     
         #populated filter fields with the obtained choices
         self.filters['patientName'].field.choices = [(cat, cat) for cat in patient_names if cat]
         self.filters['doctorName'].field.choices = [(cat, cat) for cat in doctor_names if cat]        

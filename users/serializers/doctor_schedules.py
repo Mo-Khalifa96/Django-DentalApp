@@ -1,10 +1,10 @@
 from django.db import transaction
 from rest_framework import serializers
+from utils.mixins import UserPermissionsMixin
 from clinic.models import Branch, WorkingDaysLookUp
 from utils.swagger_utils import extend_schema_field
 from users.docs import doctor_schedules_options_schema
 from django.utils.translation import gettext_lazy as _
-from utils.mixins import UserPermissionsMixin, ValidateBranchMixin
 from users.models import User, DoctorSchedule, DoctorScheduleException
 
 

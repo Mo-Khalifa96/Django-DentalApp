@@ -33,6 +33,10 @@ class ListCreateVisitsAPIView(ListCreateAPIView):
     lookup_field = 'id'
 
     def initial(self, request, *args, **kwargs):
+        #re-order data for admins
+        if getattr(request.user, 'role', None) == 'admin':
+            self.ordering = ['branch__name', 'patient__name', '-date', '-createdAt']
+
         #determine required permission
         #self.required_permission = 'view.visits' if request.method == 'GET' else 'create.visit'
         self.required_permission = get_required_permission('visits', request, self)

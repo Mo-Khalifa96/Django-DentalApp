@@ -21,7 +21,7 @@ from clinic.serializers.labs import (LabSerializer, RetrieveUpdateLabSerializer,
 class ListCreateLabsAPIView(FilterListCreateAPIView):
     permission_classes = [SystemUserPermissions]
     serializer_class = LabSerializer
-    ordering = ['name']  
+    ordering = ['name']
     search_fields = ['name', 'address', 'contactPerson']
     filterset_class = LabsFilter
     filter_backends = [DjangoFilterBackend, SearchFilter]

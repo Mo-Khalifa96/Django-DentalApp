@@ -93,6 +93,9 @@ class Patient(models.Model):
     notes = models.TextField(blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
+    
+    #other fields
+    doctorName = models.CharField(max_length=255, blank=True, null=True)
     is_deleted = models.BooleanField(default=False)   #Soft delete field
 
 
@@ -127,9 +130,13 @@ class Patient(models.Model):
             self.countryCode = code
             self.phone = f'{code}{phone_number}'  #NOTE - to normalize for display, you can now do this: phone = '0' + patient.phone[len(patient.countryCode):]  
 
-        #fallback condition for branch identification
-        if self.doctor and not self.branch:
-            self.branch = self.doctor.branch
+        if self.doctor:
+            #assign current doctor's name
+            self.doctorName = self.doctor.name
+
+            #fallback condition for branch identification
+            # if not self.branch:
+            #     self.branch = self.doctor.branch
 
         #assign flag for new patients
         is_new = self._state.adding

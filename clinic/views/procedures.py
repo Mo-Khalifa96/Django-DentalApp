@@ -20,7 +20,7 @@ from clinic.serializers.procedures import (ProcedureSerializer, UpdateProcedureS
 class ListCreateProceduresAPIViews(FilterListCreateAPIView):
     serializer_class = ProcedureSerializer
     permission_classes = [SystemUserPermissions]
-    ordering = ['name']
+    ordering = ['branch__name', 'name']
     search_fields = ['name', 'category']
     filterset_class = ProceduresFilter
     filter_backends = [DjangoFilterBackend, SearchFilter, CustomOrderingFilter]

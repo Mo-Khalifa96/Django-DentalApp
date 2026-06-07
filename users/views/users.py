@@ -24,7 +24,7 @@ from users.serializers.users import (CreateUserSerializer, ListUsersSerializer, 
 class ListCreateUserAPIView(ListCreateAPIView):
     queryset = User.objects.select_related('branch').all()
     permission_classes = [AdminOnly]
-    ordering = ['name', '-createdAt']
+    ordering = ['branch__name', 'name', '-createdAt']
     ordering_fields = ['name']
     search_fields = ['name', 'email']
     filterset_class = UsersFilter 

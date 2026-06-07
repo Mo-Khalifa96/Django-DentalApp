@@ -3,7 +3,7 @@ from rest_framework import serializers
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-
+from utils.validators import validate_uuid
 
 #Permissions mixin for serializers
 class UserPermissionsMixin:
@@ -44,6 +44,7 @@ class ResponseMixin:
 class ValidateBranchMixin:    #TODO
     def validate_branchId(self, branch):
         if not branch:
+            #use user's currently active branch
             user = self.context['request'].user
             if user.branch:
                 return user.branch
@@ -56,7 +57,7 @@ class ValidateBranchMixin:    #TODO
 class BranchToSerializerMixin:
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        branchId = self.request.query_params.get('branchId', None)
+        branchId = validate_uuid(self.request.query_params.get('branchId', None))
         if branchId:
             try:
                 Branch.objects.get(id=branchId)
@@ -69,16 +70,28 @@ class BranchToSerializerMixin:
 #Mixin to pass branch id to filter using custom method
 class BranchToFilterMixin:  #TODO
     def get_extra_filterset_kwargs(self):
-        if self.request.method == 'GET': #and getattr(user, 'role', None) != 'admin':
+        #get current user
+        if getattr(user, 'role', None) == 'admin':
+            return {'branch_id': None}
+
+        if self.request.method == 'GET':
+            #get current user 
             user = self.request.user 
-            branchId = self.request.query_params.get('branchId')
+
+            #skip admin
+            if getattr(user, 'role', None) == 'admin':
+                return {'branch_id': None}
+            
+            #assign branch query
+            branchId = validate_uuid(self.request.query_params.get('branchId'))
             if branchId:
                 branch_id = branchId
             else:
+                #use current user's active branch
                 branch_id = getattr(user.branch, 'id', None) if user.branch else None
-            return {
-                'branch_id': branch_id
-            }
+            
+            return {'branch_id': branch_id}
+        
         return None
 
 
@@ -89,13 +102,19 @@ class FilterByBranchMixin:  #TODO
     def filter_by_branch(self, queryset, branch_field='branch_id'):
         #get user
         user = self.request.user
+        branchId_qp = self.request.query_params.get('branchId')
 
-        #filter queryset by the user's branch
+        #filter queryset by the user's current active branch
         if getattr(user, 'branch_id', None):
             return queryset.filter(**{branch_field: user.branch_id})
+        
+        #fallback -- try using the query parameter instead
+        elif branchId_qp: 
+            if user.branches.filter(id=branchId_qp).exists():
+                return queryset.filter(**{branch_field: branchId_qp})
        
        #else, check if clinic has no branches
-        elif Branch.objects.count() == 0:
+        elif Branch.objects.exists():
             return queryset
         
         #if none is met, return nothing to prevent data leakage

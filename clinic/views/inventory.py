@@ -19,7 +19,7 @@ from clinic.serializers.inventory import (InventorySerializer, CreateInventoryIt
 @extend_schema(tags=['Inventory'])
 class ListCreateInventoryAPIViews(FilterListCreateAPIView, BranchToFilterMixin):
     permission_classes = [SystemUserPermissions]
-    ordering = ['name']
+    ordering = ['branch__name', 'name']
     search_fields = ['name', 'category', 'unit']
     filterset_class = InventoryFilter
     filter_backends = [CustomDjangoFilterBackend, SearchFilter, CustomOrderingFilter]

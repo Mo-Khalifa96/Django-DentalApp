@@ -58,11 +58,11 @@ class InventoryFilter(FilterSet):
         branch_id = kwargs.pop('branch_id', None)
         super().__init__(*args, **kwargs)
         #Initialize category choices
-        if branch_id:
-            available_categories = Inventory.objects.filter(branch_id=branch_id)\
+        #filter by branch (if provided)
+        inventory_filter = {'branch_id': branch_id} if branch_id else None
+        available_categories = Inventory.objects.filter(**inventory_filter)\
                 .values_list('category', flat=True).distinct().order_by('category')
-        else:
-            available_categories = Inventory.objects.values_list('category', flat=True).distinct().order_by('category')
+
         #populated filter field with the obtained choices
         self.filters['category'].field.choices = [(cat, cat) for cat in available_categories if cat]
 
