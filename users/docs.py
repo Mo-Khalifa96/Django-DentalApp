@@ -233,27 +233,27 @@ retrieve_user_schema = extend_schema_serializer(
                     },
                     'isActive': True,
                     'createdAt': '2026-04-24T23:33:54.610Z',
-                    'metadata': {
-                        'userPermissions': {
-                            'view.calender': True,
-                            'view.waitingRoom': True,
-                            'view.patients': True,
-                            'view.appointments': True,
-                            'view.procedures': True,
-                            'view.inventory': True,
-                            'view.labs': True,
-                            'view.labOrders': True,
-                            'view.bills': True,
-                            'view.transactions': False,
-                            'view.invoices': True,
-                            'view.doctorSchedules': True,
-                            'view.sterilizationLogs': True,
-                            'view.recalls': True,
-                            'view.clinicalAnalytics': True,
-                            'view.financialAnalytics': False,
-                            'view.settings': True,
-                            'view.preferences': True
-                        }
+                },
+                'metadata': {
+                    'userPermissions': {
+                        'view.calender': True,
+                        'view.waitingRoom': True,
+                        'view.patients': True,
+                        'view.appointments': True,
+                        'view.procedures': True,
+                        'view.inventory': True,
+                        'view.labs': True,
+                        'view.labOrders': True,
+                        'view.bills': True,
+                        'view.transactions': False,
+                        'view.invoices': True,
+                        'view.doctorSchedules': True,
+                        'view.sterilizationLogs': True,
+                        'view.recalls': True,
+                        'view.clinicalAnalytics': True,
+                        'view.financialAnalytics': False,
+                        'view.settings': True,
+                        'view.preferences': True
                     }
                 }
             }
@@ -279,27 +279,27 @@ retrieve_user_schema = extend_schema_serializer(
                     'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
                     'isActive': True,
                     'createdAt': '2026-04-24T23:33:54.610Z',
-                    'metadata': {
-                        'userPermissions': {
-                            'view.calender': True,
-                            'view.waitingRoom': True,
-                            'view.patients': True,
-                            'view.appointments': True,
-                            'view.procedures': True,
-                            'view.inventory': True,
-                            'view.labs': False,
-                            'view.labOrders': True,
-                            'view.bills': False,
-                            'view.transactions': False,
-                            'view.invoices': False,
-                            'view.doctorSchedules': True,
-                            'view.sterilizationLogs': True,
-                            'view.recalls': True,
-                            'view.clinicalAnalytics': True,
-                            'view.financialAnalytics': False,
-                            'view.settings': False,
-                            'view.preferences': True,
-                        }
+                },
+                'metadata': {
+                    'userPermissions': {
+                        'view.calender': True,
+                        'view.waitingRoom': True,
+                        'view.patients': True,
+                        'view.appointments': True,
+                        'view.procedures': True,
+                        'view.inventory': True,
+                        'view.labs': False,
+                        'view.labOrders': True,
+                        'view.bills': False,
+                        'view.transactions': False,
+                        'view.invoices': False,
+                        'view.doctorSchedules': True,
+                        'view.sterilizationLogs': True,
+                        'view.recalls': True,
+                        'view.clinicalAnalytics': True,
+                        'view.financialAnalytics': False,
+                        'view.settings': False,
+                        'view.preferences': True,
                     }
                 }
             }

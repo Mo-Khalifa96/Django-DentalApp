@@ -5,6 +5,7 @@ from rest_framework.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from utils.validators import validate_uuid
 
+
 #Permissions mixin for serializers
 class UserPermissionsMixin:
     def to_representation(self, instance):
@@ -40,7 +41,7 @@ class ResponseMixin:
         return response
 
 
-#Validate branch mixin -- to serializers  
+#Validate branch mixin -- used with serializers
 class ValidateBranchMixin:    #TODO
     def validate_branchId(self, branch):
         if not branch:
@@ -53,11 +54,36 @@ class ValidateBranchMixin:    #TODO
         return branch
 
 
-#Mixin to pass branch id to serializer context
+#Mixin to filter querysets by branch -- used with List views 
+# if preloaded qs needs to be restricted by branch)
+class FilterByBranchMixin:
+    def filter_by_branch(self, queryset, branch_field='branch_id'):
+        #get user
+        user = self.request.user
+        branchId_qp = self.request.query_params.get('branchId')
+
+        #filter queryset by the user's current active branch
+        if getattr(user, 'branch_id', None):
+            return queryset.filter(**{branch_field: user.branch_id})
+        
+        #fallback -- try using the query parameter instead
+        elif branchId_qp: 
+            if user.branches.filter(id=branchId_qp).exists():
+                return queryset.filter(**{branch_field: branchId_qp})
+       
+       #else, check if clinic has no branches
+        elif Branch.objects.exists():
+            return queryset
+        
+        #if none is met, return nothing to prevent data leakage
+        return queryset.none()
+    
+
+#Mixin to pass branch id to serializer context -- used for /options/ endpoints
 class BranchToSerializerMixin:
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        branchId = validate_uuid(self.request.query_params.get('branchId', None))
+        branchId = validate_uuid(self.request.query_params.get('branchId'))
         if branchId:
             try:
                 Branch.objects.get(id=branchId)
@@ -67,8 +93,8 @@ class BranchToSerializerMixin:
         return context
 
 
-#Mixin to pass branch id to filter using custom method
-class BranchToFilterMixin:  #TODO
+#Mixin to pass branch id to filter -- used for FilterSets using custom filtering methods
+class BranchToFilterMixin: 
     def get_extra_filterset_kwargs(self):
         #get current user
         if getattr(user, 'role', None) == 'admin':
@@ -95,28 +121,3 @@ class BranchToFilterMixin:  #TODO
         return None
 
 
-#Mixin to filter querysets by branch
-# used with List views if preloaded qs needs to be 
-# restricted by branch
-class FilterByBranchMixin:  #TODO
-    def filter_by_branch(self, queryset, branch_field='branch_id'):
-        #get user
-        user = self.request.user
-        branchId_qp = self.request.query_params.get('branchId')
-
-        #filter queryset by the user's current active branch
-        if getattr(user, 'branch_id', None):
-            return queryset.filter(**{branch_field: user.branch_id})
-        
-        #fallback -- try using the query parameter instead
-        elif branchId_qp: 
-            if user.branches.filter(id=branchId_qp).exists():
-                return queryset.filter(**{branch_field: branchId_qp})
-       
-       #else, check if clinic has no branches
-        elif Branch.objects.exists():
-            return queryset
-        
-        #if none is met, return nothing to prevent data leakage
-        return queryset.none()
-    

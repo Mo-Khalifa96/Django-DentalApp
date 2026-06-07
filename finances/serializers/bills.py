@@ -64,8 +64,8 @@ class RetrieveBillSerializer(UserPermissionsMixin, BillSerializer):
     pass
 
 
-#Create bill serializer
-class CreateBillSerializer(serializers.ModelSerializer, ValidateBranchMixin):
+#Base bill serializer for create/update
+class CreateUpdateBillSerializer(serializers.ModelSerializer):
     patientId = serializers.PrimaryKeyRelatedField(source='patient', queryset=Patient.objects.all())
     treatmentId = serializers.PrimaryKeyRelatedField(source='treatment', queryset=TreatmentPlan.objects.all())
     visitIds = serializers.PrimaryKeyRelatedField(many=True, source='visits', queryset=Visit.objects.all())
@@ -89,6 +89,9 @@ class CreateBillSerializer(serializers.ModelSerializer, ValidateBranchMixin):
         totalAmount = data.get('totalAmount')
         discount = data.get('discount')
 
+
+        return data
+
         #validate amount fields
         # discount = discount or Decimal('0')
         # if totalAmount:
@@ -102,26 +105,30 @@ class CreateBillSerializer(serializers.ModelSerializer, ValidateBranchMixin):
         #             raise serializers.ValidationError({'subtotal': _('Total amount miscalculation: total and subtotal amounts must be equal when discount is not applied.')})
 
 
-        return data
-
-
     @transaction.atomic
     def create(self, validated_data):
         pass
+    
+    @transaction.atomic
+    def update(self, instance, validated_data): 
+        pass
 
 
-class UpdateBillSerializer(serializers.ModelSerializer):
+
+#Create bill serializer 
+class CreateBillSerializer(CreateUpdateBillSerializer, ValidateBranchMixin):
+    pass
+
+
+#Update bill serializer
+class UpdateBillSerializer(CreateUpdateBillSerializer):
     patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
     treatmentId = serializers.PrimaryKeyRelatedField(source='treatment', read_only=True)
     visitIds = serializers.PrimaryKeyRelatedField(many=True, source='visits', queryset=Visit.objects.all())
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     total = serializers.DecimalField(max_digits=10, decimal_places=2, source='totalAmount', required=False)
 
-    class Meta:
-        model = Bill
+    class Meta(CreateUpdateBillSerializer.Meta):
         fields = ['id', 'patientId', 'patientName', 'treatmentId', 'visitIds', 'branchId', 
                   'description', 'discount', 'subtotal', 'total', 'currency', 'updatedAt']
-    
-    @transaction.atomic
-    def update(self, instance, validated_data): 
-        pass
+        read_only_fields = ['id', 'patientId', 'patientName', 'treatmentId', 'branchId', 'updatedAt']
