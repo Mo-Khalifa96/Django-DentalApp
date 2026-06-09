@@ -1,4 +1,5 @@
 from utils.base_views import *
+from decimal import Decimal
 from clinic.models import Branch
 from datetime import date, timedelta
 from django.db.models import Q, Count, Sum
@@ -69,7 +70,7 @@ class DashboardStatisticsAPIView(GenericAPIView):
         #COMPUTE REQUIRED DATA 
 
         #get all necessary querysets
-        appointments = Appointment.objects.only('id', 'patient', 'date', 'branch').filter(branch_filter).exclude(status='cancelled')
+        appointments = Appointment.objects.only('id', 'patient', 'branch', 'date', 'status').filter(branch_filter).exclude(status='cancelled')
         patients = Patient.objects.only('id', 'createdAt', 'branch').filter(branch_filter)
         # visits = Visit.objects.only('id', 'cost', 'paid').filter(patient__branch=branch_filter)
         transactions = Transaction.objects.only('id', 'amount', 'branch').filter(branch_filter)
@@ -124,10 +125,10 @@ class DashboardStatisticsAPIView(GenericAPIView):
         )
 
         #calculate total billed for outstanding amount from bills
-        total_billed = bills.aggregate(total_billed=Sum('totalAmount'))['total_billed'] or 0
+        total_billed = bills.aggregate(total_billed=Sum('totalAmount'))['total_billed'] or Decimal('0')
 
         #calculate outstanding from total revenue
-        total_revenue = payments_aggregates['total_revenue'] or 0
+        total_revenue = payments_aggregates['total_revenue'] or Decimal('0')
         outstanding = round(float(total_billed - total_revenue), 2)
 
         # #get revenue and total outstanding (irrespective of month)
@@ -139,8 +140,8 @@ class DashboardStatisticsAPIView(GenericAPIView):
         #     )
         
         # #calculate outstanding (total cost not paid)
-        # total_revenue = payments_aggregates['total_revenue'] or 0
-        # total_cost = payments_aggregates['total_cost'] or 0
+        # total_revenue = payments_aggregates['total_revenue'] or Decimal('0')
+        # total_cost = payments_aggregates['total_cost'] or Decimal('0')
         # outstanding = round(float(total_cost) - float(total_revenue), 2)
 
 
@@ -150,7 +151,7 @@ class DashboardStatisticsAPIView(GenericAPIView):
             'patientsNew': patients_aggregates['patientsNew'],
             'appointmentsCount': appointment_aggregates['appointmentsCount'],
             'appointmentsCompleted': appointment_aggregates['appointmentsCompleted'],
-            'revenue': payments_aggregates['revenue'] or 0,
+            'revenue': payments_aggregates['revenue'] or 0.0,
             'outstanding': outstanding,
             # 'currency': payments_aggregates['currency']
         }

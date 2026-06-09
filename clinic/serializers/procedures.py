@@ -42,7 +42,7 @@ class ProceduresOptionsSerializer(serializers.Serializer):
         return [
             {'branchId': branch_id, 'name': name} 
                 for branch_id,name in Branch.objects\
-                .values_list('id', 'name').order_by('-isMain', 'name')
+                .values_list('id', 'name').order_by('name')
             ]
 
     @extend_schema_field(

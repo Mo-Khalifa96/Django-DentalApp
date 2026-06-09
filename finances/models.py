@@ -237,7 +237,7 @@ class Transaction(models.Model):
     class Meta: 
         db_table = 'Transactions'
         verbose_name_plural = 'Transactions'
-        ordering = ['-isDeleted', '-branch__isMain', 'branch__name', '-date', 'patient__name']
+        ordering = ['branch__name', '-date', 'patient__name']
 
     def __str__(self):
         return f'[{self.date}] {self.method} transaction -- {self.billDescription}'
@@ -307,7 +307,7 @@ class Invoice(models.Model):
 
     #snapshot fields to preserve fields when foreignkey is deleted (also will be shown to admin only)
     billDescription = models.CharField(max_length=300, blank=True, null=True)
-    patientName = models.CharField(max_length=255, blank=True, null=True)  #NOTE - patientNationalId --> take from patient object
+    patientName = models.CharField(max_length=255, blank=True, null=True)
     branchName = models.CharField(max_length=255, blank=True, null=True)
     treatmentTitle = models.CharField(max_length=255, blank=True, null=True)
 
@@ -325,7 +325,7 @@ class Invoice(models.Model):
     class Meta: 
         db_table = 'Invoices'
         verbose_name_plural = 'Invoices'
-        ordering = ['-isDeleted', '-branch__isMain', 'branch__name', 'issuedAt', 'submittedAt', 'patient__name']
+        ordering = ['branch__name', 'issuedAt', 'submittedAt', 'patient__name']
 
     def __str__(self):
         return self.invoiceNumber
@@ -348,7 +348,7 @@ class Invoice(models.Model):
             self.treatmentTitle = getattr(self.bill, 'treatmentTitle', None) or self.treatmentTitle
         
         #update dates based on status
-        if self.status == self.InvoiceStatusChoices.ISSUED:
+        if self.status == self.InvoiceStatusChoices.ISSUED and not self.issuedAt:
             self.issuedAt = timezone.localtime(timezone.now())
 
         elif self.status == self.InvoiceStatusChoices.SUBMITTED:

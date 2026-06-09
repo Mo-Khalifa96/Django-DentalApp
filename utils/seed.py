@@ -179,7 +179,7 @@ def seed_branches():
     branches = [Branch(**branch_data) for branch_data in BRANCH_DATA]
     Branch.objects.bulk_create(branches)
 
-    seeded_branches = list(Branch.objects.order_by('-isMain', 'name'))
+    seeded_branches = list(Branch.objects.order_by('name'))
     print(f'  Created {len(seeded_branches)} branches.')
     return seeded_branches
 

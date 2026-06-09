@@ -16,10 +16,6 @@ class BaseFilterSet(FilterSet):
         #get current request user 
         user = self.request.user 
 
-        # #skip admin
-        # if getattr(user, 'role', None) == 'admin':
-        #     return {'branch_filter': {}}  #no filtering
-
         #assign branch query (if provided)
         branchId = validate_uuid(self.request.query_params.get('branchId'))
 

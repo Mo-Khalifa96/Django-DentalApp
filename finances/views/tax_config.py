@@ -4,6 +4,7 @@ from users.permissions import AdminOnly
 from finances.models import ClinicalTaxConfig
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
+from rest_framework.exceptions import NotFound, ValidationError
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
 from finances.serializers.tax_config import (TaxConfigSerializer, CreateTaxConfigSerializer)
 
@@ -22,10 +23,21 @@ class ClinicTaxConfigAPIView(CreateAPIView, RetrieveUpdateAPIView):
 
     def get_object(self):
         user = self.request.user
-        branchId = self.request.query_params.get('branchId', None)  #TODO
+        branchId = self.request.query_params.get('branchId')
         if not branchId:
-            branchId = getattr(user, 'branch_id', None) #user.branch_id  #TODO
-        return get_object_or_404(ClinicalTaxConfig, branch_id=branchId)
+            branchId = getattr(user, 'branch_id', None)
+
+        #handle one-to-one relation to tax config or clinic without branches
+        branch_filter = {'branch_id': branchId} if branchId else {'branch': None}
+
+        try:
+            obj = get_object_or_404(ClinicalTaxConfig, **branch_filter)
+        except ClinicalTaxConfig.DoesNotExist:
+            raise NotFound(_('The requested tax configuration was not found or does not exist.'))
+        except ClinicalTaxConfig.MultipleObjectsReturned:
+            raise ValidationError(_('Clinic branch must be provided to determine the associated tax configuration.'))
+        
+        return obj
     
     def get_serializer_class(self):
         if self.request.method == 'POST':
