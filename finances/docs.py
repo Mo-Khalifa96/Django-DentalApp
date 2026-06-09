@@ -348,10 +348,10 @@ bills_options_schema = extend_schema_serializer(
         OpenApiExample(
             name='Response',
             description=(
-                f'Assign `branchId` to filter patient choices by branch, ',
-                f'assign `doctorId` to filter patient choices by `dentist` user, ',
-                f'and assign `patientId` to filter treatment and visit choices by patient.\n',
-                f'Empty query parameters return all choices across the system.'
+                'Assign `branchId` to filter patient choices by branch, '
+                'assign `doctorId` to filter patient choices by `dentist` user, '
+                'and assign `patientId` to filter treatment and visit choices by patient.\n'
+                'Empty query parameters return all choices across the system.'
             ),
             response_only=True,
             value={

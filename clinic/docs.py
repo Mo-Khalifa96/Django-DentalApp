@@ -10,7 +10,7 @@ dashboard_stats_schema = extend_schema_serializer(
             description=(
                 'Returns full statistics for the dashboard for Admin users and users with permission to view financial analytics.\n'
                 'Without date parameters, defaults to current-day / current-week / current-month windows.\n'
-                'Providing `dateRange` overrides the relevant aggregations to the specified range.\n\n',
+                'Providing `dateRange` overrides the relevant aggregations to the specified range.\n\n'
             ),
             response_only=True,
             value={
@@ -53,7 +53,7 @@ dashboard_stats_schema = extend_schema_serializer(
             description=(
                 'Returns statistics for the dashboard without financial analytics fields for users without the financial analytics permission.\n'
                 'Without date parameters, defaults to current-day / current-week / current-month windows.\n'
-                'Providing `dateRange` overrides the relevant aggregations to the specified range.\n\n',
+                'Providing `dateRange` overrides the relevant aggregations to the specified range.\n\n'
             ),
             response_only=True,
             value={

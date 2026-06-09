@@ -581,9 +581,9 @@ patient_recalls_options_schema = extend_schema_serializer(
         OpenApiExample(
             name='Response',
             description=(
-                f'Assign `branchId` to filter patient choices by branch ',
-                f'and assign `doctorId` to filter patient choices by `dentist` user.\n',
-                f'Empty query parameters return all choices across the system.'
+                'Assign `branchId` to filter patient choices by branch '
+                'and assign `doctorId` to filter patient choices by `dentist` user.\n'
+                'Empty query parameters return all choices across the system.'
             ),
             response_only=True,
             value={
