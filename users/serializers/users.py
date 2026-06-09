@@ -23,7 +23,7 @@ class ListUsersSerializer(serializers.ModelSerializer):
 
 
 #Create user serializer 
-class CreateUserSerializer(serializers.ModelSerializer, ValidateBranchMixin):
+class CreateUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     password2 = serializers.CharField(write_only=True)
     branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', queryset=Branch.objects.all(), required=False, allow_null=True)
@@ -35,6 +35,12 @@ class CreateUserSerializer(serializers.ModelSerializer, ValidateBranchMixin):
         read_only_fields = ['id', 'createdAt']
         extra_kwargs = {'specialization': {'required': False},  'avatar': {'required': False},
                         'branchIds': {'required': False}}
+
+    def validate_branchIds(self, branchIds):
+        if not branchIds:
+            if Branch.objects.exists():
+                raise serializers.ValidationError(_('At least one branch must be assigned to new user when at least one branch is registered. Please provide a branch ID to create an account.'))
+        return branchIds 
     
     def validate(self, data):
         '''Validates passwords during user creation.'''
@@ -307,5 +313,5 @@ class UsersOptionsSerializer(serializers.Serializer):
     ]
 )
 class SetActiveBranchSerializer(serializers.Serializer):
-    branchId = serializers.PrimaryKeyRelatedField(queryset=Branch.objects.all(), write_only=True, required=True)
+    branchId = serializers.PrimaryKeyRelatedField(queryset=Branch.objects.all(), write_only=True, required=True, allow_null=True)
     success = serializers.BooleanField(read_only=True)

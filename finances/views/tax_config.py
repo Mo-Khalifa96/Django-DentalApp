@@ -24,7 +24,7 @@ class ClinicTaxConfigAPIView(CreateAPIView, RetrieveUpdateAPIView):
         user = self.request.user
         branchId = self.request.query_params.get('branchId', None)  #TODO
         if not branchId:
-            branchId = user.branch_id  #TODO
+            branchId = getattr(user, 'branch_id', None) #user.branch_id  #TODO
         return get_object_or_404(ClinicalTaxConfig, branch_id=branchId)
     
     def get_serializer_class(self):

@@ -425,6 +425,9 @@ class TreatmentPlan(models.Model):
     installmentMonths = models.PositiveSmallIntegerField(choices=InstallmentMonthsChoices.choices, blank=True, null=True)
     sessions = models.PositiveSmallIntegerField(blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
+    
+    #snapshot field for if user is deleted
+    doctorName = models.CharField(max_length=255, blank=True, null=True)
 
     #Objects after filtering by manager
     objects = TreatmentPlansManager()
@@ -440,9 +443,12 @@ class TreatmentPlan(models.Model):
 
     def save(self, *args, **kwargs):
         #if creating treatment plan but not a doctor, assign doctor
-        if self._state.adding and self.patient and not self.doctor:
-            if self.patient.doctor:
-                self.doctor = self.patient.doctor 
+        if self._state.adding: 
+            if self.patient and not self.doctor:
+                if self.patient.doctor:
+                    self.doctor = self.patient.doctor 
+            if self.doctor:
+                self.doctorName = self.doctor.name
         #save changes 
         super().save(*args, **kwargs)
 

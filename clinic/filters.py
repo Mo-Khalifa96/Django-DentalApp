@@ -1,6 +1,7 @@
 from users.models import User
 from django.db.models import F
-from patients.models import Appointment
+from utils.filters import BaseFilterSet
+from patients.models import Patient, Appointment
 from clinic.models import Branch, Procedure, Inventory, Lab, LabOrder, WaitingRoom, SterilizationLog
 from django_filters.rest_framework import (FilterSet, CharFilter, ChoiceFilter, ModelChoiceFilter, 
                                            BooleanFilter, DateFilter)
@@ -8,7 +9,7 @@ from django_filters.rest_framework import (FilterSet, CharFilter, ChoiceFilter, 
 
 #FILTERSETS 
 #Dashboard/appointments filter
-class DashboardAppointmentsFilter(FilterSet):
+class DashboardAppointmentsFilter(FilterSet):   # BaseFilterSet
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
     doctorId = ModelChoiceFilter(field_name='doctor', queryset=User.objects.all())
     status = ChoiceFilter(choices=Appointment.AppointmentStatusChoices.choices)
@@ -16,12 +17,22 @@ class DashboardAppointmentsFilter(FilterSet):
     class Meta:
         model = Appointment
         fields = []
-
+    
     # def __init__(self, *args, **kwargs):
-    #     branch_id = kwargs.pop('branch_id', None)
     #     super().__init__(*args, **kwargs)
-    #     if branch_id:
-    #         doctors_queryset = User.objects.filter(branch_id=branch_id)
+    #     #get branch filter 
+    #     branch_filter = self.get_branch_filter()
+    #     if branch_filter is None:  
+    #         #if user has no branches and branches exist
+    #         self.filters['doctorId'].queryset = User.objects.none()
+    #         return
+        
+    #     available_branches_list = list(branch_filter.values())
+    #     if available_branches_list:
+    #         if isinstance(available_branches_list[0], list):
+    #             doctors_queryset = User.objects.filter(branches__id__in=available_branches_list[0])
+    #         else:
+    #             doctors_queryset = User.objects.filter(branches__id=available_branches_list[0])
     #     else:
     #         doctors_queryset = User.objects.all()
     #     self.filters['doctorId'].queryset = doctors_queryset
@@ -38,15 +49,15 @@ class ProceduresFilter(FilterSet):
 
 
 #Inventory filter 
-class InventoryFilter(FilterSet):
+class InventoryFilter(BaseFilterSet):
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
     lowStock = BooleanFilter(method='filter_low_stock')
-    category = ChoiceFilter()
+    category = ChoiceFilter(field_name='category')
 
     def filter_low_stock(self, queryset, name, value):
-        if value is True:
+        if value == True:
             return queryset.filter(currentStock__lt=F('minStock'))
-        elif value is False:
+        elif value == False:
             return queryset.filter(currentStock__gte=F('minStock'))
         return queryset
 
@@ -55,16 +66,33 @@ class InventoryFilter(FilterSet):
         fields = []
 
     def __init__(self, *args, **kwargs):
-        branch_id = kwargs.pop('branch_id', None)
         super().__init__(*args, **kwargs)
-        #Initialize category choices
+        #get branch filter 
+        branch_filter = self.get_branch_filter()
+        if branch_filter is None:
+            self.filters['category'].field.choices = []
+            return
+
         #filter by branch (if provided)
-        inventory_filter = {'branch_id': branch_id} if branch_id else None
-        available_categories = Inventory.objects.filter(**inventory_filter)\
+        available_categories = Inventory.objects.filter(**branch_filter)\
                 .values_list('category', flat=True).distinct().order_by('category')
 
         #populated filter field with the obtained choices
         self.filters['category'].field.choices = [(cat, cat) for cat in available_categories if cat]
+
+    #TODO - switch to charfield if choices aren't served properly
+    #Example:
+    # category = CharFilter(method='filter_category')
+
+    # def filter_category(self, queryset, name, value):
+    #     branch_filter = self.get_branch_filter()
+    #     if branch_filter is None:
+    #         return queryset.none()
+    #     valid_categories = Inventory.objects.filter(**branch_filter)\
+    #         .values_list('category', flat=True).distinct()
+    #     if value not in valid_categories:
+    #         return queryset.none()
+    #     return queryset.filter(category=value)
 
 
 #Labs filter 
@@ -78,9 +106,9 @@ class LabsFilter(FilterSet):
 
 #Lab orders filter
 class LabOrdersFilter(FilterSet):
-    labId = ModelChoiceFilter(field_name='lab', queryset=Branch.objects.all())
-    patientId = ModelChoiceFilter(field_name='patient', queryset=Branch.objects.all())
-    procedureId = ModelChoiceFilter(field_name='procedure', queryset=Branch.objects.all())
+    labId = ModelChoiceFilter(field_name='lab', queryset=Lab.objects.all())
+    patientId = ModelChoiceFilter(field_name='patient', queryset=Patient.objects.all())
+    procedureId = ModelChoiceFilter(field_name='procedure', queryset=Procedure.objects.all())
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
     status = ChoiceFilter(choices=LabOrder.OrderStatusChoices.choices)
     sentDate = DateFilter(field_name='sentDate', lookup_expr='exact')
@@ -91,6 +119,22 @@ class LabOrdersFilter(FilterSet):
     class Meta:
         model = LabOrder
         fields = []
+    
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     #get branch filter 
+    #     branch_filter = self.get_branch_filter()
+    #     if branch_filter is None:
+    #         #if user has no branches and branches exist
+    #         self.filters['labId'].queryset = Lab.objects.none()
+    #         self.filters['patientId'].queryset = Patient.objects.none()
+    #         self.filters['procedureId'].queryset = Procedure.objects.none()
+    #         return
+        
+    #     #filter by branch (if provided)
+    #     self.filters['labId'] = Lab.objects.filter(**branch_filter)
+    #     self.filters['patientId'] = Patient.objects.filter(**branch_filter)
+    #     self.filters['procedureId'] = Procedure.objects.filter(**branch_filter)
 
 
 #Sterilization logs filter 

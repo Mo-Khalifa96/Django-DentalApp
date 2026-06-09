@@ -1,7 +1,6 @@
 import logging
+from clinic.models import Branch
 from django.conf import settings
-from services.models import Message
-from clinic.models import Procedure, Inventory
 from rest_framework.permissions import BasePermission
 from django.core.exceptions import ImproperlyConfigured
 
@@ -9,29 +8,54 @@ from django.core.exceptions import ImproperlyConfigured
 #Initiate logger 
 logger = logging.getLogger(__name__)
 
+#Base permission class 
+class SystemBasePermission(BasePermission):
+    def has_permission(self, request, view):
+        #basic user authentication
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return True
+    
+    def has_object_permission(self, request, view, obj):
+        #admin gets full access
+        if request.user.role == 'admin':
+            return True 
+
+        #authenticate by branch for non-admins
+        if Branch.objects.exists():
+            if hasattr(obj, 'branch_id') and getattr(obj, 'branch_id', None):
+                return request.user.branches.filter(id=obj.branch_id).exists()
+
+            elif hasattr(getattr(obj, 'patient', None), 'branch_id'):
+                return request.user.branches.filter(id=obj.patient.branch_id).exists()
+            
+            elif hasattr(getattr(obj, 'doctor', None), 'branch_id'):
+                return request.user.branches.filter(id=obj.doctor.branch_id).exists()
+        
+        return True 
+        
 
 #Admin only permission
-class AdminOnly(BasePermission):
+class AdminOnly(SystemBasePermission):
     def has_permission(self, request, view):
-        if request.user and request.user.is_authenticated: 
+        #call parent's has_permission() for basic authentication
+        if super().has_permission(request, view):
             if request.user.role == 'admin':
                 return True 
-        return False 
+        return False
     
     def has_object_permission(self, request, view, obj):
         return self.has_permission(request, view)
 
 
 #Dentist only permission
-class DoctorSchedulePermissions(BasePermission):
+class DoctorSchedulePermissions(SystemBasePermission):
     def has_permission(self, request, view):
-        if request.user and request.user.is_authenticated:
-            if request.user.role not in ('admin', 'dentist'):
-                return False 
-            else:
-                return True
-        else:
-            return False
+        #call parent's has_permission() for basic authentication
+        if super().has_permission(request, view):
+            if request.user.role in ('admin', 'dentist'):
+                return True 
+        return False
 
     def has_object_permission(self, request, view, obj):
         if request.user.role == 'admin':
@@ -43,31 +67,28 @@ class DoctorSchedulePermissions(BasePermission):
         return False 
 
 
-#Admin or receptionist only permission -- for waiting room
-class WaitingRoomPermission(BasePermission):
+#Waiting room permission class
+class WaitingRoomPermission(SystemBasePermission):
     def has_permission(self, request, view):
-        if request.user or request.user.is_authenticated:
+        if super().has_permission(request, view):
             if request.user.role == 'admin' or \
              request.user.has_special_permission('view.waitingRoom'):
                 return True
         return False
     
     def has_object_permission(self, request, view, obj):
-        return self.has_permission(request, view)
+        return super().has_object_permission(request, view, obj)
 
 
 #Dentist of patient only permission
-class DentistOfPatientOnly(BasePermission):
+class DentistOfPatientOnly(SystemBasePermission):
     def has_permission(self, request, view):
-        if request.user and request.user.is_authenticated: 
-            if request.user.role not in ('admin', 'dentist'):
-                return False 
-            else:
-                return True
-        else:
-            return False 
+        if super().has_permission(request, view):
+            if request.user.role in ('admin', 'dentist'):
+                return True 
+        return False 
     
-    def has_object_permission(self, request, view, obj):
+    def has_object_permission(self, request, view, obj):        
         if request.user.role == 'admin':
             return True 
         if hasattr(obj, 'doctor'):
@@ -78,7 +99,7 @@ class DentistOfPatientOnly(BasePermission):
 
 
 #System user-specific permission class with view-level permission mapping
-class SystemUserPermissions(BasePermission):
+class SystemUserPermissions(SystemBasePermission):
     '''
     Generic permission class that gets the required permission from the view 
     and checks it against user assigned permissions.
@@ -86,12 +107,14 @@ class SystemUserPermissions(BasePermission):
 
     def has_permission(self, request, view):
         if settings.DEBUG:  #TODO - remove when ready
-            if  not hasattr(view, 'required_permission'):
+            if not hasattr(view, 'required_permission'):
                 raise ImproperlyConfigured('Permission class inapplicable to view:', view)
-            
-        if not request.user or not request.user.is_authenticated:
+        
+        #call parent's has_permission() for basic authentication
+        if not super().has_permission(request, view):
             return False
         
+        #admin always permitted 
         if request.user.role == 'admin':
             return True
     
@@ -99,10 +122,12 @@ class SystemUserPermissions(BasePermission):
         required_permission = getattr(view, 'required_permission', None)
         if required_permission:
             return request.user.has_special_permission(required_permission)
+        
         return False
     
     def has_object_permission(self, request, view, obj):
-        return self.has_permission(request, view)
+        #call parent's has_object_permission() for branch permission
+        return super().has_object_permission(request, view, obj)
 
 
 #Permissions subclass from SystemUserPermissions to control access to patients' data 
@@ -110,16 +135,19 @@ class PatientDataPermissions(SystemUserPermissions):
     def has_object_permission(self, request, view, obj):
         if request.user.role == 'admin':
             return True 
-        if request.user.role != 'dentist' or \
-         isinstance(obj, (Procedure, Inventory, Message)):
-            return True   #self.has_permission(request, view) -- already passed
 
-        if hasattr(obj, 'doctor'):
+        if request.user.role != 'dentist':
+            #return branch permission for non-admins/dentists
+            return super().has_object_permission(request, view, obj)
+
+        if hasattr(obj, 'doctor') and obj.doctor:
             return obj.doctor == request.user 
         elif hasattr(obj, 'patient') and obj.patient:
             return obj.patient.doctor == request.user
         else:
             #fallback to has_permission() check
-            logger.warning(f'Could not determine object permission for {obj}for request:\n{request}\n\nDefaulting to has_permission().')
+            # logger.warning(
+            #     f'Could not determine object permission for {obj}for request:\n',
+            #     f'{request}\n\nDefaulting to has_permission().')
             return self.has_permission(request, view)
 

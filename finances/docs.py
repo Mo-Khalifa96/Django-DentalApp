@@ -340,3 +340,38 @@ retrieve_bills_schema = extend_schema_serializer(
 #         )
 #     ]
 # )
+
+
+#Schema for bills options serializer
+bills_options_schema = extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            name='Response',
+            description=(
+                f'Assign `branchId` to filter patient choices by branch, ',
+                f'assign `doctorId` to filter patient choices by `dentist` user, ',
+                f'and assign `patientId` to filter treatment and visit choices by patient.\n',
+                f'Empty query parameters return all choices across the system.'
+            ),
+            response_only=True,
+            value={
+                'branchChoices': [
+                    {'branchId': '9ca1d622-94af-4ea5-b87a-bf9f6611d6ab', 'name': 'Main Branch'},
+                    {'branchId': '8ef5c0eb-ab95-4d13-a1b4-04f634534587', 'name': 'Heliopolis Branch'},
+                ],
+                'patientChoices': [
+                    {'patientId': '41f1c0fd-3b69-4289-9a8a-83eb205702c3', 'name': 'Ahmed Khaled'},
+                    {'patientId': 'ea0b1f0f-df7e-4a0a-9bb6-67ecfa1ecef4', 'name': 'Khaled Ahmed'},
+                ],
+                'patientTreatmentChoices': [
+                    {'treatmentId': '41f1c0fd-3b69-4289-9a8a-83eb205702c3'},
+                    {'treatmentId': 'ea0b1f0f-df7e-4a0a-9bb6-67ecfa1ecef4'},
+                ],
+                'patientVisitChoices': [
+                    {'visitId': '41f1c0fd-3b69-4289-9a8a-83eb205702c3'},
+                    {'visitId': 'ea0b1f0f-df7e-4a0a-9bb6-67ecfa1ecef4'},
+                ],
+            }
+        )
+    ]
+) 

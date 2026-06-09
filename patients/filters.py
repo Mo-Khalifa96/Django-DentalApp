@@ -1,27 +1,31 @@
 from users.models import User
 from clinic.models import Branch
+from utils.filters import BaseFilterSet
 from patients.models import Patient, Visit, Appointment, TreatmentPlan, PatientRecall
 from django_filters.rest_framework import (CharFilter, FilterSet, ChoiceFilter, ModelChoiceFilter, DateFilter)
 
 
 #FILTERSETS 
 #Patients filter
-class PatientsFilter(FilterSet):
+class PatientsFilter(BaseFilterSet):
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
     status = ChoiceFilter(choices=[('active', 'active'), ('inactive', 'inactive')])
-    insurance = ChoiceFilter()
+    insurance = ChoiceFilter(choices=[])
 
     class Meta:
         model = Patient
         fields = []
 
     def __init__(self, *args, **kwargs):
-        branch_id = kwargs.pop('branch_id', None)
         super().__init__(*args, **kwargs)
-        #Initialize insurance choices for insurance filter
+        #get branch filter 
+        branch_filter = self.get_branch_filter()
+        if branch_filter is None:
+            self.filters['insurance'].field.choices = []
+            return
+        
         #filter by branch (if provided)
-        insurance_filter = {'branch_id': branch_id} if branch_id else {}
-        insurance_providers = Patient.objects.filter(**insurance_filter)\
+        insurance_providers = Patient.objects.filter(**branch_filter)\
                 .values_list('insurance', flat=True)\
                 .distinct().order_by('insurance')
         
@@ -41,7 +45,7 @@ class VisitsFilter(FilterSet):
 
 
 #Appointments filter 
-class AppointmentsFilter(FilterSet):
+class AppointmentsFilter(BaseFilterSet):
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
     status = ChoiceFilter(choices=Appointment.AppointmentStatusChoices.choices)
     date = DateFilter(field_name='date', lookup_expr='exact')
@@ -55,18 +59,20 @@ class AppointmentsFilter(FilterSet):
         fields = []
 
     def __init__(self, *args, **kwargs):
-        branch_id = kwargs.pop('branch_id', None)
         super().__init__(*args, **kwargs)
+        #get branch filter 
+        branch_filter = self.get_branch_filter()
+        if branch_filter is None:
+            self.filters['patientName'].field.choices = []
+            self.filters['doctorName'].field.choices = []
+            return
 
         #filter by branch (if provided)
-        patients_filter = {'branch_id': branch_id} if branch_id else {}
-        users_filters = {'role': 'dentist', 'branch_id': branch_id} if branch_id else {'role': 'dentist'}
-        
-        #fetch available choices
-        patient_names = Patient.objects.filter(**patients_filter)\
+        #Get patient names list
+        patient_names = Patient.objects.filter(**branch_filter)\
                 .values_list('name', flat=True).distinct().order_by('name')
         #Get doctor names list
-        doctor_names = User.objects.filter(**users_filters)\
+        doctor_names = User.objects.filter(**branch_filter, role__in=['dentist', 'admin'])\
             .values_list('name', flat=True).distinct().order_by('name')
      
         #populated filter fields with the obtained choices

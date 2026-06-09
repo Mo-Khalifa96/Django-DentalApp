@@ -3,13 +3,13 @@ from patients.models import Patient, Visit
 from rest_framework import status, generics
 from rest_framework.response import Response
 from patients.filters import PatientsFilter
-from utils.mixins import BranchToFilterMixin
 from users.utils import get_required_permission
+from utils.filters import CustomOrderingFilter
 from rest_framework.filters import SearchFilter
 from patients.docs import get_dentalchart_schema
 from users.permissions import PatientDataPermissions
 from rest_framework.permissions import IsAuthenticated
-from utils.filters import CustomDjangoFilterBackend, CustomOrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
 from patients.serializers.patients import (ListPatientSerializer, RetrievePatientSerializer, 
                                            CreatePatientSerializer, UpdatePatientSerializer, 
@@ -20,14 +20,14 @@ from patients.serializers.patients import (ListPatientSerializer, RetrievePatien
 #PATIENTS API VIEWS
 #List/Create patients API view 
 @extend_schema(tags=['Patients'])
-class ListCreatePatientsAPIView(FilterListCreateAPIView, BranchToFilterMixin):
+class ListCreatePatientsAPIView(FilterListCreateAPIView):
     #queryset = Patient.objects.all()
     permission_classes = [PatientDataPermissions]
     ordering = ['branch__name', 'name']  #default order of fields
     ordering_fields = ['name', 'lastVisit', 'nextAppointment', 'createdAt']  #sorting fields
     search_fields = ['name', 'phone', 'email']  #search fields
     filterset_class = PatientsFilter  #filters by status, insurance, and branch
-    filter_backends = [CustomDjangoFilterBackend, SearchFilter, CustomOrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, CustomOrderingFilter]
 
     def initial(self, request, *args, **kwargs):
         #determine required permission
@@ -79,8 +79,7 @@ class RetrieveUpdateDeletePatientAPIView(RetrieveUpdateDeleteAPIView):
     def get_serializer_class(self):
         if self.request.method in ('PUT', 'PATCH'):
             return UpdatePatientSerializer
-        else:
-            return RetrievePatientSerializer
+        return RetrievePatientSerializer
 
     def destroy(self, request, *args, **kwargs):
         patient = self.get_object()

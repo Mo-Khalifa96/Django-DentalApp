@@ -12,7 +12,7 @@ class Command(BaseCommand):
                          num_plans=60,
                          num_recalls=60,
                          num_lab_orders=40,
-                         num_bills=80, 
+                         num_bills=70, 
                          num_invoices=100,
                          num_transactions=100,
                          num_waiting_room=10,

@@ -10,6 +10,10 @@ from django.db.models.signals import m2m_changed
 #Signal for updating visit's cost upon billing
 @receiver(m2m_changed, sender=Bill.visits.through)
 def update_visit_costs(sender, instance, action, pk_set, **kwargs):
+    '''
+    Signal to calculate visit cost after bills are issued.\n
+    Helps when a several bills are issued on the same day (i.e. for a single visit).
+    '''
     if action in ('post_add', 'post_remove', 'post_clear'):
         #calculate cost for each affected visit
         for visit in instance.visits.all():
@@ -18,21 +22,29 @@ def update_visit_costs(sender, instance, action, pk_set, **kwargs):
             #save cost update
             visit.save(update_fields=['cost'])
 
-#NOTE:
-#For the above signal to work, you have to trigger by 
-# creating/updating manually, as in:
-# def create(self, validated_data):
-#     visits = validated_data.pop('visits', [])
-#     bill = Bill.objects.create(**validated_data)
-#     bill.visits.set(visits)   #triggers m2m_changed signal
-#     return bill
 
-# def update(self, instance, validated_data):
-#     visits = validated_data.pop('visits', None)
-#     instance = super().update(instance, validated_data)
-#     if visits is not None:
-#         instance.visits.set(visits)   #triggers m2m_changed signal
-#     return instance
+#or, if you want to set visit costs to 0 after being removed 
+# while editing Bill
+# @receiver(m2m_changed, sender=Bill.visits.through)
+# def update_visit_costs(sender, instance, action, pk_set, **kwargs):
+#     if action == 'pre_clear':
+#         #capture visits before they are removed
+#         instance._visits_to_update = list(instance.visits.values_list('id', flat=True))
+
+#     elif action == 'post_clear':
+#         #recalculate cost for visits that were just removed
+#         visit_ids = getattr(instance, '_visits_to_update', [])
+#         for visit in Visit.objects.filter(id__in=visit_ids):
+#             visit.cost = Bill.objects.filter(visits=visit)\
+#                 .aggregate(totalCost=Coalesce(Sum('totalAmount'), Decimal('0')))['totalCost']
+#             visit.save(update_fields=['cost'])
+
+#     elif action in ('post_add', 'post_remove'):
+#         for visit in instance.visits.all():
+#             visit.cost = Bill.objects.filter(visits=visit)\
+#                 .aggregate(totalCost=Coalesce(Sum('totalAmount'), Decimal('0')))['totalCost']
+#             visit.save(update_fields=['cost'])
+
 
 #Signal for updating visit's paid amount after a transaction
 @receiver(post_save, sender=Transaction)

@@ -62,9 +62,3 @@ class Message(models.Model):
             self.errorMessage = str(exc)
             self.errorCode = str(exc.error_code) if exc.error_code else None
             self.save(update_fields=['status', 'errorMessage', 'errorCode']) 
-
-
-
-#PATIENT RECALL MODEL
-class PatientRecall(models.Model):
-    pass

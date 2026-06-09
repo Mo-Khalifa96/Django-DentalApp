@@ -8,12 +8,13 @@ from rest_framework.response import Response
 from users.utils import get_required_permission
 from patients.filters import AppointmentsFilter
 from rest_framework.filters import SearchFilter
+from utils.filters import CustomOrderingFilter
+from utils.mixins import BranchToSerializerMixin
 from users.permissions import PatientDataPermissions
 from rest_framework.permissions import IsAuthenticated
+from django_filters.rest_framework import DjangoFilterBackend
 from services.whatsapp.tasks import schedule_appointment_reminder
-from utils.mixins import BranchToFilterMixin, BranchToSerializerMixin
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
-from utils.filters import CustomOrderingFilter, CustomDjangoFilterBackend
 from patients.serializers.appointments import (AppointmentSerializer, RetrieveAppointmentSerializer,
                                               CreateAppointmentSerializer, UpdateAppointmentSerializer,
                                               CancelAppointmentSerializer, AppointmentOptionsSerializer)
@@ -22,13 +23,13 @@ from patients.serializers.appointments import (AppointmentSerializer, RetrieveAp
 #APPOINTMENTS API VIEWS
 #List appointments API view 
 @extend_schema(tags=['Appointments'])
-class ListCreateAppointmentsAPIView(FilterListCreateAPIView, BranchToFilterMixin):
+class ListCreateAppointmentsAPIView(FilterListCreateAPIView):
     permission_classes = [PatientDataPermissions]
     ordering = ['branch__name', '-date', 'startTime', 'endTime']  #default order of fields
     ordering_fields = ['date', 'startTime', 'endTime', 'status']  
     search_fields = ['patient__name', 'doctor__name', 'procedure__name', 'room']
     filterset_class = AppointmentsFilter
-    filter_backends = [CustomDjangoFilterBackend, CustomOrderingFilter, SearchFilter]
+    filter_backends = [DjangoFilterBackend, CustomOrderingFilter, SearchFilter]
 
     def initial(self, request, *args, **kwargs):
         self.required_permission = get_required_permission('appointments', request, self)

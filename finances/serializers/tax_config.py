@@ -4,7 +4,7 @@ from utils.mixins import UserPermissionsMixin
 from finances.models import ClinicalTaxConfig
 from django.utils.translation import gettext_lazy as _
 
-#TODO - have to use a queryparam for branch
+
 #Tax clinic configurations serializer -- base serializer for retrieval and update
 class TaxConfigSerializer(UserPermissionsMixin, serializers.ModelSerializer):
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
@@ -16,7 +16,7 @@ class TaxConfigSerializer(UserPermissionsMixin, serializers.ModelSerializer):
         read_only_fields = ['id', 'branchId']
 
 
-#TODO - have to use a queryparam for branch
+
 #Create clinic tax configurations serializer    
 class CreateTaxConfigSerializer(TaxConfigSerializer):
     branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)

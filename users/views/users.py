@@ -78,6 +78,22 @@ class RetrieveUpdateDeleteUserAPIView(RetrieveUpdateDeleteAPIView):
         return Response({}, status=status.HTTP_204_NO_CONTENT)
     
 
+#API view for serving choices data 
+@extend_schema(
+    tags=['Users'],
+    parameters=[
+        OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+    ]
+)
+class RetrieveUsersOptionsAPIView(generics.GenericAPIView):
+    queryset = User.objects.all()
+    serializer_class = UsersOptionsSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        return Response(self.get_serializer(instance={}).data, status=status.HTTP_200_OK)
+
+
 #Set active branch API view 
 @extend_schema(tags=['Users'])
 class SetActiveBranchAPIView(generics.GenericAPIView):
@@ -105,18 +121,33 @@ class SetActiveBranchAPIView(generics.GenericAPIView):
         return Response({'success': True}, status=status.HTTP_200_OK)
 
 
-#API view for serving choices data 
-@extend_schema(
-    tags=['Users'],
-    parameters=[
-        OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
-    ]
-)
-class RetrieveUsersOptionsAPIView(generics.GenericAPIView):
+
+#Proposed alternative for setting and unsetting branch (need to review relevant endpoints)
+@extend_schema(tags=['Users'])
+class Alternative_SetActiveBranchAPIView(generics.GenericAPIView):
     queryset = User.objects.all()
-    serializer_class = UsersOptionsSerializer
+    serializer_class = SetActiveBranchSerializer
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, *args, **kwargs):
-        return Response(self.get_serializer(instance={}).data, status=status.HTTP_200_OK)
+    def post(self, request, *args, **kwargs):
+        #get current user and branch
+        user = request.user
+        if 'branchId' not in request.data.keys():
+            raise ValidationError({'branchId': _('Branch ID is required.')})
+
+        #Verify branch exists
+        branchId = request.data.get('branchId')
+        if branchId in (None, ''):
+            active_branch = None
+        else:
+            active_branch = get_object_or_404(Branch.objects.only('id'), id=branchId)
+
+            #Verify branch belongs to the user
+            if not user.branches.filter(id=branchId).exists():
+                raise PermissionDenied(_('Permission denied. You do not belong to this branch.'))
+        
+        #Assign active branch
+        user.branch = active_branch
+        user.save(update_fields=['branch', 'updatedAt'])
+        return Response({'success': True}, status=status.HTTP_200_OK)
 

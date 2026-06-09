@@ -46,7 +46,6 @@ class ClinicalTaxConfig(models.Model):
         return f'{self.clinicName} -- {self.taxId or self.commercialReg}'
 
 
-
 #Bills Manager (allows soft deleting)
 class BillManager(models.Manager):
     #Overriding get_query to filter out soft-deleted bills
@@ -77,15 +76,15 @@ class Bill(models.Model):
     visits = models.ManyToManyField('patients.Visit', related_name='visit_bills', db_index=True)
     #Many-to-One relationships to Patient, TreatmentPlan, Branch (i.e., many bills, one patient/treatment/visit/branch)
     patient = models.ForeignKey('patients.Patient', related_name='patient_bills', on_delete=models.SET_NULL, null=True, db_index=True)
-    treatment = models.ForeignKey('patients.TreatmentPlan', related_name='treatment_bills', on_delete=models.SET_NULL, null=True, db_index=True)
+    treatment = models.ForeignKey('patients.TreatmentPlan', related_name='treatment_bills', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
     branch =  models.ForeignKey('clinic.Branch', related_name='branch_bills', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
     
     #bill fields
     description = models.CharField(max_length=300)
     discount = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal(0), validators=[MinValueValidator(0)])
     subtotal = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
-    totalAmount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])  #NOTE - on serializer, rename to 'total'
-    totalPaid = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)], blank=True, null=True) #NOTE - backend only; for determining annotated status
+    totalAmount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)], blank=True)
+    totalPaid = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)], blank=True, null=True)  #NOTE: backend only field
     currency = models.CharField(max_length=5, blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
@@ -108,7 +107,7 @@ class Bill(models.Model):
     class Meta: 
         db_table = 'Bills'
         verbose_name_plural = 'Bills'
-        ordering = ['-isDeleted', '-branch__isMain', 'branch__name', '-updatedAt']
+        ordering = ['branch__name', '-updatedAt']
 
     def __str__(self):
         return self.description
@@ -131,23 +130,49 @@ class Bill(models.Model):
 
     #Model function to auto-generate invoices from a bill
     @classmethod
-    def generate_invoice(cls, billId):   
-        #TODO - handle billId validation in the serializer
-        #Identify bill by ID
-        bill = cls.objects.get(id=billId)
+    def generate_invoice(cls, bill):   
+        # #Identify bill by ID
+        # bill = cls.objects.get(id=billId)
         
         #Generate invoice for bill
-        return Invoice.objects.create(
-            bill=bill,
-            patient=bill.patient,
-            branch=bill.branch,
-            subtotal=bill.subtotal,
-            discount=bill.discount,
-            total=bill.totalAmount,
-            currency=bill.currency,
-            status=Invoice.InvoiceStatusChoices.ISSUED,
-        )
+        invoice = Invoice.objects\
+            .update_or_create(
+                bill=bill,
+                patient=bill.patient,
+                branch=bill.branch,
+                subtotal=bill.subtotal,
+                discount=bill.discount,
+                total=bill.totalAmount,
+                currency=bill.currency,
+                status=Invoice.InvoiceStatusChoices.ISSUED,
+            )
+        
+        # if bill.treatment:
+        #     treatment_items = bill.treatment.treatment_items.all()
+        #     if treatment_items.exists():  #TODO -- this relation better exists between Bill and Invoice (bill items)
+        #         invoice_items = []
+        #         procedure_ids = treatment_items.values_list('procedure_id', flat=True)
+        #         for item in treatment_items.distinct('procedure_id'):
+                    
+        #             quantity = procedure_ids.count(item.procedure_id)
+        #             unitPrice = item.price  #TODO -- this may conflict with procedure price on its respective model
+        #             total = quantity*unitPrice
+        #             description = getattr(item.procedure, 'name', item.procedureName)
 
+        #             invoice_items.append(
+        #                 InvoiceItem(
+        #                     invoice=invoice,
+        #                     description=description,
+        #                     quantity=quantity,
+        #                     unitPrice=unitPrice,
+        #                     total=total
+        #                 )
+        #             )
+                
+        #         #bulk create invoice items 
+        #         Invoice.objects.bulk_create(invoice_items)
+               
+        return invoice[0]
 
 
 #Transactions Manager 

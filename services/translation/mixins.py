@@ -40,8 +40,7 @@ class LanguageFromQueryMixin:
 #     → LanguageFromQueryMixin       # ← inserted here
 #       → ResponseMixin
 #         → generics.ListCreateAPIView
-#           → BranchToFilterMixin
-#             → APIView
+#            → APIView
 
 
 #########################

@@ -15,7 +15,7 @@ from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
 from utils.pagination import DashboardAppointmentsPagination
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
-from utils.mixins import BranchToFilterMixin, BranchToSerializerMixin, FilterByBranchMixin
+from utils.mixins import BranchToSerializerMixin, FilterByBranchMixin
 from clinic.serializers.dashboard import (DashboardStatisticsSerializer, DashboardAppointmentTodaySerializer, 
                                         DashboardQueryParamSerializer, DashboardOptionsSerializer)
 
@@ -51,15 +51,22 @@ class DashboardStatisticsAPIView(GenericAPIView):
         dateRange = queryparam_serializer.validated_data.get('dateRange')
         branchId = queryparam_serializer.validated_data.get('branchId')
 
-        #Filter by user's branch if non-admin
-        if not branchId and getattr(request.user, 'role', None) != 'admin':
-            branch = getattr(request.user, 'branch', None)
-            branchId = branch.id if branch else None
+        #Filter by branchId (if provided) or user's branch if non-admin
+        user = request.user
+        if branchId:
+            branch_filter = Q(branch_id=branchId)
+        elif getattr(user, 'role', None) == 'admin'\
+         or not Branch.objects.exists():
+            branch_filter = Q()
+        elif getattr(user, 'branch_id', None):
+            branch_filter = Q(branch_id=user.branch_id)
+        else:
+            #fallback
+            branch_ids = user.branches.values_list('id', flat=True)
+            branch_filter = Q(branch_id__in=branch_ids) if branch_ids else Q()
+            
 
         #COMPUTE REQUIRED DATA 
-
-        #Fetch model data by branch (if provided)
-        branch_filter = Q(branch_id=branchId) if branchId else Q()
 
         #get all necessary querysets
         appointments = Appointment.objects.only('id', 'patient', 'date', 'branch').filter(branch_filter).exclude(status='cancelled')
@@ -157,7 +164,7 @@ class DashboardStatisticsAPIView(GenericAPIView):
 
 #Dashboard Appointments Today API View
 @extend_schema(tags=['Dashboard'])
-class DashboardAppointmentTodayAPIView(FilterByBranchMixin, generics.ListAPIView, BranchToFilterMixin):
+class DashboardAppointmentTodayAPIView(FilterByBranchMixin, generics.ListAPIView):  #No finalize response mixin
     serializer_class = DashboardAppointmentTodaySerializer
     permission_classes = [SystemUserPermissions]
     required_permission = 'view.calender'

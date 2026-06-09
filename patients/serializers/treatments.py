@@ -50,7 +50,7 @@ class CreateTreatmentPlanSerializer(TreatmentPlanSerializer):
         items = data.get('treatment_items', [])
         totalCost = data.get('totalCost')
         total_from_prices = Decimal(str(sum(float(item['price']) for item in items if items)))
-        if total_from_prices != totalCost or round(float(total_from_prices),2) != round(float(totalCost),2):
+        if total_from_prices != totalCost or round(total_from_prices,2) != round(totalCost,2):
             logger.error(f'\n\nFRONTEND BUG: Total cost provided does not match treatment prices total! Total provided: {totalCost} - Total calculated: {total_from_prices}\n\n')
             data['totalCost'] = total_from_prices
         return data
@@ -119,7 +119,7 @@ class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
             #re-calculate total cost if not provided
             totalCost_new = Decimal(str(sum(float(item['price']) for item in items if items)))
             totalCost = data.get('totalCost', totalCost_new)
-            if totalCost_new != totalCost or round(float(totalCost_new),2) != round(float(totalCost),2):
+            if totalCost_new != totalCost or round(totalCost_new,2) != round(totalCost,2):
                 logger.error(f'\n\nFRONTEND BUG: Total cost provided does not match treatment prices total! Total provided: {totalCost} - Total calculated: {totalCost_new}\n\n')
             data['totalCost'] = totalCost
         return data

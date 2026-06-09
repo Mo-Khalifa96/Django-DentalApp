@@ -1,5 +1,6 @@
 
 from clinic.models import Branch
+from utils.validators import validate_uuid
 from users.models import User, DoctorSchedule, DoctorScheduleException
 from django_filters.rest_framework import (FilterSet, ChoiceFilter, ModelChoiceFilter, 
                                            DateFilter, BooleanFilter)
@@ -30,10 +31,15 @@ class DoctorSchedulesFilter(FilterSet):
         fields = []
 
     # def __init__(self, *args, **kwargs):
-    #     branch_id = kwargs.pop('branch_id', None)
     #     super().__init__(*args, **kwargs)
-    #     if branch_id:
-    #         doctors_queryset = User.objects.filter(branch_id=branch_id)
+    #     if not self.request or not hasattr(self.request, 'user'):
+    #         return None
+        
+    #     branchId = validate_uuid(self.request.query_params.get('branchId'))
+    #     if branchId:
+    #         doctors_queryset = User.objects.filter(branches__id=branchId)
     #     else:
     #         doctors_queryset = User.objects.all()
+        
+    #     #assign queryset based on above filtering
     #     self.filters['doctorId'].queryset = doctors_queryset

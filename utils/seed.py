@@ -478,6 +478,7 @@ def seed_treatment_plans(patients, doctors, procedures, num_plans=60):
             TreatmentPlanItem(
                 treatmentPlan=plan,
                 procedure=item['procedure'],
+                procedureName=item['procedure'].name,
                 toothNumber=item['toothNumber'],
                 price=item['price'],
                 session=item['session'],
@@ -637,7 +638,7 @@ def seed_clinical_tax_configs(branches):
     return list(ClinicalTaxConfig.all_objects.all())
 
 
-def seed_bills(visits, treatments, num_bills=80):
+def seed_bills(visits, treatments, num_bills=70):
     '''
     Create bills individually so that Bill.save() fires and snapshots patient/branch data.
     Bill.visits is a ManyToManyField, so visits are attached after the bill is saved.
@@ -668,6 +669,7 @@ def seed_bills(visits, treatments, num_bills=80):
             k=random.randint(1, min(3, len(patient_visits)))
         )
 
+        treatment = random.choice(treatments) if random.random() < 0.6 else None
         subtotal = Decimal(str(round(random.uniform(100, 3000), 2)))
         discount = (
             Decimal(str(round(random.uniform(0, float(subtotal) * 0.2), 2)))
@@ -677,7 +679,7 @@ def seed_bills(visits, treatments, num_bills=80):
 
         bill = Bill(
             patient=patient,
-            treatment=random.choice(treatments) if random.random() < 0.4 else None,
+            treatment=treatment,
             branch=patient.branch,
             description=faker.text(max_nb_chars=150),
             subtotal=subtotal,
@@ -745,7 +747,7 @@ def seed_invoices(bills, patients, num_invoices=100):
     for bill, _ in zip_longest(list(bills), range(num_invoices)):
         if bill:
             #auto-generate invoice from bill
-            Bill.generate_invoice(billId=bill.id)
+            Bill.generate_invoice(bill=bill)
             count += 1
             continue
         
@@ -940,7 +942,7 @@ def seed_sterilization_logs(branches, users, num_logs=50):
 @transaction.atomic
 def run_seed(num_users=10, num_patients=80, num_visits=150,
              num_appointments=120, num_plans=60, num_recalls=60, 
-             num_lab_orders=40, num_bills=80, num_invoices=100, num_transactions=100,
+             num_lab_orders=40, num_bills=70, num_invoices=100, num_transactions=100,
              num_waiting_room=10, num_schedule_exceptions=30, num_sterilization_logs=50):
 
     print('\n', '=' * 50)
@@ -1029,7 +1031,7 @@ if __name__ == '__main__':
                      num_plans=60,
                      num_recalls=60,
                      num_lab_orders=40,
-                     num_bills=80, 
+                     num_bills=70, 
                      num_invoices=100,
                      num_transactions=100,
                      num_waiting_room=10,

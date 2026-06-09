@@ -26,7 +26,7 @@ class ListDoctorsSchedulesAPIView(ListAPIView):
     permission_classes = [SystemUserPermissions]
     required_permission = 'view.doctorSchedules'
     ordering = ['branch__name', 'doctor__name']
-    search_fields = ['doctor__name']
+    search_fields = ['doctor__name', 'branch__name']
     filterset_class = DoctorSchedulesFilter
     filter_backend = [DjangoFilterBackend, SearchFilter]
 
@@ -60,9 +60,9 @@ class CRUD_DoctorScheduleAPIView(CreateAPIView, RetrieveUpdateDeleteAPIView):
 
     def get_doctor(self):
         doctor = get_object_or_404(User.objects.only('id'),
-                  id=self.kwargs.get('doctorId'))  #TODO - might revise this logic altogether
+                  id=self.kwargs.get('doctorId'))
         #check object permission and return doctor object
-        if self.request.method != 'POST':
+        if self.request.method != 'POST':  #not on POST
             self.check_object_permissions(self.request, doctor)
         return doctor
 
@@ -79,7 +79,7 @@ class CRUD_DoctorScheduleAPIView(CreateAPIView, RetrieveUpdateDeleteAPIView):
 
         #a doctor can only create their own schedule (admin is exempted)
         if request.user.role != 'admin' and request.user.id != doctor.id:
-            raise PermissionDenied
+            raise PermissionDenied(_('Permission denied. You do not have permission to perform this action.'))
         
         #verify the present doctor doesn't already have a schedule
         if DoctorSchedule.objects.filter(doctor_id=doctor.id).exists():
@@ -113,7 +113,7 @@ class CreateScheduleExceptionAPIView(CreateAPIView):
         
         #a doctor can only create their own exception (admin is exempted)
         if request.user.role != 'admin' and request.user.id != doctor.id:
-            raise PermissionDenied
+            raise PermissionDenied(_('Permission denied. You do not have permission to perform this action.'))
 
         #call the parent create() method to create exception
         return super().create(request, *args, **kwargs)

@@ -36,7 +36,7 @@ class RetrieveUpdateLabSerializer(LabSerializer):
 
 #SERIALIZERS FOR LAB ORDERS 
 #Lab orders serializer -- base serializer
-class LabOrderSerializer(serializers.ModelSerializer, ValidateBranchMixin):
+class LabOrderSerializer(serializers.ModelSerializer):
     labId = serializers.PrimaryKeyRelatedField(source='lab', queryset=Lab.objects.all())
     patientId = serializers.PrimaryKeyRelatedField(source='patient', queryset=Patient.objects.all())
     procedureId = serializers.PrimaryKeyRelatedField(source='procedure', queryset=Procedure.objects.all())
@@ -52,7 +52,7 @@ class LabOrderSerializer(serializers.ModelSerializer, ValidateBranchMixin):
 
 
 #Create lab order serializer
-class CreateLabOrderSerializer(LabOrderSerializer):
+class CreateLabOrderSerializer(LabOrderSerializer, ValidateBranchMixin):
     class Meta(LabOrderSerializer.Meta):
         fields = ['id', 'labId', 'labName', 'patientId', 'patientName', 'procedureId', 'procedureName', 'toothNumber', 
                   'instructions', 'sentDate', 'dueDate', 'receivedDate', 'deliveredDate', 'status', 'cost', 'currency',

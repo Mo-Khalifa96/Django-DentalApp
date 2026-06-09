@@ -4,11 +4,12 @@ from rest_framework import status, generics
 from rest_framework.response import Response
 from clinic.filters import InventoryFilter
 from rest_framework.filters import SearchFilter
+from utils.filters import CustomOrderingFilter
 from users.utils import get_required_permission
 from users.permissions import SystemUserPermissions
 from rest_framework.permissions import IsAuthenticated
-from utils.mixins import BranchToFilterMixin, BranchToSerializerMixin
-from utils.filters import CustomDjangoFilterBackend, CustomOrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
+from utils.mixins import BranchToSerializerMixin
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
 from clinic.serializers.inventory import (InventorySerializer, CreateInventoryItemSerializer,
                                         UpdateInventorySerializer, InventoryOptionsSerializer)
@@ -17,12 +18,12 @@ from clinic.serializers.inventory import (InventorySerializer, CreateInventoryIt
 #INVENTORY API VIEWS 
 #List/Create inventory API view 
 @extend_schema(tags=['Inventory'])
-class ListCreateInventoryAPIViews(FilterListCreateAPIView, BranchToFilterMixin):
+class ListCreateInventoryAPIViews(FilterListCreateAPIView):
     permission_classes = [SystemUserPermissions]
     ordering = ['branch__name', 'name']
     search_fields = ['name', 'category', 'unit']
     filterset_class = InventoryFilter
-    filter_backends = [CustomDjangoFilterBackend, SearchFilter, CustomOrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, CustomOrderingFilter]
 
     def initial(self, request, *args, **kwargs):
         self.required_permission = get_required_permission('inventory', request, self)

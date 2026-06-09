@@ -66,8 +66,8 @@ class PatientRecallsOptionsSerializer(serializers.Serializer):
         branchId = self.context.get('branchId')
         doctorId = self.context.get('doctorId') 
         
-        if (not branchId and Branch.objects.exists()) and not doctorId:
-            return []
+        # if (not branchId and Branch.objects.exists()) and not doctorId:
+        #     return []
         
         filters = {}
         if branchId:

@@ -3,6 +3,7 @@ from clinic.models import Branch
 from rest_framework import serializers
 from patients.models import Appointment
 from utils.mixins import UserPermissionsMixin
+from utils.validators import validate_uuid
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 from clinic.docs import dashboard_stats_schema, dashboard_options_schema
@@ -41,8 +42,9 @@ class DashboardQueryParamSerializer(serializers.Serializer):
     
     def validate_branchId(self, branchId):
         user = self.context.get('request').user
-        if branchId and getattr(user, 'role', None) != 'admin':
-            if (not user.branch and Branch.objects.exists()) or (user.branch.id != branchId):
+        if validate_uuid(branchId) and getattr(user, 'role', None) != 'admin':
+            if getattr(user, 'branch_id', None)  != branchId or\
+             not user.branches.filter(id=branchId).exists():
                 raise serializers.ValidationError(_('Invalid branch ID. You do not have access to this branch.'))
         return branchId
 

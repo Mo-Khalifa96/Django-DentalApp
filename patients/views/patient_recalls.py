@@ -2,11 +2,13 @@ from utils.base_views import *
 from users.models import User
 from clinic.models import Branch
 from patients.models import PatientRecall
+from utils.validators import validate_uuid
 from rest_framework import status, generics
 from rest_framework.response import Response
 from users.utils import get_required_permission
 from utils.filters import CustomOrderingFilter
 from rest_framework.filters import SearchFilter
+from utils.mixins import BranchToSerializerMixin
 from patients.filters import PatientRecallsFilter
 from users.permissions import SystemUserPermissions
 from rest_framework.exceptions import ValidationError
@@ -99,30 +101,20 @@ class UpdateDeletePatientRecallAPIView(UpdateAPIView, DeleteAPIView):
         OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
     ]
 )
-class RetrievePatientRecallsOptionsAPIView(generics.GenericAPIView):
+class RetrievePatientRecallsOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
     queryset = PatientRecall.objects.all()
     serializer_class = PatientRecallsOptionsSerializer
     permission_classes = [IsAuthenticated]
 
     def get_serializer_context(self):
-        context = super().get_serializer_context()
+        context = super().get_serializer_context()  #get branchId and add doctorId
         #add doctor and branch ids to serializer context (if provided)
-        doctorId = self.request.query_params.get('doctorId', None)
-        branchId = self.request.query_params.get('branchId', None)
-
+        doctorId = validate_uuid(self.request.query_params.get('doctorId', None))
         if doctorId:
-            if not User.objects.filter(id=doctorId, role='dentist').exists():
+            if not User.objects.filter(id=doctorId, role__in=['dentist', 'admin']).exists():
                 raise ValidationError({'doctorId': _("User not found or not registered as 'dentist'.")})
-
-        if branchId:
-            try:
-                Branch.objects.get(id=branchId)
-            except Branch.DoesNotExist:
-                raise ValidationError({'branchId': _('Branch was not found or does not exist.')})
-
-        #add doctor and branch ids        
+        #add doctor to serializer context   
         context['doctorId'] = doctorId
-        context['branchId'] = branchId
         return context
 
     def get(self, request, *args, **kwargs):
