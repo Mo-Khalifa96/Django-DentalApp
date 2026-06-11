@@ -48,11 +48,10 @@ class VisitsFilter(FilterSet):
 class AppointmentsFilter(BaseFilterSet):
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
     status = ChoiceFilter(choices=Appointment.AppointmentStatusChoices.choices)
+    doctorName = ChoiceFilter(field_name='doctor__name')
     date = DateFilter(field_name='date', lookup_expr='exact')
     startDate = DateFilter(field_name='date', lookup_expr='gte')
     endDate = DateFilter(field_name='date', lookup_expr='lte')
-    patientName = ChoiceFilter(field_name='patient__name')
-    doctorName = ChoiceFilter(field_name='doctor__name')
 
     class Meta:
         model = Appointment
@@ -63,20 +62,15 @@ class AppointmentsFilter(BaseFilterSet):
         #get branch filter 
         branch_filter = self.get_branch_filter()
         if branch_filter is None:
-            self.filters['patientName'].field.choices = []
             self.filters['doctorName'].field.choices = []
             return
 
         #filter by branch (if provided)
-        #Get patient names list
-        patient_names = Patient.objects.filter(**branch_filter)\
-                .values_list('name', flat=True).distinct().order_by('name')
         #Get doctor names list
         doctor_names = User.objects.filter(**branch_filter, role__in=['dentist', 'admin'])\
             .values_list('name', flat=True).distinct().order_by('name')
      
         #populated filter fields with the obtained choices
-        self.filters['patientName'].field.choices = [(cat, cat) for cat in patient_names if cat]
         self.filters['doctorName'].field.choices = [(cat, cat) for cat in doctor_names if cat]        
 
 

@@ -59,7 +59,7 @@ list_bills_schema = extend_schema_serializer(
                     'hasNext': True, 
                     'hasPrev': False,
                 },
-                "links": {
+                'links': {
                     'next': 'api/bills/?page=3',
                     'previous': 'api/bills/?page=1'
                 },
@@ -73,7 +73,6 @@ list_bills_schema = extend_schema_serializer(
                         'view.inventory': True,
                         'view.labs': False,
                         'view.labOrders': True,
-                        'view.bills': False,
                         'view.transactions': False,
                         'view.invoices': False,
                         'view.doctorSchedules': True,
@@ -83,6 +82,7 @@ list_bills_schema = extend_schema_serializer(
                         'view.financialAnalytics': False,
                         'view.settings': False,
                         'view.preferences': True,
+                        'view.bills': False,
                         'create.bill': True,
                         'update.bill': False,
                         'delete.bill': False
@@ -147,13 +147,13 @@ list_bills_schema = extend_schema_serializer(
                 ],
                 'pagination': {
                     'page': 2,
-                    'limit': 25,  #TODO
+                    'limit': 25,
                     'total': 120,
                     'totalPages': 5,
                     'hasNext': True, 
                     'hasPrev': False,
                 },
-                "links": {
+                'links': {
                     'next': 'api/bills/?page=3',
                     'previous': 'api/bills/?page=1'
                 },
@@ -167,16 +167,16 @@ list_bills_schema = extend_schema_serializer(
                         'view.inventory': True,
                         'view.labs': True,
                         'view.labOrders': True,
-                        'view.bills': True,
-                        'view.transactions': False,
+                        'view.transactions': True,
                         'view.invoices': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': True,
                         'view.clinicalAnalytics': True,
-                        'view.financialAnalytics': False,
+                        'view.financialAnalytics': True,
                         'view.settings': True,
                         'view.preferences': True,
+                        'view.bills': True,
                         'create.bill': True,
                         'update.bill': True,
                         'delete.bill': True
@@ -226,7 +226,6 @@ retrieve_bills_schema = extend_schema_serializer(
                         'view.inventory': True,
                         'view.labs': False,
                         'view.labOrders': True,
-                        'view.bills': False,
                         'view.transactions': False,
                         'view.invoices': False,
                         'view.doctorSchedules': True,
@@ -236,6 +235,7 @@ retrieve_bills_schema = extend_schema_serializer(
                         'view.financialAnalytics': False,
                         'view.settings': False,
                         'view.preferences': True,
+                        'view.bills': False,
                         'create.bill': True,
                         'update.bill': False,
                         'delete.bill': False
@@ -283,16 +283,16 @@ retrieve_bills_schema = extend_schema_serializer(
                         'view.inventory': True,
                         'view.labs': True,
                         'view.labOrders': True,
-                        'view.bills': True,
-                        'view.transactions': False,
+                        'view.transactions': True,
                         'view.invoices': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': True,
                         'view.clinicalAnalytics': True,
-                        'view.financialAnalytics': False,
+                        'view.financialAnalytics': True,
                         'view.settings': True,
                         'view.preferences': True,
+                        'view.bills': True,
                         'create.bill': True,
                         'update.bill': True,
                         'delete.bill': True
@@ -375,3 +375,208 @@ bills_options_schema = extend_schema_serializer(
         )
     ]
 ) 
+
+
+
+#List transactions schema 
+list_transactions_schema = extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            name='Non-Admin Response',
+            description='Response without snapshot fields for non-admin users.',
+            response_only=True,
+            value={
+                'success': True,
+                'data': [
+                    {
+                        'id': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                        'billId': 'd4e5f6a7-4567-8901-defa-4567890123de',
+                        'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
+                        'patientName': 'Ahmed Khaled',
+                        'visitId': 'c3d4e5f6-3456-7890-cdef-3456789012cd',
+                        'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
+                        'date': '2026-04-24',
+                        'amount': '250.00',
+                        'currency': 'USD',
+                        'method': 'Card',
+                        'note': '',
+                    },
+                    {
+                        'id': '4gb96g75-6828-5673-c4gd-3d4f66bgb7g7',
+                        'billId': 'd5f5f6b7-4567-8901-aeca-7912190321da',
+                        'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
+                        'patientName': 'Khaled Ahmed',
+                        'visitId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
+                        'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
+                        'date': '2026-05-01',
+                        'amount': '300.00',
+                        'currency': 'USD',
+                        'method': 'Cash',
+                        'note': '',
+                    },
+                ],
+                'pagination': {
+                    'page': 2,
+                    'limit': 25,
+                    'total': 150,
+                    'totalPages': 6,
+                    'hasNext': True, 
+                    'hasPrev': False,
+                },
+                'links': {
+                    'next': 'api/transactions/?page=3',
+                    'previous': 'api/transactions/?page=1'
+                },
+                'metadata': {
+                    'userPermissions': {
+                        'view.calender': True,
+                        'view.waitingRoom': True,
+                        'view.patients': True,
+                        'view.appointments': True,
+                        'view.procedures': True,
+                        'view.inventory': True,
+                        'view.labs': False,
+                        'view.labOrders': True,
+                        'view.bills': False,
+                        'view.invoices': False,
+                        'view.doctorSchedules': True,
+                        'view.sterilizationLogs': True,
+                        'view.recalls': True,
+                        'view.clinicalAnalytics': True,
+                        'view.financialAnalytics': False,
+                        'view.settings': False,
+                        'view.preferences': True,
+                        'view.transactions': False,
+                        'create.transaction': True,
+                        'delete.transaction': False
+                    }
+                }
+            }
+        ),
+        OpenApiExample(
+            name='Admin Response',
+            response_only=True,
+            description='Admin response includes additional details, snapshot fields, and isDeleted flag.',
+            value={
+                'success': True,
+                'data': [
+                    {
+                        'id': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                        'billId': 'd4e5f6a7-4567-8901-defa-4567890123de',
+                        'billDescription': 'Full mouth rehabilitation - Session 1',
+                        'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
+                        'patientName': 'Ahmed Khaled',
+                        'visitId': 'c3d4e5f6-3456-7890-cdef-3456789012cd',
+                        'treatmentTitle': 'Full Mouth Rehabilitation',
+                        'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
+                        'branchName': 'Main Branch',
+                        'date': '2026-04-24',
+                        'amount': '250.00',
+                        'currency': 'USD',
+                        'method': 'Card',
+                        'note': '',
+                        'createdBy': 'Dr. Layla Hassan',
+                        'isDeleted': False,
+                    },
+                    {
+                        'id': '4gb96g75-6828-5673-c4gd-3d4f66bgb7g7',
+                        'billId': 'd5f5f6b7-4567-8901-aeca-7912190321da',
+                        'billDescription': 'Routine checkup and scaling',
+                        'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
+                        'patientName': 'Khaled Ahmed',
+                        'visitId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
+                        'treatmentTitle': None,
+                        'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
+                        'branchName': 'Main Branch',
+                        'date': '2026-05-01',
+                        'amount': '300.00',
+                        'currency': 'USD',
+                        'method': 'Cash',
+                        'note': '',
+                        'createdBy': 'Dr. Layla Hassan',
+                        'isDeleted': False,
+                    },
+                ],
+                'pagination': {
+                    'page': 2,
+                    'limit': 25,
+                    'total': 150,
+                    'totalPages': 6,
+                    'hasNext': True, 
+                    'hasPrev': False,
+                },
+                'links': {
+                    'next': 'api/transactions/?page=3',
+                    'previous': 'api/transactions/?page=1'
+                },
+                'metadata': {
+                    'userPermissions': {
+                        'view.calender': True,
+                        'view.waitingRoom': True,
+                        'view.patients': True,
+                        'view.appointments': True,
+                        'view.procedures': True,
+                        'view.inventory': True,
+                        'view.labs': True,
+                        'view.labOrders': True,
+                        'view.bills': True,
+                        'view.invoices': True,
+                        'view.doctorSchedules': True,
+                        'view.sterilizationLogs': True,
+                        'view.recalls': True,
+                        'view.clinicalAnalytics': True,
+                        'view.financialAnalytics': False,
+                        'view.settings': True,
+                        'view.preferences': True,
+                        'view.transactions': True,
+                        'create.transaction': True,
+                        'delete.transaction': True
+                    }
+                }
+            }
+        ),
+    ]
+)
+
+
+#Schema for transactions options serializer
+transactions_options_schema = extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            name='Response',
+            description=(
+                'Assign `branchId` to filter bill and patient choices by branch, '
+                'assign `doctorId` to filter bill and patient choices by `dentist` user, '
+                'and assign `patientId` to filter visit choices by patient.\n'
+                'Empty query parameters return all choices across the system.'
+            ),
+            response_only=True,
+            value={
+                'branchChoices': [
+                    {'branchId': '9ca1d622-94af-4ea5-b87a-bf9f6611d6ab', 'name': 'Main Branch'},
+                    {'branchId': '8ef5c0eb-ab95-4d13-a1b4-04f634534587', 'name': 'Heliopolis Branch'},
+                ],
+                'billChoices': [
+                    {'billId': 'd4e5f6a7-4567-8901-defa-4567890123de'},
+                    {'billId': 'd5f5f6b7-4567-8901-aeca-7912190321da'}
+                ],
+                'patientChoices': [
+                    {'patientId': '41f1c0fd-3b69-4289-9a8a-83eb205702c3', 'name': 'Ahmed Khaled'},
+                    {'patientId': 'ea0b1f0f-df7e-4a0a-9bb6-67ecfa1ecef4', 'name': 'Khaled Ahmed'},
+                ],
+                'patientVisitChoices': [
+                    {'visitId': '41f1c0fd-3b69-4289-9a8a-83eb205702c3'},
+                    {'visitId': 'ea0b1f0f-df7e-4a0a-9bb6-67ecfa1ecef4'},
+                ],
+                'paymentMethodChoices': [
+                    {'value': 'cash', 'label': 'Cash'},
+                    {'value': 'card', 'label': 'Card'},
+                    {'value': 'bank_transfer', 'label': 'Bank transfer'},
+                    {'value': 'insurance', 'label': 'Insurance'},
+                    {'value': 'mobile_wallent', 'label': 'Mobile wallet'}
+                ],
+            }
+        )
+    ]
+) 
+

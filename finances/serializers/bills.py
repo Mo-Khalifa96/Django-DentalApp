@@ -8,8 +8,7 @@ from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 from patients.models import Patient, TreatmentPlan, Visit
 from utils.mixins import UserPermissionsMixin, ValidateBranchMixin
-from finances.docs import list_bills_schema, retrieve_bills_schema
-from finances.docs import bills_options_schema
+from finances.docs import list_bills_schema, retrieve_bills_schema, bills_options_schema
 
 
 #Initiate logger 
@@ -286,6 +285,7 @@ class AutogenerateInvoiceSerializer(serializers.ModelSerializer):
         return invoice
 
 
+#Bills options serializer
 @bills_options_schema
 class BillsOptionsSerializer(serializers.Serializer):
     branchChoices = serializers.SerializerMethodField()

@@ -64,8 +64,11 @@ class FilterByBranchMixin:
         user = self.request.user
         # branchId_qp = self.request.query_params.get('branchId')
 
-        #filter queryset by the user's current active branch
-        if getattr(user, 'branch_id', None):
+        #filter queryset by the user's associated branch or current active branch
+        if user.branches.count() == 1:
+            return queryset.filter(**{branch_field: user.branches.first().id})
+
+        elif getattr(user, 'branch_id', None):
             return queryset.filter(**{branch_field: user.branch_id})
         
         #return data filtered by all the branches the user belong to

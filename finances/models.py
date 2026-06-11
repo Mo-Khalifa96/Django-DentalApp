@@ -225,6 +225,7 @@ class Transaction(models.Model):
     billDescription = models.CharField(max_length=300, blank=True, null=True)
     branchName = models.CharField(max_length=255, blank=True, null=True)
     treatmentTitle = models.CharField(max_length=255, blank=True, null=True)
+    createdBy = models.CharField(max_length=255, blank=True, null=True)
     isDeleted = models.BooleanField(default=False)   #Soft delete field
 
     #Objects after filtering by manager
@@ -312,6 +313,7 @@ class Invoice(models.Model):
     patientName = models.CharField(max_length=255, blank=True, null=True)
     branchName = models.CharField(max_length=255, blank=True, null=True)
     treatmentTitle = models.CharField(max_length=255, blank=True, null=True)
+    issuedBy = models.CharField(max_length=255, blank=True, null=True)
 
     #backend fields
     createdAt = models.DateTimeField(auto_now_add=True)

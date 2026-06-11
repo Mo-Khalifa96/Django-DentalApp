@@ -29,12 +29,16 @@ from finances.serializers.bills import (BillSerializer, CreateBillSerializer,
 class ListCreateBillsAPIView(FilterListCreateAPIView):
     permission_classes = [PatientDataPermissions]
     ordering = ['branchName', '-updatedAt']
-    ordering_fields = ['patientName', 'branchName', 'subtotal', 'totalAmount', 'status', 'createdAt', 'updatedAt']
-    search_fields = ['description', 'patientName', 'branchName', 'createdBy']
+    ordering_fields = ['patientName', 'branchName', 'subtotal', 'totalAmount', 'status', 
+                       'createdAt', 'updatedAt', 'createdBy']
+    search_fields = ['description', 'patientName', 'branchName']
     filterset_class = BillsFilter
     filter_backends = [DjangoFilterBackend, SearchFilter, CustomOrderingFilter]
 
     def initial(self, request, *args, **kwargs):
+        #add `createdBy` and `treatmentTitle` to admin's search fields
+        if getattr(request.user, 'role', None) == 'admin':
+            self.search_fields = ['description', 'patientName', 'branchName', 'treatmentTitle', 'createdBy']
         #determine required permission
         self.required_permission = get_required_permission('bills', request, self)
         super().initial(request, *args, **kwargs)
@@ -122,7 +126,7 @@ class AutogenerateInvoiceAPIView(CreateAPIView):
     lookup_field = 'id'
 
 
-#API View for serving choice options for treatment plan creation / updates
+#API View for serving choice options for bills
 @extend_schema(
     tags=['Payments and Billing'],
     parameters=[

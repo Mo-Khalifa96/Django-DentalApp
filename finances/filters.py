@@ -13,6 +13,7 @@ class BillsFilter(FilterSet):  #BaseFilterSet
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
     patientId = ModelChoiceFilter(field_name='patient', queryset=Patient.objects.all())
     status = ChoiceFilter(choices=[('unpaid', 'unpaid'), ('partial', 'partial'), ('paid', 'paid')])
+    date = DateFilter(field_name='createdAt', lookup_expr='date')
     isDeleted = BooleanFilter(method='filter_deleted')
 
     class Meta:
@@ -39,3 +40,21 @@ class BillsFilter(FilterSet):  #BaseFilterSet
     #     self.filters['patientId'] = Patient.objects.filter(**branch_filter)
 
 
+#Transactions filter
+class TransactionsFilter(FilterSet):
+    billId = ModelChoiceFilter(field_name='bill', queryset=Bill.objects.all())
+    branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
+    patientId = ModelChoiceFilter(field_name='patient', queryset=Patient.objects.all())
+    date = DateFilter(field_name='date', lookup_expr='exact')
+    isDeleted = BooleanFilter(method='filter_deleted')
+
+    def filter_deleted(self, queryset, name, value):
+        if value == False:
+            return queryset.filter(isDeleted=False)
+        elif value == True:
+            return queryset.filter(isDeleted=True)
+        return queryset
+
+    class Meta:
+        model = Transaction
+        fields = []

@@ -26,6 +26,8 @@ class BaseFilterSet(FilterSet):
         elif getattr(user, 'role', None) == 'admin'\
          or not Branch.objects.exists():
             return {}  #no filtering
+        elif user.branches.count() == 1:
+            return {'branch_id': user.branches.first().id}
         elif getattr(user, 'branch_id', None):
             #use current user's active branch
             return {'branch_id': user.branch_id}
