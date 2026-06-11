@@ -20,6 +20,7 @@ django.setup()
 from django.db.models import F
 from django.db import transaction
 from django.utils import timezone
+from django.test.utils import override_settings
 from patients.validators import FDI_PERMANENT
 from users.models import User, DoctorSchedule, DoctorScheduleException
 from finances.models import ClinicalTaxConfig, Bill, Transaction, Invoice, InvoiceItem
@@ -940,6 +941,7 @@ def seed_sterilization_logs(branches, users, num_logs=50):
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 @transaction.atomic
+@override_settings(PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'])
 def run_seed(num_users=10, num_patients=80, num_visits=150,
              num_appointments=120, num_plans=60, num_recalls=60, 
              num_lab_orders=40, num_bills=70, num_invoices=100, num_transactions=100,

@@ -6,6 +6,7 @@ from patients.models import Patient, DentalChart
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 from utils.mixins import UserPermissionsMixin, ValidateBranchMixin
+from services.translation.serializers import TranslatedChoiceField
 from patients.docs import (create_patient_schema, update_patient_schema, patients_options_schema, 
                             dentalchart_options_schema)
 
@@ -14,6 +15,7 @@ from patients.docs import (create_patient_schema, update_patient_schema, patient
 #Serializer for creating new patient
 @create_patient_schema
 class CreatePatientSerializer(serializers.ModelSerializer, ValidateBranchMixin):
+    gender = TranslatedChoiceField(choices=Patient.GenderChoices.choices)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(),
                                                   required=False, allow_null=True)
 
@@ -23,11 +25,10 @@ class CreatePatientSerializer(serializers.ModelSerializer, ValidateBranchMixin):
                   'bloodType', 'allergies', 'insurance', 'insuranceId', 'notes', 'status', 'branchId', 
                   'createdAt', 'updatedAt']
         read_only_fields = ['id', 'status', 'createdAt', 'updatedAt']
-        extra_kwargs = {
-            'email': {'required': False}, 'address': {'required': False}, 'bloodType': {'required': False}, 
-            'nationalId': {'required': False}, 'allergies': {'required': False}, 'insurance': {'required': False}, 
-            'insuranceId': {'required': False}, 'notes': {'required': False}, 'branchId': {'required': False}
-        }
+        extra_kwargs = {field: {'required': False} for field in
+                ('email', 'address', 'bloodType', 'nationalId', 'allergies', 'insurance',
+                 'insuranceId', 'notes', 'branchId')
+            }
     
     def validate_countryCode(self, countryCode):
         if not countryCode:
@@ -49,6 +50,7 @@ class CreatePatientSerializer(serializers.ModelSerializer, ValidateBranchMixin):
 
 #Serializer for patient listing 
 class ListPatientSerializer(serializers.ModelSerializer): 
+    gender = TranslatedChoiceField(choices=Patient.GenderChoices.choices)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     phone = serializers.SerializerMethodField()  
 
@@ -66,6 +68,7 @@ class ListPatientSerializer(serializers.ModelSerializer):
 
 #Serializer for retrieving patient details 
 class RetrievePatientSerializer(UserPermissionsMixin, serializers.ModelSerializer): 
+    gender = TranslatedChoiceField(choices=Patient.GenderChoices.choices)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     phone = serializers.SerializerMethodField()  
 
@@ -83,6 +86,8 @@ class RetrievePatientSerializer(UserPermissionsMixin, serializers.ModelSerialize
 #Serializer for updating patient details 
 @update_patient_schema
 class UpdatePatientSerializer(serializers.ModelSerializer):
+    status = TranslatedChoiceField(choices=Patient.StatusChoices.choices, required=False)
+
     class Meta:
         model = Patient
         fields = ['id', 'name', 'countryCode', 'phone', 'address', 'nationalId', 'bloodType', 
@@ -263,8 +268,10 @@ class DentalChartOptionsSerializer(serializers.Serializer):
 #Other
 #Serializer for creating new patient upon creating new appointment
 class NewPatientSerializer(serializers.ModelSerializer, ValidateBranchMixin):
+    gender = TranslatedChoiceField(choices=Patient.GenderChoices.choices)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(),
                                                 required=False, allow_null=True)
+
     class Meta:
         model = Patient
         fields = ['id', 'name', 'age', 'gender', 'countryCode', 'phone', 'branchId', 'createdAt']

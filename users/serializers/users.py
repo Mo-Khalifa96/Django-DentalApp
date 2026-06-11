@@ -3,19 +3,21 @@ from clinic.models import Branch
 from urllib.parse import urlparse
 from django.db import transaction
 from rest_framework import serializers
+from utils.mixins import UserPermissionsMixin
 from django.core.exceptions import ValidationError
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
-from utils.mixins import UserPermissionsMixin, ValidateBranchMixin
 from django.contrib.auth.password_validation import validate_password
 from users.docs import permissions_field_schema, retrieve_user_schema, update_user_schema, users_options_schema
 from utils.swagger_utils import extend_schema_serializer, OpenApiExample
+from services.translation.serializers import TranslatedChoiceField
 
 
 #USERS SERIALIZERS
 #List users serializer 
 class ListUsersSerializer(serializers.ModelSerializer):
     branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', read_only=True)
+    role = TranslatedChoiceField(choices=User.UserRoles.choices, read_only=True)
 
     class Meta:
         model = User
@@ -27,6 +29,7 @@ class CreateUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     password2 = serializers.CharField(write_only=True)
     branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', queryset=Branch.objects.all(), required=False, allow_null=True)
+    role = TranslatedChoiceField(choices=User.UserRoles.choices, required=True)
 
     class Meta:
         model = User
@@ -92,6 +95,7 @@ class RetrieveUserSerializer(UserPermissionsMixin, serializers.ModelSerializer):
     avatar = serializers.ImageField(use_url=True, read_only=True)
     branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', read_only=True)
     activeBranchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
+    role = TranslatedChoiceField(choices=User.UserRoles.choices, read_only=True)
 
     class Meta: 
         model = User
@@ -123,6 +127,7 @@ class UpdateUserSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField(use_url=True, required=False, allow_empty_file=True)
     permissions = serializers.DictField(child=serializers.BooleanField(required=False), required=False, allow_empty=True)
     branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', queryset=Branch.objects.all(), required=False, allow_null=True)
+    role = TranslatedChoiceField(choices=User.UserRoles.choices, required=False)
 
     class Meta:
         model = User

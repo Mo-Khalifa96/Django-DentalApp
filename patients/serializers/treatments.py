@@ -7,8 +7,9 @@ from clinic.models import Branch, Procedure
 from utils.mixins import UserPermissionsMixin
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
-from patients.models import TreatmentPlan, TreatmentPlanItem
 from patients.docs import treatmentplans_options_schema
+from patients.models import TreatmentPlan, TreatmentPlanItem
+from services.translation.serializers import TranslatedChoiceField
 
 
 #Initiate logger 
@@ -19,6 +20,8 @@ logger = logging.getLogger(__name__)
 #Treatment plan items serializer --  Nested serializer
 class TreatmentPlanItemsSerializer(serializers.ModelSerializer):
     procedureId = serializers.PrimaryKeyRelatedField(source='procedure', queryset=Procedure.objects.all())
+    status = TranslatedChoiceField(choices=TreatmentPlanItem.ItemStatusChoices.choices,
+                                   required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = TreatmentPlanItem
@@ -30,7 +33,10 @@ class TreatmentPlanItemsSerializer(serializers.ModelSerializer):
 class TreatmentPlanSerializer(UserPermissionsMixin, serializers.ModelSerializer):
     patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
     items = TreatmentPlanItemsSerializer(many=True, source='treatment_items', required=True, allow_empty=False)
-
+    status = TranslatedChoiceField(choices=TreatmentPlan.TreatmentStatusChoices.choices,
+                                   required=False, allow_blank=True, allow_null=True)
+    installmentMonths = TranslatedChoiceField(choices=TreatmentPlan.InstallmentMonthsChoices.choices, 
+                                              required=False, allow_blank=True, allow_null=True)
     class Meta:
         model = TreatmentPlan
         fields = ['id', 'patientId', 'title', 'status', 'items', 'currency', 'totalCost', 
@@ -51,7 +57,7 @@ class CreateTreatmentPlanSerializer(TreatmentPlanSerializer):
         totalCost = data.get('totalCost')
         total_from_prices = Decimal(str(sum(float(item['price']) for item in items if items)))
         if total_from_prices != totalCost or round(total_from_prices,2) != round(totalCost,2):
-            logger.error(f'\n\nFRONTEND BUG: Total cost provided does not match treatment prices total! Total provided: {totalCost} - Total calculated: {total_from_prices}\n\n')
+            logger.error(f'\nFRONTEND BUG: Total cost provided does not match treatment prices total! Total provided: {totalCost} - Total calculated: {total_from_prices}\n')
             data['totalCost'] = total_from_prices
         return data
 
@@ -93,6 +99,9 @@ class CreateTreatmentPlanSerializer(TreatmentPlanSerializer):
 
 #Subclass from treatment plan items serializer for updating items --  Nested serializer
 class UpdateTreatmentPlanItemsSerializer(TreatmentPlanItemsSerializer):
+    status = TranslatedChoiceField(choices=TreatmentPlanItem.ItemStatusChoices.choices,
+                                   required=False, allow_blank=False, allow_null=False)
+
     class Meta(TreatmentPlanItemsSerializer.Meta):
         fields = ['id', 'procedureId', 'procedureName', 'toothNumber', 'price', 'session', 'status', 'notes']
         read_only_fields = ['id', 'procedureName']
@@ -104,6 +113,10 @@ class UpdateTreatmentPlanItemsSerializer(TreatmentPlanItemsSerializer):
 #Update treatment plan serializer 
 class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
     items = UpdateTreatmentPlanItemsSerializer(many=True, source='treatment_items', required=False, allow_empty=False)
+    status = TranslatedChoiceField(choices=TreatmentPlan.TreatmentStatusChoices.choices,
+                                   required=False, allow_blank=False, allow_null=False)
+    installmentMonths = TranslatedChoiceField(choices=TreatmentPlan.InstallmentMonthsChoices.choices, 
+                                              required=False, allow_blank=False, allow_null=False)
 
     class Meta(TreatmentPlanSerializer.Meta):
         fields = ['id', 'patientId', 'title', 'status', 'items', 'totalCost', 'installmentMonths', 'sessions']
@@ -225,3 +238,4 @@ class TreatmentPlanOptionsSerializer(serializers.Serializer):
             {'value': tooth[0], 'label': tooth[1]}
              for tooth in TEETH_CHOICES
         ]
+

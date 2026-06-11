@@ -5,6 +5,7 @@ from patients.models import Patient, PatientRecall
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 from patients.docs import patient_recalls_options_schema
+from services.translation.serializers import TranslatedChoiceField
 
 
 #SERIALIZERS FOR PATIENT RECALLS
@@ -13,6 +14,9 @@ class PatientRecallSerializer(serializers.ModelSerializer):
     patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
     patientName = serializers.CharField(source='patient.name', read_only=True)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
+    type = TranslatedChoiceField(choices=PatientRecall.RecallTypeChoices.choices)
+    status = TranslatedChoiceField(choices=PatientRecall.RecallStatusChoices.choices,
+                                   required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = PatientRecall
@@ -33,6 +37,10 @@ class CreatePatientRecallSerializer(PatientRecallSerializer, ValidateBranchMixin
 
 #Update patient recall serializer
 class UpdatePatientRecallSerializer(PatientRecallSerializer):
+    type = TranslatedChoiceField(choices=PatientRecall.RecallTypeChoices.choices, required=False)
+    status = TranslatedChoiceField(choices=PatientRecall.RecallStatusChoices.choices,
+                                   required=False, allow_blank=False, allow_null=False)
+
     class Meta(PatientRecallSerializer.Meta):
         fields = ['id', 'patientId', 'patientName', 'phone', 'type', 'dueDate', 'notes', 
                   'status', 'contactedAt', 'branchId', 'updatedAt']

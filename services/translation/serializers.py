@@ -14,7 +14,7 @@ class TranslatedChoiceField(serializers.ChoiceField):
 
     def to_representation(self, value):
         #self.choices automatically hands translation when using models.TextChoices
-        return str(self.choices.get(value, value))  #TODO - confirm untranslated choices will pass fine too
+        return str(self.choices.get(value, value)) 
 
     def to_internal_value(self, data):
         #Accept original (english) labels automatically

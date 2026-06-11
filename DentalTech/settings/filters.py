@@ -3,6 +3,16 @@ import psutil
 import logging
 
 
+#Custom logging formatter
+class LogsFormatter(logging.Formatter):
+    def format(self, record):
+        formatted = super().format(record)
+        separator = f'\n\n{"=" * 60}\n\n' if record.levelno >= logging.ERROR else f'\n{"—" * 40}\n'
+        return f'{formatted}\n{separator}'
+
+
+
+#Custom filters
 #Custom filter to exclude web-crawler 404 requests
 class RequestsFilter(logging.Filter):
     ALLOWED_PATHS = [  #TODO
@@ -141,3 +151,5 @@ class DjangoQFilter(logging.Filter):
             return False
 
         return True
+
+

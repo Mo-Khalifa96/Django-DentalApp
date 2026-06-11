@@ -5,8 +5,9 @@ from clinic.models import Branch, Procedure
 from utils.mixins import UserPermissionsMixin
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
-from patients.serializers.patients import NewPatientSerializer
 from patients.models import Patient, Appointment, Visit
+from patients.serializers.patients import NewPatientSerializer
+from services.translation.serializers import TranslatedChoiceField
 from patients.docs import appointments_options_schema, cancel_appointment_schema
 
 
@@ -17,7 +18,9 @@ class AppointmentSerializer(serializers.ModelSerializer):
     patientName = serializers.CharField(source='patient.name', read_only=True)
     doctorId = serializers.PrimaryKeyRelatedField(source='doctor', queryset=User.objects.all())
     procedureId = serializers.PrimaryKeyRelatedField(source='procedure', queryset=Procedure.objects.all())
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)   
+    status = TranslatedChoiceField(choices=Appointment.AppointmentStatusChoices.choices, required=False, allow_blank=True, allow_null=True)
+    type = TranslatedChoiceField(choices=Visit.VisitTypeChoices.choices)
 
     class Meta:
         model = Appointment
@@ -78,8 +81,14 @@ class CreateAppointmentSerializer(AppointmentSerializer):
         #validate branch
         if not branch:
             user = self.context['request'].user
-            if user.branch:
+            if user.branches.count() == 1:
+                branch = user.branches.first()
+                data['branch'] = branch
+            elif user.branch:  #TODO -- do the lookup using `id` 
                 branch = user.branch
+                data['branch'] = branch
+            elif doctor and doctor.branches.count() == 1:
+                branch = doctor.branches.first()
                 data['branch'] = branch
             elif doctor and doctor.branch:
                 branch = doctor.branch
@@ -124,8 +133,11 @@ class CreateAppointmentSerializer(AppointmentSerializer):
 
 #Update appointment serializer
 class UpdateAppointmentSerializer(AppointmentSerializer):
+    doctorId = serializers.PrimaryKeyRelatedField(source='doctor', queryset=User.objects.all(), required=False)
+    status = TranslatedChoiceField(choices=Appointment.AppointmentStatusChoices.choices, required=False, allow_blank=False, allow_null=False)
+
     class Meta(AppointmentSerializer.Meta):
-        fields = ['id', 'date', 'startTime', 'endTime', 'room', 'status', 'notes', 'branchId', 'updatedAt']
+        fields = ['id', 'doctorId', 'date', 'startTime', 'endTime', 'room', 'status', 'notes', 'branchId', 'updatedAt']
         read_only_fields = ['id', 'updatedAt']
         extra_kwargs = {field: {'required': False} for field in 
             ('date', 'startTime', 'endTime', 'room', 'status', 'notes', 'branchId')
@@ -135,19 +147,29 @@ class UpdateAppointmentSerializer(AppointmentSerializer):
     def validate(self, data):
         instance = self.instance
         branch = data.get('branch', instance.branch)
+        doctor = data.get('doctor', instance.doctor)
         
         #validate branch
         if not branch:
             user = self.context['request'].user
-            if user.branch:
+            if user.branches.count() == 1:
+                branch = user.branches.first()
+                data['branch'] = branch
+            elif user.branch:
                 branch = user.branch
-                data['branch'] = branch 
+                data['branch'] = branch
+            elif doctor and doctor.branches.count() == 1:
+                branch = instance.doctor.branches.first()
+                data['branch'] = branch
+            elif doctor and doctor.branch:
+                branch = doctor.branch
+                data['branch'] = branch
             elif Branch.objects.exists():
                 raise serializers.ValidationError(_('Clinic branch must be provided when at least one branch is registered. Please provide a branch ID or contact the admin to assign a branch to your account.'))
 
         #validate appointment availability
         Appointment.validate_availability(
-            doctorId=instance.doctor_id,
+            doctorId=doctor.id,
             branchId=getattr(branch, 'id', None),
             date=data.get('date', instance.date),
             startTime=data.get('startTime', instance.startTime),

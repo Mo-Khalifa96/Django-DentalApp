@@ -1,11 +1,12 @@
 from users.models import User
 from clinic.models import Branch
 from rest_framework import serializers
-from patients.models import Appointment
 from utils.mixins import UserPermissionsMixin
-from utils.validators import validate_uuid
+from patients.models import Appointment, Visit
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
+from rest_framework.exceptions import PermissionDenied
+from services.translation.serializers import TranslatedChoiceField
 from clinic.docs import dashboard_stats_schema, dashboard_options_schema
 
 
@@ -42,10 +43,11 @@ class DashboardQueryParamSerializer(serializers.Serializer):
     
     def validate_branchId(self, branchId):
         user = self.context.get('request').user
-        if validate_uuid(branchId) and getattr(user, 'role', None) != 'admin':
+        if branchId and getattr(user, 'role', None) != 'admin':
             if getattr(user, 'branch_id', None)  != branchId or\
              not user.branches.filter(id=branchId).exists():
-                raise serializers.ValidationError(_('Invalid branch ID. You do not have access to this branch.'))
+                raise PermissionDenied(_('Permission denied. You do not have access to this branch.'))
+                # raise serializers.ValidationError(_('Invalid branch ID. You do not have access to this branch.'))
         return branchId
 
 
@@ -55,7 +57,9 @@ class DashboardAppointmentTodaySerializer(serializers.ModelSerializer):
     patientName = serializers.CharField(source='patient.name', read_only=True)
     doctorId = serializers.PrimaryKeyRelatedField(source='doctor', read_only=True)
     # doctorName = serializers.CharField(source='doctor.name', read_only=True)
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True, allow_null=True)
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
+    type = TranslatedChoiceField(choices=Visit.VisitTypeChoices.choices, read_only=True)
+    status = TranslatedChoiceField(choices=Appointment.AppointmentStatusChoices.choices, read_only=True)
 
     class Meta:
         model = Appointment

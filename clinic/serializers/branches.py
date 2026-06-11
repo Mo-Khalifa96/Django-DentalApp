@@ -5,18 +5,25 @@ from clinic.docs import branch_options_schema
 from utils.mixins import UserPermissionsMixin
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
+from services.translation.serializers import TranslatedChoiceField
 
 
 #BRANCH SERIALIZERS 
 #Base branch serializer
 class BranchSerializer(UserPermissionsMixin, serializers.ModelSerializer):
-    workingDays = serializers.ListField(child=serializers.ChoiceField(choices=WorkingDaysLookUp.choices))
+    workingDays = serializers.ListField(child=TranslatedChoiceField(choices=WorkingDaysLookUp.choices))
 
     class Meta:
         model = Branch
         fields = ['id', 'name', 'address', 'phone', 'workingDays', 'openTime', 'closeTime',
                   'color', 'createdAt']
         read_only_fields = ['id', 'createdAt']
+    
+    def validate_workingDays(self, value):
+        if value:
+            #remove duplicates (if any)
+            value = sorted(set(value))
+        return value
 
 
 #Create branch serializer
@@ -30,7 +37,7 @@ class CreateBranchSerializer(BranchSerializer):
 #Update branch serializer
 class UpdateBranchSerializer(BranchSerializer):
     workingDays = serializers.ListField(
-        child=serializers.ChoiceField(choices=WorkingDaysLookUp.choices),
+        child=TranslatedChoiceField(choices=WorkingDaysLookUp.choices),
      required=False, allow_null=True, allow_empty=False)
 
     class Meta(BranchSerializer.Meta):

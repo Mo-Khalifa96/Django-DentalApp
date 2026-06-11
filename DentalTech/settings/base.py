@@ -1,7 +1,7 @@
 import os 
 from pathlib import Path
 from dotenv import load_dotenv
-from .filters import RequestsFilter, DjangoQFilter
+from .filters import LogsFormatter, RequestsFilter, DjangoQFilter
 
 
 #Build paths inside the project like this: BASE_DIR/'sub-dir'
@@ -24,10 +24,10 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.staticfiles',
     'users',
-    'clinic',
     'patients',
     'services',
     'utils.apps.UtilsConfig',
+    'clinic.apps.ClinicConfig',
     'finances.apps.FinancesConfig',
     'rest_framework_simplejwt',
     'rest_framework',
@@ -216,10 +216,12 @@ LOGGING = {
     'disable_existing_loggers': False,  
     'formatters': {
         'verbose': {   #used for the logging files 
+            '()': LogsFormatter,
             'format': '(%(asctime)s) [%(levelname)s] - \'%(name)s\':  %(message)s',
             'datefmt': '%d/%m/%Y %I:%M %p',
         },
         'simple': {    #to be used for console only
+            '()': LogsFormatter,
             'format': '[%(asctime)s] %(levelname)s - \'%(name)s\':  %(message)s',
             'datefmt': '%I:%M %p',
         },

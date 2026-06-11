@@ -6,6 +6,7 @@ from utils.mixins import ValidateBranchMixin
 from clinic.docs import waiting_room_options_schema
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
+from services.translation.serializers import TranslatedChoiceField
 
 
 #Waiting room serializer -- Base serializer
@@ -16,6 +17,7 @@ class WaitingRoomSerializer(serializers.ModelSerializer, ValidateBranchMixin):
     doctorName = serializers.CharField(source='appointment.doctor.name', read_only=True)
     appointmentId = serializers.PrimaryKeyRelatedField(source='appointment', queryset=Appointment.objects.all(), required=True)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
+    status = TranslatedChoiceField(choices=WaitingRoom.StatusChoices.choices, read_only=True)
 
     class Meta:
         model = WaitingRoom
@@ -66,6 +68,8 @@ class WaitingRoomSerializer(serializers.ModelSerializer, ValidateBranchMixin):
 
 #Update waiting room serializer -- for status and room updates
 class UpdateWaitingRoomSerializer(serializers.ModelSerializer):
+    status = TranslatedChoiceField(choices=WaitingRoom.StatusChoices.choices, required=False, allow_blank=False, allow_null=False)
+
     class Meta:
         model = WaitingRoom
         fields = ['status', 'room']

@@ -4,6 +4,7 @@ from clinic.models import Branch, SterilizationLog
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 from clinic.docs import sterilization_logs_options_schema
+from services.translation.serializers import TranslatedChoiceField
 
 
 #Valid choices for instrument sets -- for validation
@@ -14,6 +15,9 @@ valid_instrumentSet_choices = {instrument_set[0] for instrument_set in Steriliza
 #Sterilization logs serializer -- base serializer
 class SterilizationLogSerializer(serializers.ModelSerializer):
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
+    result = TranslatedChoiceField(
+            choices=SterilizationLog.SterilizationResultChoices.choices, allow_blank=True, allow_null=True
+        )
    
     class Meta:
         model = SterilizationLog
@@ -56,6 +60,10 @@ class CreateSterilizationLogSerializer(SterilizationLogSerializer, ValidateBranc
 
 #Update sterilization logs serializer
 class UpdateSterilizationLogSerializer(SterilizationLogSerializer):
+    result = TranslatedChoiceField(
+            choices=SterilizationLog.SterilizationResultChoices.choices, required=False, allow_blank=True, allow_null=True
+        )
+   
     class Meta(SterilizationLogSerializer.Meta):
         fields = ['id', 'date', 'time', 'cycleType', 'instrumentSets', 'operator', 'result', 
                   'sealedAt', 'shelfLifeDays', 'notes', 'branchId', 'updatedAt']

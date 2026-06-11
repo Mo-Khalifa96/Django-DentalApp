@@ -6,11 +6,14 @@ from utils.swagger_utils import extend_schema_field
 from users.docs import doctor_schedules_options_schema
 from django.utils.translation import gettext_lazy as _
 from users.models import User, DoctorSchedule, DoctorScheduleException
+from services.translation.serializers import TranslatedChoiceField
 
 
 #DOCTOR SCHEDULES SERIALIZERS 
 #Doctor exceptions serializer -- nested serializer 
 class DoctorExceptionsSerializer(serializers.ModelSerializer):
+    type = TranslatedChoiceField(choices=DoctorScheduleException.ExceptionTypeChoices.choices)
+
     class Meta:
         model = DoctorScheduleException
         fields = ['date', 'type', 'note']
@@ -31,7 +34,7 @@ class DoctorScheduleSerializer(UserPermissionsMixin, serializers.ModelSerializer
     doctorName = serializers.CharField(source='doctor.name', read_only=True)
     doctorId = serializers.PrimaryKeyRelatedField(source='doctor', read_only=True)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
-    workingDays = serializers.ListField(child=serializers.ChoiceField(choices=WorkingDaysLookUp.choices))
+    workingDays = serializers.ListField(child=TranslatedChoiceField(choices=WorkingDaysLookUp.choices))
     exceptions = DoctorExceptionsSerializer(many=True, required=False, allow_empty=True)
 
     class Meta:

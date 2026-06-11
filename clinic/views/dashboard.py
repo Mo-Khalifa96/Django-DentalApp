@@ -59,6 +59,8 @@ class DashboardStatisticsAPIView(GenericAPIView):
         elif getattr(user, 'role', None) == 'admin'\
          or not Branch.objects.exists():
             branch_filter = Q()
+        elif user.branches.count() == 1:
+            branch_filter = Q(branch_id=user.branches.first().id)
         elif getattr(user, 'branch_id', None):
             branch_filter = Q(branch_id=user.branch_id)
         else:

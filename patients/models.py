@@ -89,7 +89,7 @@ class Patient(models.Model):
     insuranceId = models.CharField(max_length=120, blank=True, null=True)
     lastVisit = models.DateField(blank=True, null=True)
     nextAppointment = models.DateField(blank=True, null=True)
-    status = models.CharField(max_length=50, choices=StatusChoices.choices, default=StatusChoices.ACTIVE)
+    status = models.CharField(max_length=50, choices=StatusChoices.choices, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
@@ -124,6 +124,10 @@ class Patient(models.Model):
     
     @transaction.atomic 
     def save(self, *args, **kwargs):
+        #assign flag for new patients
+        is_new = self._state.adding
+        if is_new and not self.status:
+            self.status = self.StatusChoices.ACTIVE
         #Normalize and save phone number
         if self.countryCode and self.phone:
             code, phone_number = normalize_phone_number(self.countryCode, self.phone)
@@ -137,9 +141,6 @@ class Patient(models.Model):
             #fallback condition for branch identification
             # if not self.branch:
             #     self.branch = self.doctor.branch
-
-        #assign flag for new patients
-        is_new = self._state.adding
 
         #save patient to database 
         super().save(*args, **kwargs)
@@ -299,7 +300,7 @@ class Appointment(models.Model):
     endTime = models.TimeField(blank=True, null=True)
     type = models.CharField(max_length=500, choices=Visit.VisitTypeChoices.choices)
     room = models.CharField(max_length=120, blank=True, null=True)
-    status = models.CharField(max_length=50, choices=AppointmentStatusChoices.choices, default=AppointmentStatusChoices.PENDING, db_index=True)
+    status = models.CharField(max_length=50, choices=AppointmentStatusChoices.choices, db_index=True)
     notes = models.TextField(blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
@@ -335,6 +336,8 @@ class Appointment(models.Model):
     @transaction.atomic 
     def save(self, *args, **kwargs):
         if self._state.adding:
+            if not self.status:
+                self.status = self.AppointmentStatusChoices.PENDING
             self.procedureName = self.procedure.name
             self.doctorName = self.doctor.name
 
@@ -419,7 +422,7 @@ class TreatmentPlan(models.Model):
     
     #other model fields
     title = models.CharField(max_length=250, blank=True, null=True)
-    status = models.CharField(max_length=50, choices=TreatmentStatusChoices.choices, default=TreatmentStatusChoices.ACTIVE)
+    status = models.CharField(max_length=50, choices=TreatmentStatusChoices.choices, blank=True, null=True)
     currency = models.CharField(max_length=5, blank=True, null=True)
     totalCost = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
     installmentMonths = models.PositiveSmallIntegerField(choices=InstallmentMonthsChoices.choices, blank=True, null=True)
@@ -443,10 +446,11 @@ class TreatmentPlan(models.Model):
 
     def save(self, *args, **kwargs):
         #if creating treatment plan but not a doctor, assign doctor
-        if self._state.adding: 
-            if self.patient and not self.doctor:
-                if self.patient.doctor:
-                    self.doctor = self.patient.doctor 
+        if self._state.adding:
+            if not self.status:
+                self.status = self.TreatmentStatusChoices.ACTIVE
+            if self.patient and not self.doctor and self.patient.doctor:
+                self.doctor = self.patient.doctor
             if self.doctor:
                 self.doctorName = self.doctor.name
         #save changes 
@@ -467,7 +471,7 @@ class TreatmentPlanItem(models.Model):
     toothNumber = models.CharField(max_length=3, blank=True, null=True, validators=[validate_toothNumber])
     price = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
     session = models.PositiveSmallIntegerField(blank=True, null=True)
-    status = models.CharField(max_length=25, choices=ItemStatusChoices.choices, default=ItemStatusChoices.PENDING)
+    status = models.CharField(max_length=25, choices=ItemStatusChoices.choices, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
 
     #snapshot field to preserve procedure name when foreignkey is deleted
@@ -476,6 +480,12 @@ class TreatmentPlanItem(models.Model):
     class Meta:
         db_table = 'TreatmentPlanItems'
         verbose_name_plural = 'TreatmentPlanItems'
+
+    def save(self, *args, **kwargs):
+        if self._state.adding and not self.status:
+            self.status = self.ItemStatusChoices.PENDING
+         #save changes 
+        super().save(*args, **kwargs)
 
 
 #Patient Recalls Manager
@@ -507,7 +517,7 @@ class PatientRecall(models.Model):
     #other fields
     phone = models.CharField(max_length=50, blank=True, null=True, validators=[validate_phone_number])
     type = models.CharField(max_length=50, choices=RecallTypeChoices.choices)
-    status = models.CharField(max_length=50, choices=RecallStatusChoices.choices, default=RecallStatusChoices.PENDING)
+    status = models.CharField(max_length=50, choices=RecallStatusChoices.choices, blank=True, null=True)
     dueDate = models.DateField()
     notes = models.TextField(blank=True, null=True)
     contactedAt = models.DateTimeField(blank=True, null=True)
@@ -530,8 +540,11 @@ class PatientRecall(models.Model):
     
     @transaction.atomic
     def save(self, *args, **kwargs):
-        if self._state.adding and not self.phone:
-            self.phone = self.patient.phone
+        if self._state.adding:
+            if not self.status:
+                self.status = self.RecallStatusChoices.PENDING
+            if not self.phone:
+                self.phone = self.patient.phone
         
         #if status is contacted, set contact date to today
         if self.status == self.RecallStatusChoices.CONTACTED and not self.contactedAt:

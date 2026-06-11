@@ -47,7 +47,9 @@ class ValidateBranchMixin:
         if not branch:
             #use user's currently active branch
             user = self.context['request'].user
-            if user.branch:
+            if user.branches.count() == 1:
+                return user.branches.first()
+            elif user.branch:
                 return user.branch
             elif Branch.objects.exists():
                 raise serializers.ValidationError(_('Clinic branch must be provided when at least one branch is registered. Please provide a branch ID or contact the admin to assign a branch to your account.'))

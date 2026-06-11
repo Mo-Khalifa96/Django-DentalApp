@@ -6,6 +6,7 @@ from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 from clinic.models import Branch, Procedure, Lab, LabOrder
 from utils.mixins import UserPermissionsMixin, ValidateBranchMixin
+from services.translation.serializers import TranslatedChoiceField
 
 
 #SERIALIZERS FOR LABS 
@@ -41,6 +42,7 @@ class LabOrderSerializer(serializers.ModelSerializer):
     patientId = serializers.PrimaryKeyRelatedField(source='patient', queryset=Patient.objects.all())
     procedureId = serializers.PrimaryKeyRelatedField(source='procedure', queryset=Procedure.objects.all())
     branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
+    status = TranslatedChoiceField(choices=LabOrder.OrderStatusChoices.choices, allow_blank=True, allow_null=True)
 
     class Meta:
         model = LabOrder
@@ -62,6 +64,9 @@ class CreateLabOrderSerializer(LabOrderSerializer, ValidateBranchMixin):
 
 #Update lab order serializer
 class UpdateLabOrderSerializer(LabOrderSerializer):
+    status = TranslatedChoiceField(choices=LabOrder.OrderStatusChoices.choices, 
+                             required=False, allow_blank=False, allow_null=False)
+
     class Meta(LabOrderSerializer.Meta):
         fields = ['id', 'labId', 'labName', 'patientId', 'patientName', 'procedureId', 'procedureName', 'toothNumber', 
                   'instructions', 'sentDate', 'dueDate', 'receivedDate', 'deliveredDate', 'status', 'cost',

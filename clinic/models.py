@@ -111,7 +111,7 @@ class WaitingRoom(models.Model):
     branch = models.ForeignKey(Branch, related_name='branch_rooms', on_delete=models.CASCADE, blank=True, null=True, db_index=True) 
     #Other fields
     room = models.CharField(max_length=120, blank=True, null=True)  #use branch rooms for choices
-    status = models.CharField(max_length=25, choices=StatusChoices.choices, default=StatusChoices.WAITING)
+    status = models.CharField(max_length=25, choices=StatusChoices.choices, blank=True, null=True)
     arrivedAt = models.DateTimeField(blank=True, null=True)
     startedAt = models.DateTimeField(blank=True, null=True)
     completedAt = models.DateTimeField(blank=True, null=True)
@@ -135,6 +135,10 @@ class WaitingRoom(models.Model):
     def save(self, *args, **kwargs):
         #Assign dates on creation and updates
         if self._state.adding:
+            #set status to waiting
+            self.status = self.StatusChoices.WAITING
+
+            #record arrival time on creation
             self.arrivedAt = timezone.localtime(timezone.now())
 
         if self.status == self.StatusChoices.IN_CHAIR:
@@ -328,7 +332,7 @@ class LabOrder(models.Model):
     dueDate = models.DateField()
     receivedDate = models.DateField(blank=True, null=True)  #to be edited post-creation
     deliveredDate = models.DateField(blank=True, null=True)  #to be edited post-creation
-    status = models.CharField(max_length=20, choices=OrderStatusChoices.choices, default=OrderStatusChoices.SENT)
+    status = models.CharField(max_length=20, choices=OrderStatusChoices.choices, blank=True, null=True)
     cost = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
     currency = models.CharField(max_length=5, blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -358,6 +362,8 @@ class LabOrder(models.Model):
     def save(self, *args, **kwargs):
         #Assign dates on creation and updates
         if self._state.adding:
+            if not self.status:
+                self.status = self.OrderStatusChoices.SENT
             if not self.sentDate:
                 self.sentDate = timezone.localtime(timezone.now()).date 
             self.labName = self.lab.name

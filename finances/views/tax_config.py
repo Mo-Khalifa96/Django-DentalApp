@@ -25,7 +25,10 @@ class ClinicTaxConfigAPIView(CreateAPIView, RetrieveUpdateAPIView):
         user = self.request.user
         branchId = self.request.query_params.get('branchId')
         if not branchId:
-            branchId = getattr(user, 'branch_id', None)
+            if user.branches.count() == 1:
+                branchId = user.branches.first().id
+            else:
+                branchId = getattr(user, 'branch_id', None)
 
         #handle one-to-one relation to tax config or clinic without branches
         branch_filter = {'branch_id': branchId} if branchId else {'branch': None}

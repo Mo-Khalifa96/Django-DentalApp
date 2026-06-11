@@ -217,7 +217,7 @@ class Transaction(models.Model):
     date = models.DateField()
     amount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
     currency = models.CharField(max_length=5, blank=True, null=True)
-    method = models.CharField(max_length=25, choices=PaymentMethodChoices.choices, default=PaymentMethodChoices.CASH)
+    method = models.CharField(max_length=25, choices=PaymentMethodChoices.choices, blank=True, null=True)
     note = models.CharField(max_length=500, blank=True, null=True)
 
     #snapshot fields to preserve fields when foreignkey is deleted (also will be shown to admin only)
@@ -245,6 +245,8 @@ class Transaction(models.Model):
     @transaction.atomic
     def save(self, *args, **kwargs):
         if self._state.adding:
+            if not self.method:
+                self.method = self.PaymentMethodChoices.CASH
             # self.date = self.date or self.visit.date
             self.branchName = getattr(self.branch, 'name', None)
             self.patientName = self.patient.name

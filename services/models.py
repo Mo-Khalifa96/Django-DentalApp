@@ -31,7 +31,7 @@ class Message(models.Model):
     #main model fields
     message = models.TextField()
     messageType = models.CharField(max_length=25, choices=MessageTypeChoices.choices, blank=True, null=True)
-    status = models.CharField(max_length=25, choices=MessageStatusChoices.choices, default=MessageStatusChoices.QUEUED)  #change to 'sent' when successfully sent
+    status = models.CharField(max_length=25, choices=MessageStatusChoices.choices, blank=True, null=True)  #change to 'sent' when successfully sent
     sentAt = models.DateTimeField(blank=True, null=True)  #add time when actually sent!
 
     #fields to track message sending
@@ -47,6 +47,11 @@ class Message(models.Model):
         db_table = 'Messages'
         verbose_name_plural = 'Messages'
         ordering = ['-sentAt']
+
+    def save(self, *args, **kwargs):
+        if self._state.adding and not self.status:
+            self.status = self.MessageStatusChoices.QUEUED
+        super().save(*args, **kwargs)
     
     def cascade_messaging_results(self, result=None, exc=None):
         '''Updates relevant fields based on message sending results.'''

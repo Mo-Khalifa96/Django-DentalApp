@@ -16,6 +16,14 @@ from finances.docs import bills_options_schema
 logger = logging.getLogger(__name__)
 
 #BILLS SERIALIZERS 
+
+#Bill status labels
+STATUS_LABELS = {
+    'unpaid': _('unpaid'),
+    'partial': _('partial'),
+    'paid': _('paid'),
+}
+
 #Bills serializer
 @list_bills_schema
 class BillSerializer(serializers.ModelSerializer):
@@ -24,13 +32,19 @@ class BillSerializer(serializers.ModelSerializer):
     visitIds = serializers.PrimaryKeyRelatedField(many=True, source='visits', read_only=True)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     total = serializers.DecimalField(max_digits=10, decimal_places=2, source='totalAmount', read_only=True)
-    status = serializers.CharField(read_only=True)
+    status = serializers.SerializerMethodField()
 
     class Meta:
         model = Bill
         fields = ['id', 'patientId', 'patientName', 'treatmentId', 'treatmentTitle', 'visitIds', 
                   'procedures', 'branchId', 'branchName', 'description', 'currency', 'discount', 
                   'subtotal', 'total', 'status', 'createdBy', 'createdAt', 'updatedAt', 'isDeleted']
+
+
+    @extend_schema_field(serializers.CharField)
+    def get_status(self, obj):
+        value = getattr(obj, 'status', None)
+        return str(STATUS_LABELS.get(value, value)) if value else None
     
 
     def get_fields(self):

@@ -4,12 +4,14 @@ from clinic.docs import procedures_options_schema
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 from utils.mixins import UserPermissionsMixin, ValidateBranchMixin
+from services.translation.serializers import TranslatedChoiceField
 
 
 #SERIALIZERS FOR PROCEDURES
 #General-purpose procedures serializer
 class ProcedureSerializer(UserPermissionsMixin, ValidateBranchMixin, serializers.ModelSerializer):
     branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
+    category = TranslatedChoiceField(choices=Procedure.ProcedureCategory.choices)
 
     class Meta:
         model = Procedure
@@ -19,6 +21,8 @@ class ProcedureSerializer(UserPermissionsMixin, ValidateBranchMixin, serializers
 
 #Procedure serializer subclass for put/patch requests
 class UpdateProcedureSerializer(ProcedureSerializer):
+    category = TranslatedChoiceField(choices=Procedure.ProcedureCategory.choices, required=False)
+
     class Meta:
         model = Procedure
         fields = ['id', 'name', 'category', 'duration', 'currency', 'price', 'description', 'createdAt']
