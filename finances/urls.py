@@ -1,5 +1,7 @@
 from django.urls import path
 from finances.views.tax_config import ClinicTaxConfigAPIView
+from finances.views.invoices import (ListCreateInvoicesAPIView, RetrieveUpdateDeleteInvoiceAPIView,
+                                     RetrieveInvoicesOptionsAPIView)
 from finances.views.transactions import (ListCreateTransactionsAPIView, UpdateDeleteTransactionAPIView,
                                          RetrieveTransactionsOptionsAPIView)
 from finances.views.bills import (ListCreateBillsAPIView, RetrieveUpdateDeleteBillAPIView, 
@@ -27,5 +29,7 @@ urlpatterns = [
     path('transactions/options/', RetrieveTransactionsOptionsAPIView.as_view(), name='transactions_options'),
 
     #Invoices urls
-    
+    path('invoices/', ListCreateInvoicesAPIView.as_view(), name='list_create_invoices'),
+    path('invoices/<uuid:id>/', RetrieveUpdateDeleteInvoiceAPIView.as_view(), name='retrieve_update_delete_invoice'),
+    path('invoices/options/', RetrieveInvoicesOptionsAPIView.as_view(), name='invoices_options'),
 ]

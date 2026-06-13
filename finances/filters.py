@@ -58,3 +58,27 @@ class TransactionsFilter(FilterSet):
     class Meta:
         model = Transaction
         fields = []
+
+
+
+#Invoices filter
+class InvoicesFilter(FilterSet):
+    billId = ModelChoiceFilter(field_name='bill', queryset=Bill.objects.all())
+    branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
+    patientId = ModelChoiceFilter(field_name='patient', queryset=Patient.objects.all())
+    status = ChoiceFilter(choices=Invoice.InvoiceStatusChoices.choices)
+    issuedAt = DateFilter(field_name='issuedAt', lookup_expr='date')
+    submittedAt = DateFilter(field_name='submittedAt', lookup_expr='date')
+    isDeleted = BooleanFilter(method='filter_deleted')
+
+    def filter_deleted(self, queryset, name, value):
+        if value == False:
+            return queryset.filter(isDeleted=False)
+        elif value == True:
+            return queryset.filter(isDeleted=True)
+        return queryset
+
+    class Meta:
+        model = Invoice
+        fields = []
+

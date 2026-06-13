@@ -300,7 +300,7 @@ update_patient_schema = extend_schema_serializer(
                 'countryCode': '0010',
                 'phone': '0123456789', 
                 'address': 'Maadi, Cairo',
-                "nationalId": "525400222211100",
+                'nationalId': '525400222211100',
                 'bloodType': 'A+', 
                 'allergies': ['Latex'], 
                 'insurance': '', 

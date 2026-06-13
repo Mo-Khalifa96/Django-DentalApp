@@ -1,9 +1,8 @@
 from clinic.models import Branch
 from rest_framework import serializers
-from django.shortcuts import get_object_or_404
+from utils.validators import validate_uuid
 from rest_framework.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-from utils.validators import validate_uuid
 
 
 #Permissions mixin for serializers
@@ -62,17 +61,24 @@ class FilterByBranchMixin:
     def filter_by_branch(self, queryset, branch_field='branch_id'):
         #get user
         user = self.request.user
-        # branchId_qp = self.request.query_params.get('branchId')
+        branchId_qp = validate_uuid(self.request.query_params.get('branchId'))
 
         #filter queryset by the user's associated branch or current active branch
-        if user.branches.count() == 1:
+        branches_count = user.branches.count()
+        if branches_count == 1:
             return queryset.filter(**{branch_field: user.branches.first().id})
 
+        #at least the frontend sent a branchId query
+        elif branches_count > 1 and branchId_qp:
+            qs_filter = {f"{branch_field}__in": user.branches.values_list('id', flat=True)}
+            return queryset.filter(**qs_filter)
+
+        #no branchId -- look for active branch
         elif getattr(user, 'branch_id', None):
             return queryset.filter(**{branch_field: user.branch_id})
         
         #return data filtered by all the branches the user belong to
-        elif user.branches.exists():
+        elif user.branches.exists():  #or, branches_count > 0
             qs_filter = {f"{branch_field}__in": user.branches.values_list('id', flat=True)}
             return queryset.filter(**qs_filter)
 

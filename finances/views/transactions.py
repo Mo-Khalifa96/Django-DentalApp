@@ -85,6 +85,14 @@ class UpdateDeleteTransactionAPIView(UpdateAPIView, DeleteAPIView):
     lookup_url_kwarg = 'id'
     lookup_field = 'id'
 
+    def get_queryset(self):
+        #admin gets all objects
+        user = self.request.user 
+        if getattr(user, 'role', None) == 'admin':
+            return Transaction.all_objects.select_related('bill').all()
+        else:
+            return Transaction.objects.select_related('bill').all()
+
     def get_permissions(self):
         if self.request.method == 'PATCH':
             return [AdminOnly()]

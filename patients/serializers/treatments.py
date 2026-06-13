@@ -55,9 +55,12 @@ class CreateTreatmentPlanSerializer(TreatmentPlanSerializer):
     def validate(self, data):
         items = data.get('treatment_items', [])
         totalCost = data.get('totalCost')
-        total_from_prices = Decimal(str(sum(float(item['price']) for item in items if items)))
-        if total_from_prices != totalCost or round(total_from_prices,2) != round(totalCost,2):
-            logger.error(f'\nFRONTEND BUG: Total cost provided does not match treatment prices total! Total provided: {totalCost} - Total calculated: {total_from_prices}\n')
+        total_from_prices = sum(float(item['price']) for item in items if items)
+        total_from_prices = Decimal(str(total_from_prices))
+        if (round(total_from_prices,2) != round(totalCost,2)
+         or abs(total_from_prices - totalCost) > 0.01):
+            logger.error(f'\nFRONTEND BUG: Total cost provided does not match treatment prices total! '
+                         f'Total provided: {totalCost} - Total calculated: {total_from_prices}\n')
             data['totalCost'] = total_from_prices
         return data
 
@@ -130,11 +133,15 @@ class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
         if 'treatment_items' in data:
             items = data.get('treatment_items', [])
             #re-calculate total cost if not provided
-            totalCost_new = Decimal(str(sum(float(item['price']) for item in items if items)))
+            totalCost_new = sum(float(item['price']) for item in items if items)
+            totalCost_new = Decimal(str(totalCost_new))
             totalCost = data.get('totalCost', totalCost_new)
-            if totalCost_new != totalCost or round(totalCost_new,2) != round(totalCost,2):
-                logger.error(f'\n\nFRONTEND BUG: Total cost provided does not match treatment prices total! Total provided: {totalCost} - Total calculated: {totalCost_new}\n\n')
-            data['totalCost'] = totalCost
+      
+            if (round(totalCost_new,2) != round(totalCost,2)
+             or abs(totalCost_new - totalCost) > 0.01):
+                logger.error(f'\nFRONTEND BUG: Total cost provided does not match treatment prices total! '
+                             f'Total provided: {totalCost} - Total calculated: {totalCost_new}\n')
+            data['totalCost'] = totalCost_new
         return data
 
 
@@ -145,7 +152,7 @@ class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
         
         #delete and update items
         if updated_items is not None:  #or, use <<if 'treatment_items' in validated_data:>> if you want to allow deletion
-            #Delete existing items and recreate 
+            #delete existing items and recreate 
             instance.treatment_items.all().delete()
 
             #recreate treatment items from the data passed

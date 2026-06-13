@@ -1,7 +1,7 @@
 import logging
 from decimal import Decimal
 from clinic.models import Branch
-from django.db import transaction 
+from django.db import transaction
 from rest_framework import serializers
 from finances.models import Bill, Invoice
 from utils.swagger_utils import extend_schema_field
@@ -36,8 +36,8 @@ class BillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bill
         fields = ['id', 'patientId', 'patientName', 'treatmentId', 'treatmentTitle', 'visitIds', 
-                  'procedures', 'branchId', 'branchName', 'description', 'currency', 'discount', 
-                  'subtotal', 'total', 'status', 'createdBy', 'createdAt', 'updatedAt', 'isDeleted']
+                  'procedures', 'branchId', 'branchName', 'description', 'discount', 'subtotal', 
+                  'total', 'currency', 'status', 'createdBy', 'createdAt', 'updatedAt', 'isDeleted']
 
 
     @extend_schema_field(serializers.CharField)
@@ -77,7 +77,7 @@ class CreateBillSerializer(serializers.ModelSerializer, ValidateBranchMixin):
     class Meta:
         model = Bill
         fields = ['id', 'patientId', 'patientName', 'treatmentId', 'visitIds', 'branchId', 
-                  'description', 'currency', 'discount', 'subtotal', 'total', 'createdAt']
+                  'description', 'discount', 'subtotal', 'total', 'currency', 'createdAt']
         read_only_fields = ['id', 'patientName', 'createdAt']
     
 
@@ -127,9 +127,11 @@ class CreateBillSerializer(serializers.ModelSerializer, ValidateBranchMixin):
 
         #handle total amount calculation
         recalculated_total = subtotal - discount
-        if totalAmount and round(totalAmount,2) != round(recalculated_total,2):
-            logger.error(f'\n\nFRONTEND BUG: Total amount miscalculated. '
-             f'Provided: {totalAmount}, Actual: {recalculated_total}\n\n')
+        if totalAmount and (
+         round(totalAmount,2) != round(recalculated_total,2)
+         or abs(totalAmount - recalculated_total) > 0.01):
+            logger.error(f'\nFRONTEND BUG: Bill total amount miscalculated. '
+             f'Provided: {totalAmount}, Actual: {recalculated_total}\n')
         #assign recalculated total anyway
         data['totalAmount'] = recalculated_total
 
@@ -218,9 +220,11 @@ class UpdateBillSerializer(serializers.ModelSerializer):
 
         #handle total amount calculation
         recalculated_total = subtotal - discount
-        if 'totalAmount' in data and round(totalAmount,2) != round(recalculated_total,2):
-            logger.error(f'\n\nFRONTEND BUG: Total amount miscalculated. '
-             f'Provided: {totalAmount}, Actual: {recalculated_total}\n\n')
+        if 'totalAmount' in data and (
+         round(totalAmount,2) != round(recalculated_total,2)
+         or abs(totalAmount - recalculated_total) > 0.01):
+            logger.error(f'\nFRONTEND BUG: Bill total amount miscalculated. '
+             f'Provided: {totalAmount}, Actual: {recalculated_total}\n')
         #assign recalculated total anyway
         data['totalAmount'] = recalculated_total
 

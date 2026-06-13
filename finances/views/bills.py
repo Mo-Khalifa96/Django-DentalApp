@@ -91,8 +91,6 @@ class ListCreateBillsAPIView(FilterListCreateAPIView):
 #Retrieve/update/delete bill API view
 @extend_schema(tags=['Payments and Billing'])
 class RetrieveUpdateDeleteBillAPIView(RetrieveUpdateDeleteAPIView):
-    queryset = Bill.objects.prefetch_related('visits')\
-            .select_related('patient', 'treatment', 'branch').all()
     permission_classes = [PatientDataPermissions]
     lookup_url_kwarg = 'id'
     lookup_field = 'id'
@@ -101,6 +99,17 @@ class RetrieveUpdateDeleteBillAPIView(RetrieveUpdateDeleteAPIView):
         #determine required permission
         self.required_permission = get_required_permission('bills', request, self)
         super().initial(request, *args, **kwargs)
+
+    def get_queryset(self):
+        #admin gets all objects
+        user = self.request.user 
+        if getattr(user, 'role', None) == 'admin':
+            return Bill.all_objects.prefetch_related('visits')\
+            .select_related('patient', 'treatment', 'branch').all()
+        else:
+            return Bill.objects.prefetch_related('visits')\
+            .select_related('patient', 'treatment', 'branch').all()
+
 
     def get_serializer_class(self):
         if self.request.method in ('PUT', 'PATCH'):

@@ -49,8 +49,8 @@ class ClinicalTaxConfig(models.Model):
 #Bills Manager (allows soft deleting)
 class BillManager(models.Manager):
     #Overriding get_query to filter out soft-deleted bills
-    def get_queryset(self):  #TODO - cleanup task every 2 years
-        return super().get_queryset().filter(isDeleted=False) #TODO - admin sees everything
+    def get_queryset(self):
+        return super().get_queryset().filter(isDeleted=False)
     
     @transaction.atomic 
     def delete_bill(self, user, bill):
@@ -69,7 +69,7 @@ class BillManager(models.Manager):
         return True
 
 
-#BILLS MODEL  -- TODO: doctor must have object permission
+#BILLS MODEL
 class Bill(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     #Many-to-Many relationship to Visit (one bill, many visits OR many visits, one bill)
@@ -179,7 +179,7 @@ class Bill(models.Model):
 class TransactionManager(models.Manager):
     #Overriding get_query to filter out soft-deleted transactions
     def get_queryset(self):
-        return super().get_queryset().filter(isDeleted=False) #TODO - admin sees everything
+        return super().get_queryset().filter(isDeleted=False)
 
     @transaction.atomic 
     def delete_transaction(self, user, transaction):
@@ -197,7 +197,7 @@ class TransactionManager(models.Manager):
             transaction.save()
         return True
 
-#TRANSACTIONS MODEL  -- TODO: doctor must have object permission
+#TRANSACTIONS MODEL
 class Transaction(models.Model):
     class PaymentMethodChoices(models.TextChoices):
         CASH = 'cash', _('Cash')
@@ -262,7 +262,7 @@ class Transaction(models.Model):
 class InvoiceManager(models.Manager):
     #Overriding get_query to filter out soft-deleted invoices
     def get_queryset(self):
-        return super().get_queryset().filter(isDeleted=False) #TODO - admin sees everything
+        return super().get_queryset().filter(isDeleted=False)
 
     @transaction.atomic 
     def delete_invoice(self, user, invoice):
@@ -280,7 +280,7 @@ class InvoiceManager(models.Manager):
             invoice.save()
         return True
 
-#INVOICES MODEL  -- TODO: doctor must have object permission
+#INVOICES MODEL
 class Invoice(models.Model):
     class InvoiceStatusChoices(models.TextChoices):
         ISSUED = 'issued', _('Issued')
@@ -289,11 +289,11 @@ class Invoice(models.Model):
         REJECTED = 'rejected', _('Rejected')
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    #One-One relationship to Bill for auto-generated invoices
+    bill = models.OneToOneField(Bill, related_name='bill_invoice', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
     #Many-to-One relationships to Patient, Branch (i.e., many invoices, one patient/branch)
     patient = models.ForeignKey('patients.Patient', related_name='patient_invoices', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
     branch =  models.ForeignKey('clinic.Branch', related_name='branch_invoices', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
-    #One-One relationship to Bill for auto-generated invoices
-    bill = models.OneToOneField(Bill, related_name='bill_invoice', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
     
     #money fields
     subtotal = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
@@ -313,7 +313,7 @@ class Invoice(models.Model):
     patientName = models.CharField(max_length=255, blank=True, null=True)
     branchName = models.CharField(max_length=255, blank=True, null=True)
     treatmentTitle = models.CharField(max_length=255, blank=True, null=True)
-    issuedBy = models.CharField(max_length=255, blank=True, null=True)
+    createdBy = models.CharField(max_length=255, blank=True, null=True)
 
     #backend fields
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -329,7 +329,7 @@ class Invoice(models.Model):
     class Meta: 
         db_table = 'Invoices'
         verbose_name_plural = 'Invoices'
-        ordering = ['branch__name', 'issuedAt', 'submittedAt', 'patient__name']
+        ordering = ['branch__name', '-issuedAt', '-submittedAt', 'patient__name']
 
     def __str__(self):
         return self.invoiceNumber
@@ -354,6 +354,7 @@ class Invoice(models.Model):
         #update dates based on status
         if self.status == self.InvoiceStatusChoices.ISSUED and not self.issuedAt:
             self.issuedAt = timezone.localtime(timezone.now())
+            # self.submittedAt = timezone.localtime(timezone.now())
 
         elif self.status == self.InvoiceStatusChoices.SUBMITTED:
             self.submittedAt = timezone.localtime(timezone.now())
@@ -385,15 +386,15 @@ class InvoiceItem(models.Model):
         D7210 = 'D7210', 'D7210'
         D8080 = 'D8080', 'D8080'
         D9930 = 'D9930', 'D9930'
-        OTHER = 'OTHER', 'OTHER'
+        OTHER = 'other', 'Other'
 
     #Many-to-One relationship to the Invoice model (i.e., many invoice items, one invoice)
     invoice = models.ForeignKey(Invoice, related_name='invoice_items', on_delete=models.CASCADE)
-    taxCode = models.CharField(max_length=10, choices=TaxCodeChoices.choices, blank=True, null=True)  #NOTE - renamed to 'code' on serializer
+    taxCode = models.CharField(max_length=10, choices=TaxCodeChoices.choices, blank=True, null=True)
     description = models.CharField(max_length=300, blank=True, null=True)  #OR, bill description!
     quantity = models.SmallIntegerField(blank=True, null=True, default=1)
     unitPrice = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
-    total = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
+    total = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)], blank=True, null=True)
     
     class Meta:
         db_table = 'InvoiceItems'

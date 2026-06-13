@@ -11,7 +11,8 @@ if settings.ENABLE_SWAGGER:
 
     field_map = {'patient__name': 'patientName', 'doctor__name': 'doctorName', 
                 'procedure__name': 'procedureName', 'lab__name': 'labName',
-                'branch__name': 'branchName', 'treatment_items__procedureName': 'procedureName'}
+                'branch__name': 'branchName', 'treatment_items__procedureName': 'procedureName',
+                'invoice_items__description': 'itemDescription'}
     
     CHAR_SEARCH_FIELDS = {
         'ListCreateSterilizationLogsAPIView': ['instrumentSets'],

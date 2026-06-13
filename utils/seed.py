@@ -686,6 +686,7 @@ def seed_bills(visits, treatments, num_bills=70):
             totalAmount=total_amount,
             discount=discount,
             currency='USD',
+            createdBy=getattr(patient.doctor, 'name', None)
         )
         bill.save()
         bill.visits.set(selected_visits)
@@ -719,6 +720,7 @@ def seed_transactions(bills, num_transactions=100):
             currency='USD',
             method=random.choice(payment_methods),
             note=faker.text(max_nb_chars=100) if random.random() < 0.3 else None,
+            createdBy=getattr(bill.patient.doctor, 'name', None),
         )
         txn.save()
         count += 1
@@ -770,6 +772,7 @@ def seed_invoices(bills, patients, num_invoices=100):
             total=total,
             currency='USD',
             status=random.choices(statuses, weights=status_weights)[0],
+            createdBy=getattr(patient.doctor, 'name', None)
         )
         invoice.save()
 
