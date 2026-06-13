@@ -122,7 +122,6 @@ class UpdateDeleteTransactionAPIView(UpdateAPIView, DeleteAPIView):
     ]
 )
 class RetrieveTransactionsOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
-    queryset = Transaction.objects.all()
     serializer_class = TransactionsOptionsSerializer
     permission_classes = [IsAuthenticated]
 

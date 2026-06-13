@@ -87,7 +87,6 @@ class ListCreateVisitsAPIView(ListCreateAPIView):
     ]
 )
 class RetrieveVisitsOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
-    queryset = Visit.objects.all()
     serializer_class = VisitOptionsSerializer
     permission_classes = [IsAuthenticated]
 

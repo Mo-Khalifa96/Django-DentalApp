@@ -133,7 +133,6 @@ class UpdateDeleteLabOrderAPIView(RetrieveUpdateDeleteAPIView):
     ]
 )
 class RetrieveLabOrdersOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
-    queryset = LabOrder.objects.all()
     serializer_class = LabOrdersOptionsSerializer
     permission_classes = [IsAuthenticated]
 

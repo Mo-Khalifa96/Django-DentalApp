@@ -6,6 +6,7 @@ from django.db import transaction
 from services.models import Message
 from django_q.models import Schedule
 from dateutil.relativedelta import relativedelta
+from finances.models import Bill, Transaction, Invoice
 from clinic.models import Branch, WaitingRoom, SterilizationLog
 from patients.models import Patient, Appointment, PatientRecall
 
@@ -13,18 +14,41 @@ from patients.models import Patient, Appointment, PatientRecall
 #Initiate logger 
 logger = logging.getLogger('django-q')
 
+#YEARLY TASKS 
+def cleanup_deleted_payments():
+    '''Yearly task to delete soft-deleted payments data if soft-deleted for 10 years or more.'''
+
+    try:
+        with transaction.atomic():
+            #Calculate the cutoff date (10 years ago)
+            ten_years_ago = timezone.now() - relativedelta(years=10)
+
+            #Delete obsolete payments data
+            deleted_bills = Bill.all_objects.filter(isDeleted=True, updatedAt__lte=ten_years_ago).delete()
+            deleted_transactions = Transaction.all_objects.filter(isDeleted=True, date__lte=ten_years_ago.date()).delete()
+            deleted_invoices = Invoice.all_objects.filter(isDeleted=True, createdAt__lte=ten_years_ago).delete()
+
+            #Log task results
+            logger.info(f"Bills data cleanup successful. Deleted {deleted_bills[0]} bills.")
+            logger.info(f"Transactions data cleanup successful. Deleted {deleted_transactions[0]} transactions.")
+            logger.info(f"Invoice data cleanup successful. Deleted {deleted_invoices[0]} invoices.")
+    
+    except Exception as exc:
+        logger.error(f"Error cleaning up payments data: {str(exc)}")
+        raise  #raise the exception for Django-Q2's retry mechanism
+
 
 #MONTHLY TASKS 
 #Define task to cleanup inactive patients
 def cleanup_soft_deleted_data():
-    '''Monthly task to delete soft-deleted data if soft-deleted for more than a year.'''
+    '''Monthly task to delete soft-deleted data if soft-deleted for 1 year or more.'''
 
     try:
         with transaction.atomic():
             #Calculate the cutoff date (12 months ago)
             one_year_ago = timezone.now() - relativedelta(months=12)
             
-            #Delete patients inactive for longer than a year
+            #Delete obsolete data
             deleted_users = User.all_objects.filter(is_deleted=True, updatedAt__lte=one_year_ago).delete()
             deleted_branches = Branch.all_objects.filter(is_deleted=True, updatedAt__lte=one_year_ago).delete()
             deleted_patients = Patient.all_objects.filter(is_deleted=True, updatedAt__lte=one_year_ago).delete()

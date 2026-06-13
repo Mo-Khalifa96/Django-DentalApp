@@ -3,6 +3,7 @@ import uuid
 from django.db import models
 from django.db import transaction
 from clinic.models import WorkingDaysLookUp
+from utils.validators import validate_not_empty
 from users.validators import validate_image_size
 from django.contrib.postgres.fields import ArrayField
 from django.utils.translation import gettext_lazy as _
@@ -300,13 +301,13 @@ class User(AbstractBaseUser, PermissionsMixin):
             'view.appointments', 'view.appointmentDetail', 'create.appointment', 
             'update.appointment', 'delete.appointment', 'view.recalls', 'create.recall', 
             'update.recall', 'delete.recall', 'send.whatsappMessage', 'create.bill', 
-            'update.bill', 'create.transaction', 'create.invoice', 'update.invoice',
-            'view.doctorSchedules', 'view.clinicalAnalytics', 'view.preferences'
+            'create.transaction', 'create.invoice', 'view.doctorSchedules', 
+            'view.clinicalAnalytics', 'view.preferences'
         ],
         
         'assistant': [  
-            'view.calender', 'view.inventory', 'create.inventory', 'update.inventory', 
-            'delete.inventory', 'view.labs', 'view.labOrders', 'view.labOrderDetail', 
+            'view.calender', 'view.waitingRoom', 'view.inventory', 'create.inventory', 
+            'update.inventory', 'delete.inventory', 'view.labs', 'view.labOrders', 'view.labOrderDetail', 
             'create.labOrder', 'update.labOrder', 'view.sterilizationLogs', 'create.sterilizationLog', 
             'update.sterilizationLog', 'view.doctorSchedules', 'view.clinicalAnalytics', 
             'view.preferences'
@@ -410,7 +411,7 @@ class DoctorSchedule(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     #One-to-One relationships to the User model -- reserved for doctors
     doctor = models.OneToOneField(User, related_name='doctor_schedule', on_delete=models.CASCADE)
-    workingDays = ArrayField(models.IntegerField(choices=WorkingDaysLookUp.choices), default=list)
+    workingDays = ArrayField(models.IntegerField(choices=WorkingDaysLookUp.choices), default=list, validators=[validate_not_empty])
     startTime = models.TimeField()
     endTime = models.TimeField()
     breakStart = models.TimeField(blank=True, null=True)

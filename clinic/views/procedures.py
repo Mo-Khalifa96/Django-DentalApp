@@ -67,7 +67,6 @@ class RetrieveUpdateDeleteProceduresAPIViews(RetrieveUpdateDeleteAPIView):
     ]
 )
 class RetrieveProcedureOptionsAPIView(generics.GenericAPIView):
-    queryset = Procedure.objects.all()
     serializer_class = ProceduresOptionsSerializer
     permission_classes = [IsAuthenticated]
 

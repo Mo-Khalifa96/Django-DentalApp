@@ -38,7 +38,7 @@ class CreateBranchSerializer(BranchSerializer):
 class UpdateBranchSerializer(BranchSerializer):
     workingDays = serializers.ListField(
         child=TranslatedChoiceField(choices=WorkingDaysLookUp.choices),
-     required=False, allow_null=True, allow_empty=False)
+         required=False)
 
     class Meta(BranchSerializer.Meta):
         fields = ['id', 'name', 'address', 'phone', 'workingDays', 'openTime', 'closeTime',

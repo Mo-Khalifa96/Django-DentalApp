@@ -146,7 +146,6 @@ class AutogenerateInvoiceAPIView(CreateAPIView):
     ]
 )
 class RetrieveBillsOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
-    queryset = Bill.objects.all()
     serializer_class = BillsOptionsSerializer
     permission_classes = [IsAuthenticated]
 

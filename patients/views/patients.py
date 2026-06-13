@@ -97,7 +97,6 @@ class RetrieveUpdateDeletePatientAPIView(RetrieveUpdateDeleteAPIView):
     ]
 )
 class RetrievePatientsOptionsAPIView(generics.GenericAPIView):
-    queryset = Visit.objects.all()
     serializer_class = PatientsOptionsSerializer
     permission_classes = [IsAuthenticated]
 
@@ -136,7 +135,6 @@ class RetrieveUpdateDentalChartAPIView(RetrieveUpdateAPIView):
 #API View for serving optional choices data 
 @extend_schema(tags=['Dental Chart'])
 class RetrieveDentalChartOptionsAPIView(generics.GenericAPIView):
-    queryset = Visit.objects.all()
     serializer_class = DentalChartOptionsSerializer
     permission_classes = [IsAuthenticated]
 

@@ -57,7 +57,6 @@ class RetrieveUpdateDeleteBranchesAPIViews(RetrieveUpdateDeleteAPIView):
     ]
 )
 class RetrieveBranchOptionsAPIView(generics.GenericAPIView):
-    queryset = Branch.objects.all()
     serializer_class = BranchOptionsSerializer
     permission_classes = [IsAuthenticated]
 

@@ -7,10 +7,11 @@ from utils.mixins import UserPermissionsMixin
 from django.core.exceptions import ValidationError
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
-from django.contrib.auth.password_validation import validate_password
-from users.docs import permissions_field_schema, retrieve_user_schema, update_user_schema, users_options_schema
-from utils.swagger_utils import extend_schema_serializer, OpenApiExample
 from services.translation.serializers import TranslatedChoiceField
+from django.contrib.auth.password_validation import validate_password
+from utils.swagger_utils import extend_schema_serializer, OpenApiExample
+from users.docs import (permissions_field_schema, retrieve_user_schema, 
+                        update_user_schema, users_options_schema)
 
 
 #USERS SERIALIZERS
@@ -125,7 +126,7 @@ class UpdateUserSerializer(serializers.ModelSerializer):
     newPassword = serializers.CharField(write_only=True, required=False, allow_blank=True)
     newPassword2 = serializers.CharField(write_only=True, required=False, allow_blank=True)
     avatar = serializers.ImageField(use_url=True, required=False, allow_empty_file=True)
-    permissions = serializers.DictField(child=serializers.BooleanField(required=False), required=False, allow_empty=True)
+    permissions = serializers.DictField(child=serializers.BooleanField(required=False), required=False, allow_empty=False)
     branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', queryset=Branch.objects.all(), required=False, allow_null=True)
     role = TranslatedChoiceField(choices=User.UserRoles.choices, required=False)
 
@@ -307,6 +308,10 @@ class UsersOptionsSerializer(serializers.Serializer):
         ]
 
 
+#########################
+
+
+#Active Branch Serializer
 #Set active branch serializer
 @extend_schema_serializer(
     examples=[
@@ -320,3 +325,22 @@ class UsersOptionsSerializer(serializers.Serializer):
 class SetActiveBranchSerializer(serializers.Serializer):
     branchId = serializers.PrimaryKeyRelatedField(queryset=Branch.objects.all(), write_only=True, required=True, allow_null=True)
     success = serializers.BooleanField(read_only=True)
+
+
+#########################
+
+
+#Roles and Permissions Serializers 
+#Roles serializer 
+class DefaultRolesSerializer(serializers.Serializer):
+    role = serializers.CharField()
+    label = serializers.CharField()
+    description = serializers.CharField()
+    permissions = serializers.ListField(child=serializers.CharField())
+
+
+#Permissions serializer
+class PermissionsSerializer(serializers.Serializer):
+    key = serializers.CharField()
+    label = serializers.CharField()
+    module = serializers.CharField()

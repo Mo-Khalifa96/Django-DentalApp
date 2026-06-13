@@ -102,7 +102,6 @@ class UpdateDeletePatientRecallAPIView(UpdateAPIView, DeleteAPIView):
     ]
 )
 class RetrievePatientRecallsOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
-    queryset = PatientRecall.objects.all()
     serializer_class = PatientRecallsOptionsSerializer
     permission_classes = [IsAuthenticated]
 

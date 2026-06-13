@@ -1,7 +1,6 @@
 from utils.base_views import *
 from users.models import User
 from django.db.models import Q
-from patients.models import Patient
 from finances.models import Invoice
 from utils.validators import validate_uuid
 from rest_framework import status, generics
@@ -123,7 +122,6 @@ class RetrieveUpdateDeleteInvoiceAPIView(RetrieveUpdateDeleteAPIView):
     ]
 )
 class RetrieveInvoicesOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
-    queryset = Invoice.objects.all()
     serializer_class = InvoicesOptionsSerializer
     permission_classes = [IsAuthenticated]
 

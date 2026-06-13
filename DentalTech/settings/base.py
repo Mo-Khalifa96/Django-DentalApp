@@ -383,6 +383,7 @@ if ENABLE_SWAGGER:
         'TAGS': [
             {'name': 'Auth', 'description': 'JWT Authentication endpoints'},
             {'name': 'Users', 'description': 'User management'},
+            {'name': 'Roles and Permissions', 'description': 'Roles and permissions endpoints'},
             {'name': 'Dashboard', 'description': 'Dashboard analytics and metrics'},
             {'name': 'Branches', 'description': 'Branches management'},
             {'name': 'Doctor Schedules', 'description': 'Doctor schedules management'},

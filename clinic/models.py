@@ -3,6 +3,7 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 from django.db import transaction
+from utils.validators import validate_not_empty
 from django.core.validators import MinValueValidator
 from django.contrib.postgres.fields import ArrayField
 from django.utils.translation import gettext_lazy as _
@@ -45,7 +46,7 @@ class Branch(models.Model):
     name = models.CharField(max_length=255, db_index=True)
     address = models.CharField(max_length=500, blank=True, null=True)
     phone = models.CharField(max_length=50, validators=[validate_phone_number])
-    workingDays = ArrayField(models.IntegerField(choices=WorkingDaysLookUp.choices), default=list)
+    workingDays = ArrayField(models.IntegerField(choices=WorkingDaysLookUp.choices), default=list, validators=[validate_not_empty])
     openTime = models.TimeField()
     closeTime = models.TimeField()
     isMain = models.BooleanField(default=False)

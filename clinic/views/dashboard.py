@@ -206,7 +206,6 @@ class DashboardAppointmentTodayAPIView(FilterByBranchMixin, generics.ListAPIView
     ]
 )
 class DashboardOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin): 
-    queryset = Branch.objects.all()
     serializer_class = DashboardOptionsSerializer
     permission_classes = [IsAuthenticated]
 

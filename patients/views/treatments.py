@@ -121,7 +121,6 @@ class LookupTreatmentPlanAPIView(RetrieveAPIView):
     ]
 )
 class RetrieveTreatmentPlansOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
-    queryset = TreatmentPlan.objects.all()
     serializer_class = TreatmentPlanOptionsSerializer
     permission_classes = [IsAuthenticated]
 

@@ -80,7 +80,6 @@ class RetrieveUpdateDeleteInventoryAPIViews(RetrieveUpdateDeleteAPIView):
     ]
 )
 class RetrieveInventoryOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
-    queryset = Inventory.objects.all()
     serializer_class = InventoryOptionsSerializer
     permission_classes = [IsAuthenticated]
 

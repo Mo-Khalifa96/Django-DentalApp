@@ -44,6 +44,12 @@ class DoctorScheduleSerializer(UserPermissionsMixin, serializers.ModelSerializer
         read_only_fields = ['id', 'doctorId', 'doctorName', 'branchId']
         extra_kwargs = {'breakStart': {'required': False}, 'breakEnd': {'required': False}, 'exceptions': {'required': False}}
 
+    def validate_workingDays(self, value):
+        if value:
+            #remove duplicates (if any)
+            value = sorted(set(value))
+        return value
+
     @transaction.atomic
     def create(self, validated_data):
         #Extract exceptions list (if provided)

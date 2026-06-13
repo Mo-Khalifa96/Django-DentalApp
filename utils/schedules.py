@@ -15,6 +15,22 @@ def setup_scheduled_tasks():
     default_first_run = timezone.localtime(timezone.now())
     default_first_run = default_first_run.replace(hour=2, minute=0, second=0, microsecond=0)
 
+    #YEARLY SCHEDULES
+    yearly_schedule, created = Schedule.objects.get_or_create(
+        name='Cleanup Payments Data Task',
+        defaults={
+            'func': 'utils.tasks.cleanup_deleted_payments',
+            'schedule_type': Schedule.YEARLY,
+            'next_run': default_first_run + timedelta(days=365),  #runs every year 2:00 AM
+            'repeats': -1   #repeats indefinitely
+        }
+    )
+
+    if created:
+        logger.info(f"Created cleanup task #1: {yearly_schedule.name}")
+    else:
+        logger.info(f"Task #1 already exists: {yearly_schedule.name}")
+
     #MONTHLY SCHEDULES
     #Schedule monthly task to cleanup soft-deleted data 
     monthly_schedule, created = Schedule.objects.get_or_create(
@@ -28,9 +44,9 @@ def setup_scheduled_tasks():
     )
 
     if created:
-        logger.info(f"Created cleanup task #1: {monthly_schedule.name}")
+        logger.info(f"Created cleanup task #2: {monthly_schedule.name}")
     else:
-        logger.info(f"Task #1 already exists: {monthly_schedule.name}")
+        logger.info(f"Task #2 already exists: {monthly_schedule.name}")
     
     ####
 
@@ -46,9 +62,9 @@ def setup_scheduled_tasks():
     )
 
     if created:
-        logger.info(f"Created cleanup task #2: {monthly_schedule2.name}")
+        logger.info(f"Created cleanup task #3: {monthly_schedule2.name}")
     else:
-        logger.info(f"Task #2 already exists: {monthly_schedule2.name}")
+        logger.info(f"Task #3 already exists: {monthly_schedule2.name}")
     
     ####
 
@@ -64,9 +80,9 @@ def setup_scheduled_tasks():
     )
 
     if created:
-        logger.info(f"Created cleanup task #3: {monthly_schedule3.name}")
+        logger.info(f"Created cleanup task #4: {monthly_schedule3.name}")
     else:
-        logger.info(f"Task #3 already exists: {monthly_schedule3.name}")
+        logger.info(f"Task #4 already exists: {monthly_schedule3.name}")
     
 
     #################
@@ -83,9 +99,9 @@ def setup_scheduled_tasks():
             'repeats': -1})
     
     if created:
-        logger.info(f"Created cleanup task #4: {weekly_schedule.name}")
+        logger.info(f"Created cleanup task #5: {weekly_schedule.name}")
     else:
-        logger.info(f"Task #4 already exists: {weekly_schedule.name}")
+        logger.info(f"Task #5 already exists: {weekly_schedule.name}")
 
     ####
 
@@ -99,9 +115,9 @@ def setup_scheduled_tasks():
             'repeats': -1})
     
     if created:
-        logger.info(f"Created cleanup task #5: {weekly_schedule2.name}")
+        logger.info(f"Created cleanup task #6: {weekly_schedule2.name}")
     else:
-        logger.info(f"Task #5 already exists: {weekly_schedule2.name}")
+        logger.info(f"Task #6 already exists: {weekly_schedule2.name}")
 
     ####
     
@@ -115,9 +131,9 @@ def setup_scheduled_tasks():
             'repeats': -1})
     
     if created:
-        logger.info(f"Created cleanup task #6: {weekly_schedule3.name}")
+        logger.info(f"Created cleanup task #7: {weekly_schedule3.name}")
     else:
-        logger.info(f"Task #6 already exists: {weekly_schedule3.name}")
+        logger.info(f"Task #7 already exists: {weekly_schedule3.name}")
     
     ####
 
@@ -131,10 +147,8 @@ def setup_scheduled_tasks():
             'repeats': -1})
 
     if created:
-        logger.info(f"Created cleanup task #7: {weekly_schedule4.name}")
+        logger.info(f"Created cleanup task #8: {weekly_schedule4.name}")
     else:
-        logger.info(f"Task #7 already exists: {weekly_schedule4.name}")
-
-
+        logger.info(f"Task #8 already exists: {weekly_schedule4.name}")
 
 

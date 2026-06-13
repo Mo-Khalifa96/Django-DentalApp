@@ -54,7 +54,6 @@ class UpdateDeleteWaitingRoomItemAPIViews(RetrieveUpdateDeleteAPIView):
     ]
 )
 class RetrieveWaitingRoomOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIView):
-    queryset = WaitingRoom.objects.all()
     serializer_class = WaitingRoomOptionsSerializer
     permission_classes = [IsAuthenticated]
 

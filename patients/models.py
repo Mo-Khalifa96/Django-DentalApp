@@ -218,6 +218,9 @@ class Visit(models.Model):
     notes = models.TextField(blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
 
+    #snapshot-field for doctor name
+    doctorName = models.CharField(max_length=255, blank=True, null=True)
+
 
     #Objects after filtering by manager
     objects = VisitsManager()
@@ -238,6 +241,10 @@ class Visit(models.Model):
         if self._state.adding and self.date:
             self.patient.lastVisit = self.date 
             self.patient.save(update_fields=['lastVisit', 'updatedAt'])
+        
+        #assign current doctor's name
+        if self.doctor:
+            self.doctorName = self.doctor.name
         
         #save  to database
         super().save(*args, **kwargs)

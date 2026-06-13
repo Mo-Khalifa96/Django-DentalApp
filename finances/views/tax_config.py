@@ -58,13 +58,3 @@ class ClinicTaxConfigAPIView(CreateAPIView, RetrieveUpdateAPIView):
                 serializer_context['branch'] = branch
         return serializer_context
 
-
-# #API view for serving branch choices -- NOTE: actually just delegate it to invoices/options/
-# @extend_schema(tags=['Invoices'])
-# class RetrieveClinicTaxConfigOptionsAPIView(generics.GenericAPIView):
-#     queryset = ClinicalTaxConfig.objects.all()
-#     serializer_class = ClinicTaxConfigOptionsSerializer
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request, *args, **kwargs):
-#         return Response(self.get_serializer(instance={}).data, status=status.HTTP_200_OK)

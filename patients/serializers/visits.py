@@ -14,7 +14,6 @@ class PatientVisitSerializer(serializers.ModelSerializer):
     #patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
     patientName = serializers.CharField(source='patient.name', read_only=True)
     doctorId = serializers.PrimaryKeyRelatedField(source='doctor', read_only=True)
-    doctorName = serializers.CharField(source='doctor.name', read_only=True)
     type = TranslatedChoiceField(choices=Visit.VisitTypeChoices.choices)
     xrayUploads = serializers.ListField(child=serializers.ImageField(required=False, allow_empty_file=True),
                                         required=False, write_only=True, allow_empty=True, allow_null=True)

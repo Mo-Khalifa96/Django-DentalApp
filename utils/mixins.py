@@ -27,7 +27,8 @@ class ResponseMixin:
 
         #Handle only success responses (2xx)
         if 200 <= response.status_code < 300 and response.data and not is_listView:   #lists are handled by the pagination class
-            metadata = response.data.pop('metadata', None)
+            #restructure response
+            metadata = response.data.pop('metadata', None) if isinstance(response.data, dict) else None
             response.data = {
                 'success': True,
                 'data': response.data

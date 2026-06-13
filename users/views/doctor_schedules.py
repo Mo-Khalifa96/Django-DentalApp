@@ -163,7 +163,6 @@ class DeleteScheduleExceptionAPIView(DeleteAPIView):
     ]
 )
 class RetrieveDoctorSchedulesOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
-    queryset = DoctorSchedule.objects.all()
     serializer_class = DoctorScheduleOptionsSerializer
     permission_classes = [IsAuthenticated]
 

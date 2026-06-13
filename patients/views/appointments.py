@@ -138,7 +138,6 @@ class RetrieveUpdateCancelAppointmentAPIView(RetrieveUpdateDeleteAPIView):
     ]
 )
 class RetrieveAppointmentOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
-    queryset = Appointment.objects.all()
     serializer_class = AppointmentOptionsSerializer
     permission_classes = [IsAuthenticated]
 

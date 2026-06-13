@@ -167,7 +167,6 @@ if settings.ENABLE_SWAGGER:
             #For other fields, return None to use default behavior
             return None
 
-
     class SearchFilterExtension(OpenApiFilterExtension): 
         '''Extension for handling SearchFilter with better descriptions'''
         target_class = 'rest_framework.filters.SearchFilter'
@@ -251,7 +250,7 @@ if settings.ENABLE_SWAGGER:
                 if 'responses' not in operation:
                     continue 
                 
-                is_excluded = False if '/auth/me/' in path else any([pattern in path for pattern in ['/auth/', '/options/']])
+                is_excluded = False if '/auth/me/' in path else any([pattern in path for pattern in ['/auth/', '/roles/', '/permissions/', '/options/']])
                 if is_excluded:
                     continue
 

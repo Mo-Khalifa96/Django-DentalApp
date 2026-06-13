@@ -4,7 +4,7 @@ from users.views.auth import (TokenObtainPairView, TokenRefreshView, TokenVerify
                               ResetPasswordAPIView)
 from users.views.users import (RetrieveUserProfileAPIView, ListCreateUserAPIView,
                               RetrieveUpdateDeleteUserAPIView, RetrieveUsersOptionsAPIView,
-                              SetActiveBranchAPIView)
+                              SetActiveBranchAPIView, DefaultRolesAPIView, PermissionsAPIView)
 from users.views.doctor_schedules import (ListDoctorsSchedulesAPIView, CRUD_DoctorScheduleAPIView,
                                           CreateScheduleExceptionAPIView, DeleteScheduleExceptionAPIView,
                                           RetrieveDoctorSchedulesOptionsAPIView)
@@ -33,6 +33,10 @@ urlpatterns = [
 
     #Set active branch url
     path('activate-branch/', SetActiveBranchAPIView.as_view(), name='set_active_branch'),
+    
+    #Roles and permissions url
+    path('roles/', DefaultRolesAPIView.as_view(), name='retrieve_user_roles'),
+    path('permissions/', PermissionsAPIView.as_view(), name='retrieve_user_permissions'),
 
     #Doctor schedules urls
     path('doctor-schedules/', ListDoctorsSchedulesAPIView.as_view(), name='list_doctors_schedules'),

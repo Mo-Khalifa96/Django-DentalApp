@@ -75,7 +75,6 @@ class UpdateDeleteSterilizationLogAPIView(UpdateAPIView, DeleteAPIView):
 )
 #API view for serving choices for sterilization logs endpoints 
 class RetrieveSterilizationLogsOptionsAPIView(generics.GenericAPIView):
-    queryset = SterilizationLog.objects.all()
     serializer_class = SterilizationLogsOptionsSerializer
     permission_classes = [IsAuthenticated]
 
