@@ -81,7 +81,7 @@ class Bill(models.Model):
     
     #bill fields
     description = models.CharField(max_length=300)
-    discount = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal(0), validators=[MinValueValidator(0)])
+    discount = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'), validators=[MinValueValidator(0)])
     subtotal = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
     totalAmount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)], blank=True)
     totalPaid = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)], blank=True, null=True)  #NOTE: backend only field
@@ -297,8 +297,8 @@ class Invoice(models.Model):
     
     #money fields
     subtotal = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
-    tax = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal(0), validators=[MinValueValidator(0)])
-    discount = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal(0), validators=[MinValueValidator(0)])
+    tax = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'), validators=[MinValueValidator(0)])
+    discount = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'), validators=[MinValueValidator(0)])
     total = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
     currency = models.CharField(max_length=5, blank=True, null=True)
     

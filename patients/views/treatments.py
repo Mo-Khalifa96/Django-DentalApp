@@ -35,7 +35,7 @@ class ListCreateTreatmentPlansAPIView(ListCreateAPIView):
     def initial(self, request, *args, **kwargs):
         #re-order data for admins
         if getattr(request.user, 'role', None) == 'admin':
-            self.ordering = ['branch__name', 'patient__name', '-createdAt']
+            self.ordering = ['patient__branch__name', 'patient__name', '-createdAt']
         
         #determine required permission
         #self.required_permission = 'view.treatments' if request.method == 'GET' else 'create.treatments'

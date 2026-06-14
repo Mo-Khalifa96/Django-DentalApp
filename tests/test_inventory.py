@@ -114,4 +114,7 @@ class TestInventoryAPI:
         response = api_client.get(reverse('inventory_options'))
 
         assert response.status_code == status.HTTP_200_OK
-        assert list(response.data['availableCategories']) == ['Consumables', 'Equipment']
+        assert list(response.data['categoryChoices']) == [
+            {'value': 'Consumables', 'label': 'Consumables'},
+            {'value': 'Equipment', 'label': 'Equipment'},
+        ]

@@ -84,7 +84,7 @@ class TestUpdateUserAPIView:
         receptionist_user.refresh_from_db()
         assert receptionist_user.name == "Updated Receptionist"
         assert receptionist_user.email == "updated_receptionist@test.com"
-        assert receptionist_user.role == "Dentist"
+        assert receptionist_user.role == "dentist"
         assert 'view.patientDetail' in receptionist_user.userPermissions
         assert 'create.visit' in receptionist_user.userPermissions
         assert 'delete.patient' not in receptionist_user.userPermissions

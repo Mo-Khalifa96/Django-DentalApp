@@ -493,11 +493,11 @@ msgstr "يجب أن تحتوي كلمة المرور على رقم واحد عل
 
 #: users/validators.py:19
 msgid "Password must contain at least one capital letter."
-msgstr "يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل."
+msgstr "يجب أن تحتوي كلمة المرور على حرف capital واحد على الأقل."
 
 #: users/validators.py:23
 msgid "Your password must contain at least one capital letter [A-Z]."
-msgstr "يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل [A-Z]."
+msgstr "يجب أن تحتوي كلمة المرور على حرف capital واحد على الأقل [A-Z]."
 
 #: users/views/doctor_schedules.py:82 users/views/doctor_schedules.py:116
 msgid "Permission denied. You do not have permission to perform this action."

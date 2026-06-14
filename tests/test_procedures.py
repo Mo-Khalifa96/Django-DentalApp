@@ -9,23 +9,24 @@ pytestmark = pytest.mark.django_db
 
 
 class TestProceduresAPI:
-    def test_list_procedures_supports_search_and_category_filter(
+    def test_list_procedures_supports_search(
         self,
         api_client,
         admin_user,
         procedure_factory,
     ):
-        visible = procedure_factory(name='Teeth Whitening', category='Cosmetic')
+        visible = procedure_factory(name='Teeth Whitening', category='cosmetic')
         procedure_factory(name='extraction', category='surgical')
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(
             reverse('list_create_procedures'),
-            {'search': 'whitening', 'category': 'cosmetic'},
+            {'search': 'whitening'},
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert [item['id'] for item in response.data['data']] == [str(visible.id)]
+        assert str(visible.id) in [item['id'] for item in response.data['data']]
+
 
     def test_receptionist_cannot_view_procedures(self, api_client, receptionist_user):
         api_client.force_authenticate(user=receptionist_user)

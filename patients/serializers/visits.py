@@ -82,7 +82,7 @@ class VisitOptionsSerializer(serializers.Serializer):
     @extend_schema_field(
         serializers.ListField(
             child=serializers.DictField(child=serializers.CharField(allow_blank=True, allow_null=True))
-        ))
+    ))
     def get_branchChoices(self, obj):
         return [
                 {'branchId': branch_id, 'name': name} 
@@ -93,7 +93,7 @@ class VisitOptionsSerializer(serializers.Serializer):
     @extend_schema_field(
         serializers.ListField(
             child=serializers.DictField(child=serializers.CharField())
-        ))
+    ))
     def get_visitTypeChoices(self, obj):
         return [
             {'value': choice.value, 'label': str(choice.label)}
@@ -103,7 +103,7 @@ class VisitOptionsSerializer(serializers.Serializer):
     @extend_schema_field(
         serializers.ListField(
             child=serializers.DictField(child=serializers.CharField(allow_blank=True, allow_null=True))
-        ))
+    ))
     def get_optionalProcedureChoices(self, obj):
         branchId = self.context.get('branchId')
         if not branchId and Branch.objects.exists():
@@ -126,7 +126,7 @@ class VisitOptionsSerializer(serializers.Serializer):
     @extend_schema_field(
         serializers.ListField(
             child=serializers.DictField(child=serializers.CharField())
-        ))
+    ))
     def get_optionalProcedureTypeChoices(self, obj):
         return [
             {'value': choice.value, 'label': str(choice.label)}

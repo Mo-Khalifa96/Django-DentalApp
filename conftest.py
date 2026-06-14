@@ -211,15 +211,24 @@ def visit_factory():
 def treatment_plan_factory():
     from patients.models import TreatmentPlan, TreatmentPlanItem
 
-    def create_treatment_plan(patient, procedure, doctor=None, treatment_items=None, **overrides):
+    def create_treatment_plan(
+        patient,
+        procedure,
+        doctor=None,
+        treatment_items=None,
+        **overrides,
+    ):
+        # TreatmentPlan model fields (current): title, status, currency, totalCost,
+        # installmentMonths, sessions
         treatment_plan = TreatmentPlan.objects.create(
             patient=patient,
             doctor=doctor,
-            totalCost=overrides.pop('totalCost', '0.00'),
+            title=overrides.pop('title', 'Treatment Plan'),
+            status=overrides.pop('status', 'active'),
             currency=overrides.pop('currency', '$'),
-            paymentPlan=overrides.pop('paymentPlan', None),
-            notes=overrides.pop('notes', 'Treatment notes'),
-            status=overrides.pop('status', 'pending'),
+            totalCost=overrides.pop('totalCost', '0.00'),
+            installmentMonths=overrides.pop('installmentMonths', None),
+            sessions=overrides.pop('sessions', None),
             **overrides,
         )
 
@@ -228,8 +237,9 @@ def treatment_plan_factory():
                 'procedure': procedure,
                 'toothNumber': '11',
                 'price': '120.00',
-                'duration': 30,
-                'completed': False,
+                'session': 1,
+                'status': 'pending',
+                'notes': None,
             }
         ]
 
@@ -243,8 +253,9 @@ def treatment_plan_factory():
                     procedure=item['procedure'],
                     toothNumber=item.get('toothNumber'),
                     price=item['price'],
-                    duration=item.get('duration'),
-                    completed=item.get('completed', False),
+                    session=item.get('session'),
+                    status=item.get('status', 'pending'),
+                    notes=item.get('notes'),
                 )
             )
 
@@ -254,6 +265,7 @@ def treatment_plan_factory():
         return treatment_plan
 
     return create_treatment_plan
+
 
 
 @pytest.fixture

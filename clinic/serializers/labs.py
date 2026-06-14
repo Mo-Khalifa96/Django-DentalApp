@@ -141,7 +141,7 @@ class LabOrdersOptionsSerializer(serializers.Serializer):
         filters = {'branch_id': branchId} if branchId else {}
         return [
                 {'procedureId': procedure_id, 'name': name}
-                 for procedure_id,name in Procedure.objects.filters(**filters)\
+                 for procedure_id,name in Procedure.objects.filter(**filters)\
                   .values_list('id', 'name').order_by('name')
             ]
 
