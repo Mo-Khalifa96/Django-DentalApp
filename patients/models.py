@@ -133,6 +133,7 @@ class Patient(models.Model):
         if self.countryCode and self.phone:
             code, phone_number = normalize_phone_number(self.countryCode, self.phone)
             self.countryCode = code
+            #store phone in the format: +10 1234567890
             self.phone = f'{code}{phone_number}'  #NOTE - to normalize for display, you can now do this: phone = '0' + patient.phone[len(patient.countryCode):]  
 
         if self.doctor:

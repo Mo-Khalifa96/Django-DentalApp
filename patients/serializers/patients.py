@@ -33,13 +33,15 @@ class CreatePatientSerializer(serializers.ModelSerializer, ValidateBranchMixin):
     def validate_countryCode(self, countryCode):
         if not countryCode:
             raise serializers.ValidationError(_('Country code is required.'))
-        if (not countryCode.isnumeric()) or len(countryCode) > 5:
+        code_cleaned = countryCode.lstrip('+').lstrip('0')
+        if (not code_cleaned.isnumeric()) or len(code_cleaned) > 5:
             raise serializers.ValidationError(_('Country code entered is invalid. Please enter a valid number.'))
         return countryCode
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        phone, code = data.get('phone'), data.get('countryCode')
+        phone = data.get('phone')
+        code = data.get('countryCode')
         if phone and code:
             try:
                 data['phone'] = '0' + phone[len(code):]
@@ -52,7 +54,6 @@ class CreatePatientSerializer(serializers.ModelSerializer, ValidateBranchMixin):
 class ListPatientSerializer(serializers.ModelSerializer): 
     gender = TranslatedChoiceField(choices=Patient.GenderChoices.choices)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
-    phone = serializers.SerializerMethodField()  
 
     class Meta:
         model = Patient
@@ -60,11 +61,6 @@ class ListPatientSerializer(serializers.ModelSerializer):
                   'allergies', 'insurance', 'insuranceId', 'lastVisit', 'nextAppointment', 'notes', 
                   'status', 'branchId', 'createdAt', 'updatedAt']
     
-    @extend_schema_field(serializers.CharField)
-    def get_phone(self, obj):  #NOTE - use try/except in case of problems
-        return str(obj.phone).replace('00', '+', 1) if obj.phone.startswith('00') else obj.phone
-        #or,  '0' + obj.phone[len(obj.countryCode):]
-
 
 #Serializer for retrieving patient details 
 class RetrievePatientSerializer(UserPermissionsMixin, serializers.ModelSerializer): 
@@ -106,7 +102,8 @@ class UpdatePatientSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        phone, code = data.get('phone'), data.get('countryCode')
+        phone = data.get('phone')
+        code = data.get('countryCode')
         if phone and code:
             try:
                 data['phone'] = '0' + phone[len(code):]

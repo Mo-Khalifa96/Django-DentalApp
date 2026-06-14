@@ -9,10 +9,10 @@ def normalize_phone_for_whatsapp(phone: str) -> str:
     WhatsApp format: '2001012345678' (no leading 00 or +)
     '''
     phone = phone.strip().replace(' ', '')
-    if phone.startswith('00'):
-        return phone[2:]
     if phone.startswith('+'):
         return phone[1:]
+    elif phone.startswith('00'):
+        return phone[2:]
     return phone
 
 

@@ -15,28 +15,25 @@ TEETH_CHOICES = [(n, n) for n in sorted(VALID_FDI_TEETH)]
 def normalize_phone_number(code, phone):
     #Normalize country code to 00XX format
     code = code.strip().replace(' ', '')
-    if code.startswith('+'):
-        code_normalized = '00' + code[1:]
-    elif code.startswith('00'):
-        code_normalized = code
-    else:
-        code_normalized = '00' + code  # handles bare '20' → '0020'
+    if code.startswith('00'):
+        code = '+' + code[2:]
+    elif not code.startswith('+'):
+        code = '+' + code
 
     #Strip formatting characters
     phone = re.sub(r'[\s\-\(\)]', '', phone.strip())
 
     #Strip country code from phone if present in any format
+    code_00 = '00' + code[1:]
     if phone.startswith(code):
-        phone = phone[len(code):]
-    elif phone.startswith(code_normalized):
-        phone = phone[len(code_normalized):]
-    else:
-        phone = re.sub(r'^\+|^00', '', phone)
+        phone = phone[len(code):]  #if starts with code with '+'
+    elif phone.startswith(code_00):
+        phone = phone[len(code_00):]  #if starts with code with '00'
 
     #Strip trunk prefix zeros
-    phone_normalized = phone.lstrip('0')
+    phone = phone.lstrip('0')
 
-    return code_normalized, phone_normalized
+    return code, phone
 
 
 # #Custom function to calculate percentages 
