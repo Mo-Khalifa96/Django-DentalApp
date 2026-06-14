@@ -39,10 +39,9 @@ class DoctorScheduleSerializer(UserPermissionsMixin, serializers.ModelSerializer
 
     class Meta:
         model = DoctorSchedule
-        fields = ['id', 'doctorId', 'doctorName', 'branchId', 'workingDays', 'startTime', 'endTime', 
-                  'breakStart', 'breakEnd', 'exceptions']
+        fields = ['id', 'doctorId', 'doctorName', 'branchId', 'workingDays', 'startTime', 
+                  'endTime', 'breakStart', 'breakEnd', 'exceptions']
         read_only_fields = ['id', 'doctorId', 'doctorName', 'branchId']
-        extra_kwargs = {'breakStart': {'required': False}, 'breakEnd': {'required': False}, 'exceptions': {'required': False}}
 
     def validate_workingDays(self, value):
         if value:
@@ -102,7 +101,7 @@ class DoctorScheduleSerializer(UserPermissionsMixin, serializers.ModelSerializer
 
         #update remaining fields
         for field, value in validated_data.items():
-            setattr(instance, field, value)
+            setattr(instance, field, value)  #i.e. instance.field = value
 
         instance.save(update_fields=list(validated_data.keys()))
         return instance

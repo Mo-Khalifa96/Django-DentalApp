@@ -88,9 +88,7 @@ class CreateInvoiceSerializer(InvoiceSerializer):
                   'issuedAt', 'submittedAt', 'createdAt']
         read_only_fields = ['id', 'invoiceNumber', 'patientName', 'patientNationalId', 'status', 
                             'issuedAt', 'submittedAt', 'createdAt']
-        extra_kwargs = {'total': {'required': False}, 'discount': {'required': False}, 
-                        'tax': {'required': False}, 'currency': {'required': False}}
-
+        extra_kwargs = {'total': {'required': False}, 'currency': {'required': False}}
     
     def validate(self, data):
         #get current user 
@@ -210,9 +208,9 @@ class UpdateInvoiceSerializer(CreateInvoiceSerializer):    #PUT requests only
                   'branchId', 'items', 'subtotal', 'tax', 'discount', 'total', 'currency', 'status', 
                   'issuedAt', 'submittedAt']
         read_only_fields = ['id', 'invoiceNumber', 'billId', 'patientId', 'patientName', 'patientNationalId',
-                            'branchId', 'issuedAt', 'submittedAt']
+                            'branchId']
         extra_kwargs = {'status': {'required': False}, 'total': {'required': False}, 'discount': {'required': False}, 
-                        'tax': {'required': False}, 'currency': {'required': False}}
+                        'tax': {'required': False}, 'currency': {'required': False}, 'status': {'required': False}}
 
 
     def validate(self, data):

@@ -25,7 +25,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = ['id', 'patientId', 'patientName', 'doctorId', 'doctorName', 'procedureId', 'type',
-                  'date', 'startTime', 'endTime', 'room', 'status', 'notes', 'branchId', 'createdAt', 'updatedAt']
+                  'date', 'startTime', 'endTime', 'room', 'status', 'notes', 'branchId', 'createdAt', 
+                  'updatedAt']
 
 
 #Retrieve appointments serializer (inherits from appointment serializer)
@@ -137,7 +138,8 @@ class UpdateAppointmentSerializer(AppointmentSerializer):
     status = TranslatedChoiceField(choices=Appointment.AppointmentStatusChoices.choices, required=False, allow_blank=False, allow_null=False)
 
     class Meta(AppointmentSerializer.Meta):
-        fields = ['id', 'doctorId', 'date', 'startTime', 'endTime', 'room', 'status', 'notes', 'branchId', 'updatedAt']
+        fields = ['id', 'doctorId', 'date', 'startTime', 'endTime', 'room', 'status', 'notes', 
+                  'branchId', 'updatedAt']
         read_only_fields = ['id', 'updatedAt']
         extra_kwargs = {field: {'required': False} for field in 
             ('date', 'startTime', 'endTime', 'room', 'status', 'notes', 'branchId')
@@ -146,8 +148,8 @@ class UpdateAppointmentSerializer(AppointmentSerializer):
     #validate patient-related data 
     def validate(self, data):
         instance = self.instance
-        branch = data.get('branch', instance.branch)
         doctor = data.get('doctor', instance.doctor)
+        branch = data.get('branch', instance.branch) or instance.branch
         
         #validate branch
         if not branch:

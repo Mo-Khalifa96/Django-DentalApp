@@ -108,10 +108,9 @@ class UpdateTreatmentPlanItemsSerializer(TreatmentPlanItemsSerializer):
     class Meta(TreatmentPlanItemsSerializer.Meta):
         fields = ['id', 'procedureId', 'procedureName', 'toothNumber', 'price', 'session', 'status', 'notes']
         read_only_fields = ['id', 'procedureName']
-        extra_kwargs = {
-            'procedureId': {'required': True}, 'toothNumber': {'required': False}, 'price': {'required': True}, 
-            'session': {'required': True}, 'status': {'required': True}, 'notes': {'required': True}
-        }
+        extra_kwargs = {field: {'required': False} for field in 
+                ('procedureId', 'toothNumber', 'price', 'session', 'status', 'notes')
+            }
 
 #Update treatment plan serializer 
 class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):

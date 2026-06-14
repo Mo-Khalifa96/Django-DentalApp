@@ -37,8 +37,7 @@ class CreateUserSerializer(serializers.ModelSerializer):
         fields = ['id', 'email', 'name', 'role', 'specialization', 'branchIds', 'avatar', 
                   'password', 'password2', 'createdAt']
         read_only_fields = ['id', 'createdAt']
-        extra_kwargs = {'specialization': {'required': False},  'avatar': {'required': False},
-                        'branchIds': {'required': False}}
+
 
     def validate_branchIds(self, branchIds):
         if not branchIds:
@@ -125,10 +124,11 @@ class UpdateUserSerializer(serializers.ModelSerializer):
     currentPassword = serializers.CharField(write_only=True, required=False, allow_blank=True)
     newPassword = serializers.CharField(write_only=True, required=False, allow_blank=True)
     newPassword2 = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    role = TranslatedChoiceField(choices=User.UserRoles.choices, required=False)
     avatar = serializers.ImageField(use_url=True, required=False, allow_empty_file=True)
     permissions = serializers.DictField(child=serializers.BooleanField(required=False), required=False, allow_empty=False)
-    branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', queryset=Branch.objects.all(), required=False, allow_null=True)
-    role = TranslatedChoiceField(choices=User.UserRoles.choices, required=False)
+    branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', queryset=Branch.objects.all(), 
+                                                   required=False, allow_null=True, allow_empty=True)
 
     class Meta:
         model = User
@@ -148,8 +148,9 @@ class UpdateUserSerializer(serializers.ModelSerializer):
         #Role and permission not shown to non-Admin users 
         if getattr(request.user, 'role', None) != 'admin':
             fields.pop('role', None)
-            fields.pop('permissions', None)
             fields.pop('branchIds', None)
+            fields.pop('isActive', None)
+            fields.pop('permissions', None)
 
         #Prevent user/admin from changing another's password
         if getattr(request.user, 'id', None) != user_id:
@@ -162,10 +163,12 @@ class UpdateUserSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
-        rep['permissions'] = {
-            permission: permission in instance.userPermissions 
-            for permission in User.USER_PERMISSIONS
-            }
+        request = self.context.get('request')
+        if getattr(request.user, 'role', None) == 'admin':
+            rep['permissions'] = {
+                permission: permission in instance.userPermissions 
+                for permission in User.USER_PERMISSIONS
+                }
         
         return rep
 
@@ -182,6 +185,7 @@ class UpdateUserSerializer(serializers.ModelSerializer):
     
         return super().to_internal_value(data) 
     
+
     #Validate passwords
     def validate(self, data):
         #obtain passwords passed (if any)
@@ -222,6 +226,7 @@ class UpdateUserSerializer(serializers.ModelSerializer):
                            not validated_data['branches'] and
                            instance.branches.exists())
 
+        #get branches data 
         branches = validated_data.pop('branches', [])
 
         #Track fields to update 
@@ -229,7 +234,7 @@ class UpdateUserSerializer(serializers.ModelSerializer):
 
         #Update basic fields
         for field, value in validated_data.items():
-            if hasattr(instance, field) and value is not None:
+            if hasattr(instance, field):
                 setattr(instance, field, value)
                 update_fields.append(field)
 

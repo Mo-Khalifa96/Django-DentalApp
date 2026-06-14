@@ -25,10 +25,6 @@ class CreatePatientSerializer(serializers.ModelSerializer, ValidateBranchMixin):
                   'bloodType', 'allergies', 'insurance', 'insuranceId', 'notes', 'status', 'branchId', 
                   'createdAt', 'updatedAt']
         read_only_fields = ['id', 'status', 'createdAt', 'updatedAt']
-        extra_kwargs = {field: {'required': False} for field in
-                ('email', 'address', 'bloodType', 'nationalId', 'allergies', 'insurance',
-                 'insuranceId', 'notes', 'branchId')
-            }
     
     def validate_countryCode(self, countryCode):
         if not countryCode:

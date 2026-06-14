@@ -392,7 +392,6 @@ update_user_schema = extend_schema_serializer(
                     'view.preferences': True,
                 },
                 'isActive': True,
-                'updatedAt': '2026-04-24T23:33:54.610Z',
             }
         ),
         OpenApiExample(
@@ -410,9 +409,9 @@ update_user_schema = extend_schema_serializer(
             }
         ),
         OpenApiExample(
-            name='Success Response (200 OK)',
+            name='Admin Response (200 OK)',
             response_only=True,
-            description='Response (for admin and non-admin users) -- *let me know if it needs customization by role too!*',
+            description='Admin gets full response data',
             value={
                 'success': True,
                 'data': {
@@ -488,7 +487,30 @@ update_user_schema = extend_schema_serializer(
                         # 'view.doctorScheduleDetail': True,
                         'view.settings': False,
                         'view.preferences': True,
-                    }
+                    },
+                    'isActive': True,
+                    'updatedAt': '2026-04-24T23:33:54.610Z',
+                }
+            }
+        ),
+        OpenApiExample(
+            name='Non-admin Response (200 OK)',
+            response_only=True,
+            description='Non-admins get the response without the `permissions` data.',
+            value={
+                'success': True,
+                'data': {
+                    'id': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                    'email': 'dr.layla@dentaltech.com',
+                    'name': 'Dr. Layla Hassan',
+                    'role': 'dentist',
+                    'specialization': 'General Dentistry',
+                    'branchIds': [
+                        '4b003dd4-f654-4ac3-8dc4-07bd2c7bd7f3',
+                        '908be626-8934-4093-a93f-1541d50ceb29'
+                    ],
+                    'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
+                    'updatedAt': '2026-04-24T23:33:54.610Z',
                 }
             }
         ),
