@@ -9,6 +9,7 @@ from utils.exceptions import AppointmentConflictError
 from django.core.validators import MinValueValidator
 from django.contrib.postgres.fields import ArrayField
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import pgettext_lazy as _context
 from patients.validators import (validate_phone_number, validate_country_code,
                              file_validators, validate_toothNumber, FDI_PERMANENT)
 
@@ -52,7 +53,7 @@ class Patient(models.Model):
         FEMALE = 'female', _('Female')
 
     class StatusChoices(models.TextChoices):
-        ACTIVE = 'active', _('active')
+        ACTIVE = 'active', _context('patient_status', 'active')
         INACTIVE = 'inactive', _('inactive')
     
     #Blood type choices
@@ -346,7 +347,7 @@ class Appointment(models.Model):
             if not self.status:
                 self.status = self.AppointmentStatusChoices.PENDING
             self.procedureName = self.procedure.name
-            self.doctorName = self.doctor.name
+            self.doctorName = getattr(self.doctor, 'name', None)
 
             if self.date:
                 #update nextAppointment field on patient
@@ -411,7 +412,7 @@ class TreatmentPlansManager(models.Manager):
 #TREATMENT PLANS MODEL 
 class TreatmentPlan(models.Model):
     class TreatmentStatusChoices(models.TextChoices):
-        ACTIVE = 'active', _('active')
+        ACTIVE = 'active', _context('treatment_status', 'active')
         COMPLETED = 'completed', _('completed')
         CANCELLED = 'cancelled', _('cancelled')
     

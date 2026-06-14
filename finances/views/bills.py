@@ -142,10 +142,9 @@ class AutogenerateInvoiceAPIView(CreateAPIView):
         OpenApiParameter('branchId', OpenApiTypes.UUID, OpenApiParameter.QUERY, required=False),
         OpenApiParameter('patientId', OpenApiTypes.UUID, OpenApiParameter.QUERY, required=False),
         OpenApiParameter('doctorId', OpenApiTypes.UUID, OpenApiParameter.QUERY, required=False),
-        OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
     ]
 )
-class RetrieveBillsOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
+class RetrieveBillsOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIView):
     serializer_class = BillsOptionsSerializer
     permission_classes = [IsAuthenticated]
 

@@ -137,7 +137,7 @@ class RetrieveUpdateCancelAppointmentAPIView(RetrieveUpdateDeleteAPIView):
         OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
     ]
 )
-class RetrieveAppointmentOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
+class RetrieveAppointmentOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIView):
     serializer_class = AppointmentOptionsSerializer
     permission_classes = [IsAuthenticated]
 

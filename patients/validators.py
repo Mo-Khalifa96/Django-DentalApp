@@ -27,7 +27,7 @@ def validate_phone_number(value):
 
     if not re.fullmatch(phone_regex, value):
         raise ValidationError(
-            _("Enter a valid phone number. Only digits, spaces, hyphens, and parentheses allowed."))
+            _("Enter a valid phone number. Only digits, spaces, hyphens, and parentheses are allowed."))
 
 #Custom function to validate country code 
 def validate_country_code(value):

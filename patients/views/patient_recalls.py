@@ -101,7 +101,7 @@ class UpdateDeletePatientRecallAPIView(UpdateAPIView, DeleteAPIView):
         OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
     ]
 )
-class RetrievePatientRecallsOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
+class RetrievePatientRecallsOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIView):
     serializer_class = PatientRecallsOptionsSerializer
     permission_classes = [IsAuthenticated]
 

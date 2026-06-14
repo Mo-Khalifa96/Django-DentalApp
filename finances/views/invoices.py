@@ -121,7 +121,7 @@ class RetrieveUpdateDeleteInvoiceAPIView(RetrieveUpdateDeleteAPIView):
         OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
     ]
 )
-class RetrieveInvoicesOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
+class RetrieveInvoicesOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIView):
     serializer_class = InvoicesOptionsSerializer
     permission_classes = [IsAuthenticated]
 

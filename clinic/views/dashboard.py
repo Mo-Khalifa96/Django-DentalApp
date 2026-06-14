@@ -15,8 +15,9 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
 from utils.pagination import DashboardAppointmentsPagination
-from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
+from services.translation.mixins import FieldsTranslationMixin
 from utils.mixins import BranchToSerializerMixin, FilterByBranchMixin
+from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
 from clinic.serializers.dashboard import (DashboardStatisticsSerializer, DashboardAppointmentTodaySerializer, 
                                         DashboardQueryParamSerializer, DashboardOptionsSerializer)
 
@@ -167,7 +168,7 @@ class DashboardStatisticsAPIView(GenericAPIView):
 
 #Dashboard Appointments Today API View
 @extend_schema(tags=['Dashboard'])
-class DashboardAppointmentTodayAPIView(FilterByBranchMixin, generics.ListAPIView):  #No finalize response mixin
+class DashboardAppointmentTodayAPIView(FieldsTranslationMixin, FilterByBranchMixin, generics.ListAPIView):  #No finalize response mixin
     serializer_class = DashboardAppointmentTodaySerializer
     permission_classes = [SystemUserPermissions]
     required_permission = 'view.calender'
@@ -205,7 +206,7 @@ class DashboardAppointmentTodayAPIView(FilterByBranchMixin, generics.ListAPIView
         OpenApiParameter('branchId', OpenApiTypes.UUID, OpenApiParameter.QUERY, required=False),
     ]
 )
-class DashboardOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin): 
+class DashboardOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIView): 
     serializer_class = DashboardOptionsSerializer
     permission_classes = [IsAuthenticated]
 

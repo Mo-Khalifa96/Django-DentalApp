@@ -86,7 +86,7 @@ class ListCreateVisitsAPIView(ListCreateAPIView):
         OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
     ]
 )
-class RetrieveVisitsOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
+class RetrieveVisitsOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIView):
     serializer_class = VisitOptionsSerializer
     permission_classes = [IsAuthenticated]
 

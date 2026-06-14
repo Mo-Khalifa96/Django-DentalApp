@@ -162,7 +162,7 @@ class DeleteScheduleExceptionAPIView(DeleteAPIView):
         OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
     ]
 )
-class RetrieveDoctorSchedulesOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
+class RetrieveDoctorSchedulesOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIView):
     serializer_class = DoctorScheduleOptionsSerializer
     permission_classes = [IsAuthenticated]
 

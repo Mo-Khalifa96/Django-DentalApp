@@ -1,6 +1,6 @@
 from rest_framework import generics
 from utils.mixins import ResponseMixin, FilterByBranchMixin
-
+from services.translation.mixins import FieldsTranslationMixin
 
 __all__ = [
     'GenericAPIView',
@@ -17,35 +17,35 @@ __all__ = [
 ]
 
 
-class GenericAPIView(ResponseMixin, generics.GenericAPIView):
+class GenericAPIView(FieldsTranslationMixin, ResponseMixin, generics.GenericAPIView):
     pass
 
-class CreateAPIView(ResponseMixin, generics.CreateAPIView):
+class CreateAPIView(FieldsTranslationMixin, ResponseMixin, generics.CreateAPIView):
     pass
 
-class ListAPIView(ResponseMixin, generics.ListAPIView):
+class ListAPIView(FieldsTranslationMixin, ResponseMixin, generics.ListAPIView):
     pass
 
-class ListCreateAPIView(ResponseMixin, generics.ListCreateAPIView):
+class ListCreateAPIView(FieldsTranslationMixin, ResponseMixin, generics.ListCreateAPIView):
     pass 
 
-class FilterListAPIView(FilterByBranchMixin, ResponseMixin, generics.ListAPIView):
+class FilterListAPIView(FieldsTranslationMixin, FilterByBranchMixin, ResponseMixin, generics.ListAPIView):
     pass 
 
-class FilterListCreateAPIView(FilterByBranchMixin, ResponseMixin, generics.ListCreateAPIView):
+class FilterListCreateAPIView(FieldsTranslationMixin, FilterByBranchMixin, ResponseMixin, generics.ListCreateAPIView):
     pass 
 
-class RetrieveAPIView(ResponseMixin, generics.RetrieveAPIView):
+class RetrieveAPIView(FieldsTranslationMixin, ResponseMixin, generics.RetrieveAPIView):
     pass
 
-class UpdateAPIView(ResponseMixin, generics.UpdateAPIView):
+class UpdateAPIView(FieldsTranslationMixin, ResponseMixin, generics.UpdateAPIView):
     pass
 
-class DeleteAPIView(ResponseMixin, generics.DestroyAPIView):
+class DeleteAPIView(FieldsTranslationMixin, ResponseMixin, generics.DestroyAPIView):
     pass
 
-class RetrieveUpdateAPIView(ResponseMixin, generics.RetrieveUpdateAPIView):
+class RetrieveUpdateAPIView(FieldsTranslationMixin, ResponseMixin, generics.RetrieveUpdateAPIView):
     pass
 
-class RetrieveUpdateDeleteAPIView(ResponseMixin, generics.RetrieveUpdateDestroyAPIView):
+class RetrieveUpdateDeleteAPIView(FieldsTranslationMixin, ResponseMixin, generics.RetrieveUpdateDestroyAPIView):
     pass 

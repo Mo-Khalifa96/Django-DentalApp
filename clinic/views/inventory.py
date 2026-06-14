@@ -79,7 +79,7 @@ class RetrieveUpdateDeleteInventoryAPIViews(RetrieveUpdateDeleteAPIView):
         OpenApiParameter('branchId', OpenApiTypes.UUID, OpenApiParameter.QUERY, required=False),
     ]
 )
-class RetrieveInventoryOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
+class RetrieveInventoryOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIView):
     serializer_class = InventoryOptionsSerializer
     permission_classes = [IsAuthenticated]
 

@@ -121,7 +121,7 @@ class UpdateDeleteTransactionAPIView(UpdateAPIView, DeleteAPIView):
         OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
     ]
 )
-class RetrieveTransactionsOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
+class RetrieveTransactionsOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIView):
     serializer_class = TransactionsOptionsSerializer
     permission_classes = [IsAuthenticated]
 

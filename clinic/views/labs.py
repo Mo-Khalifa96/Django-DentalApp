@@ -132,7 +132,7 @@ class UpdateDeleteLabOrderAPIView(RetrieveUpdateDeleteAPIView):
         OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
     ]
 )
-class RetrieveLabOrdersOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
+class RetrieveLabOrdersOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIView):
     serializer_class = LabOrdersOptionsSerializer
     permission_classes = [IsAuthenticated]
 

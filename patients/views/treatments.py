@@ -120,7 +120,7 @@ class LookupTreatmentPlanAPIView(RetrieveAPIView):
         OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
     ]
 )
-class RetrieveTreatmentPlansOptionsAPIView(generics.GenericAPIView, BranchToSerializerMixin):
+class RetrieveTreatmentPlansOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIView):
     serializer_class = TreatmentPlanOptionsSerializer
     permission_classes = [IsAuthenticated]
 
