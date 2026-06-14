@@ -27,14 +27,11 @@ IS_DOCKERIZED = os.getenv('IS_DOCKERIZED', 'false').lower() == 'true'
 
 #Apps and middleware used only in development 
 INSTALLED_APPS += [
-                    'debug_toolbar', 
-                    # 'silk', 
-                    ]
+    'debug_toolbar', 
+    'drf_spectacular'
+]
 
-MIDDLEWARE += [
-               'debug_toolbar.middleware.DebugToolbarMiddleware', 
-               # 'silk.middleware.SilkyMiddleware',
-               ]
+MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
 
 
 #Internal IPS for Debug Toolbar
@@ -94,3 +91,87 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 #Disable timezone support in development
 # USE_TZ = False 
+
+
+#SWAGGER'S SETTINGS (used for development only)
+REST_FRAMEWORK['DEFAULT_SCHEMA_CLASS'] = 'drf_spectacular.openapi.AutoSchema'
+
+#Swagger settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API Endpoints',
+    'VERSION': '1.0.0',
+    'DESCRIPTION': 'API docs',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SECURITY': [
+        {'jwtAuth': []}
+    ],
+    'SWAGGER_UI_SETTINGS': '''{
+        filter: true,
+        deepLinking: true,
+        persistAuthorization: true,
+        displayRequestDuration: true,
+        syntaxHighlight: true,
+        plugins: [
+            function (system) {
+                return {
+                    fn: {
+                        opsFilter: (taggedOps, phrase) => {
+                            return taggedOps.filter(
+                                (tagObj, tag) => tag.toLowerCase().indexOf(phrase.toLowerCase()) !== -1
+                            );
+                        }
+                    }
+                }
+            }
+        ]
+    }''',
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'jwtAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+                'description': 'JWT Authorization token (paste token directly).<br>Format: <access_token> ',
+            }
+        }
+    },
+    'TAGS': [
+        {'name': 'Auth', 'description': 'JWT Authentication endpoints'},
+        {'name': 'Users', 'description': 'User management'},
+        {'name': 'Roles and Permissions', 'description': 'Roles and permissions endpoints'},
+        {'name': 'Dashboard', 'description': 'Dashboard analytics and metrics'},
+        {'name': 'Branches', 'description': 'Branches management'},
+        {'name': 'Doctor Schedules', 'description': 'Doctor schedules management'},
+        {'name': 'Waiting Room', 'description': 'Waiting room endpoints'},
+        {'name': 'Patients', 'description': 'Patients management'},
+        {'name': 'Dental Chart', 'description': 'Dental chart endpoints'},
+        {'name': 'Appointments', 'description': 'Appointments management'},
+        {'name': 'Visit History', 'description': 'Visit history endpoints'},
+        {'name': 'Treatment Plans', 'description': 'Patient treatment plans endpoints'},
+        {'name': 'Patient Recall', 'description': 'Patient recall endpoints'},
+        {'name': 'Payments and Billing', 'description': 'Payment and billing management'},
+        {'name': 'Invoices', 'description': 'Invoices management'},
+        {'name': 'Procedures', 'description': 'Procedures endpoints'},
+        {'name': 'Inventory', 'description': 'Inventory management'},
+        {'name': 'Labs', 'description': 'Laboratory management'},
+        {'name': 'Lab Orders', 'description': 'Laboratory orders management'},
+        {'name': 'Sterilization Log', 'description': 'Sterilization management'},
+        {'name': 'WhatsApp', 'description': 'WhatsApp and messaging endpoints'},
+    ],
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SORT_OPERATION_PARAMETERS': False, 
+    'POSTPROCESSING_HOOKS': [
+        'utils.swagger.response_structure_postprocessing_hook',
+    ],
+}
+
+
+
+#Check whether to use silk
+ENABLE_SILK = os.getenv('ENABLE_SILK', 'false').lower() == 'true'
+if ENABLE_SILK:
+    #add silk to apps
+    INSTALLED_APPS += ['silk']
+    #add silk's middleware
+    MIDDLEWARE += ['silk.middleware.SilkyMiddleware']
+

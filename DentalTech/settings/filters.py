@@ -7,9 +7,8 @@ import logging
 class LogsFormatter(logging.Formatter):
     def format(self, record):
         formatted = super().format(record)
-        separator = f'\n\n{"=" * 60}\n\n' if record.levelno >= logging.ERROR else f'\n{"—" * 40}\n'
+        separator = f'\n\n{"=" * 60}\n\n' if record.levelno >= logging.ERROR else f'{"—" * 40}'
         return f'{formatted}\n{separator}'
-
 
 
 #Custom filters
@@ -20,8 +19,8 @@ class RequestsFilter(logging.Filter):
             'api/users/',
             'api/branches/',
             'api/dashboard/',
-            'api/patients',
-            'api/appointments',
+            'api/patients/',
+            'api/appointments/',
             'api/procedures/',
             'api/treatment-plans/',
             'api/waiting-room/',
@@ -32,9 +31,9 @@ class RequestsFilter(logging.Filter):
             'api/transactions/',
             'api/invoices/',
             'api/tax-config/',
-            'api/sterilization',
+            'api/sterilization/',
             'api/doctor-schedules/',
-            'api/recalls',
+            'api/recalls/',
             'api/whatsapp/',
             '/admin/',
             '/static/',

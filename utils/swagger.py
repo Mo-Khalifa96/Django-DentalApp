@@ -1,7 +1,7 @@
 from django.conf import settings
 
 
-if settings.ENABLE_SWAGGER:
+if settings.DEBUG:
     from users.models import User
     from rest_framework import filters
     from django_filters import CharFilter, ChoiceFilter, DateFilter, BooleanFilter

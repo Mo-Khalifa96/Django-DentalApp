@@ -12,7 +12,6 @@ services:
       SERVICE: web
       ENVIRONMENT: local  #used only in settings/**.py to decide protocol & domain
       IS_DOCKERIZED: True
-      ENABLE_SWAGGER: True
       DJANGO_SETTINGS_MODULE: DentalTech.settings.dev
     ports:
       - "8000:8000"  #direct port exposure, no nginx needed
@@ -50,7 +49,6 @@ services:
       SERVICE: qcluster
       ENVIRONMENT: local
       IS_DOCKERIZED: True
-      ENABLE_SWAGGER: True
       DJANGO_SETTINGS_MODULE: DentalTech.settings.dev
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}

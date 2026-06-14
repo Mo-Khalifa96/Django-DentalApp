@@ -2,7 +2,7 @@ from django.conf import settings
 
 
 #Swagger-related functions (if enabled)
-if settings.ENABLE_SWAGGER:
+if settings.DEBUG:
     from drf_spectacular.types import OpenApiTypes
     from drf_spectacular.utils import (
         inline_serializer,
@@ -38,9 +38,7 @@ else:
         return no_op_decorator
     
     def inline_serializer(*args, **kwargs):
-        def no_op_decorator(func):
-            return func 
-        return no_op_decorator
+        return None
 
     class OpenApiResponse:
         """No-op OpenApiResponse class"""

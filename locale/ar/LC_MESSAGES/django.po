@@ -61,7 +61,7 @@ msgstr "مكتمل"
 
 #: clinic/models.py:173 patients/models.py:201
 msgid "Routine Checkup"
-msgstr "فحص دوري"
+msgstr "فحص روتيني"
 
 #: clinic/models.py:174
 msgid "Cosmetic"
