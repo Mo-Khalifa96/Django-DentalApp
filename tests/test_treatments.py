@@ -40,27 +40,29 @@ class TestTreatmentPlansAPI:
         patient = patient_factory(doctor=dentist_user)
         procedure_one = procedure_factory(name='Exam')
         procedure_two = procedure_factory(name='Filling', price='250.00')
-        # TreatmentPlanSerializer expects nested input under `treatment_items`
-        # (mapped from request field `items` via serializer `source='treatment_items'`).
-        # It also expects `totalCost` in request; if missing, validation returns 400.
+
+
         payload = {
-            'currency': '$',
             'installmentMonths': 3,
             'title': 'Recommended treatment plan',
+            # 'status': 'active',
+            # 'installmentMonths': '',
+            'currency': '$',
             'totalCost': 350.0,
+            'sessions': 2,
             'items': [
                 {
                     'procedureId': str(procedure_one.id),
                     'toothNumber': '11',
                     'price': '100.00',
-                    'session': 20,
+                    'session': 1,
                     'notes': 'Recommended treatment plan',
                 },
                 {
                     'procedureId': str(procedure_two.id),
                     'toothNumber': '12',
                     'price': '250.00',
-                    'session': 40,
+                    'session': 2,
                     'notes': 'Recommended treatment plan',
                 },
             ],

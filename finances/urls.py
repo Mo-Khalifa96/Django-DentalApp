@@ -13,7 +13,6 @@ urlpatterns = [
     path('invoices/tax-config/', ClinicTaxConfigAPIView.as_view(
             http_method_names=['get', 'post', 'put', 'delete', 'options']
         ), name='view_create_update_tax_config'),
-    # path('invoices/options/', .as_view(), name='view_create_update_tax_config'),
 
     #Bills urls
     path('bills/', ListCreateBillsAPIView.as_view(), name='list_create_bills'),

@@ -51,8 +51,9 @@ class CreateTreatmentPlanSerializer(TreatmentPlanSerializer):
                   'installmentMonths', 'sessions', 'createdAt']
         read_only_fields = ['id', 'patientId', 'createdAt']
 
-    #validate total cost against treatment items
+    
     def validate(self, data):
+        #validate total cost against treatment items
         items = data.get('treatment_items', [])
         totalCost = data.get('totalCost')
         total_from_prices = sum(float(item['price']) for item in items if items)
@@ -62,7 +63,15 @@ class CreateTreatmentPlanSerializer(TreatmentPlanSerializer):
             logger.error(f'\nFRONTEND BUG: Total cost provided does not match treatment prices total! '
                          f'Total provided: {totalCost} - Total calculated: {total_from_prices}\n')
             data['totalCost'] = total_from_prices
+
+        # #validate number of sessions
+        # sessions_planned = data.get('sessions')
+        # total_sessions = sum(float(item.get('session', 1)) for item in items if items)
+        # if (sessions_planned and total_sessions) and sessions_planned < total_sessions:
+        #     raise serializers.ValidationError({'sessions': _('Number of sessions cannot be lower than the total number of sessions for all treatment items.')})
+
         return data
+
 
     @transaction.atomic
     def create(self, validated_data):
@@ -127,8 +136,8 @@ class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
             ('title', 'status', 'items', 'totalCost', 'installmentMonths', 'sessions')
             }
 
-    #validate total cost against treatment items
     def validate(self, data):
+        #validate total cost against treatment items
         if 'treatment_items' in data:
             items = data.get('treatment_items', [])
             #re-calculate total cost if not provided
@@ -141,6 +150,14 @@ class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
                 logger.error(f'\nFRONTEND BUG: Total cost provided does not match treatment prices total! '
                              f'Total provided: {totalCost} - Total calculated: {totalCost_new}\n')
             data['totalCost'] = totalCost_new
+
+        #validate number of sessions
+        # if 'sessions' in data:
+        #     sessions_planned = data.get('sessions')
+        #     total_sessions = sum(float(item.get('session', 1)) for item in items if items)
+        #     if (sessions_planned and total_sessions) and sessions_planned < total_sessions:
+        #         raise serializers.ValidationError({'sessions': _('Number of sessions cannot be lower than the total number of sessions for all treatment items.')})
+
         return data
 
 
