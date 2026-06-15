@@ -81,10 +81,10 @@ class Bill(models.Model):
     
     #bill fields
     description = models.CharField(max_length=300)
-    discount = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'), validators=[MinValueValidator(0)])
-    subtotal = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
-    totalAmount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)], blank=True)
-    totalPaid = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)], blank=True, null=True)  #NOTE: backend only field
+    discount = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'), validators=[MinValueValidator(Decimal('0'))])
+    subtotal = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
+    totalAmount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], blank=True)
+    totalPaid = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], blank=True, null=True)  #NOTE: backend only field
     currency = models.CharField(max_length=5, blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
@@ -215,7 +215,7 @@ class Transaction(models.Model):
 
     #transaction fields
     date = models.DateField()
-    amount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
+    amount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
     currency = models.CharField(max_length=5, blank=True, null=True)
     method = models.CharField(max_length=25, choices=PaymentMethodChoices.choices, blank=True, null=True)
     note = models.CharField(max_length=500, blank=True, null=True)
@@ -296,10 +296,10 @@ class Invoice(models.Model):
     branch =  models.ForeignKey('clinic.Branch', related_name='branch_invoices', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
     
     #money fields
-    subtotal = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
-    tax = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'), validators=[MinValueValidator(0)])
-    discount = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'), validators=[MinValueValidator(0)])
-    total = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
+    subtotal = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
+    tax = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'), validators=[MinValueValidator(Decimal('0'))])
+    discount = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'), validators=[MinValueValidator(Decimal('0'))])
+    total = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
     currency = models.CharField(max_length=5, blank=True, null=True)
     
     #invoice state fields
@@ -393,8 +393,8 @@ class InvoiceItem(models.Model):
     taxCode = models.CharField(max_length=10, choices=TaxCodeChoices.choices, blank=True, null=True)
     description = models.CharField(max_length=300, blank=True, null=True)  #OR, bill description!
     quantity = models.SmallIntegerField(blank=True, null=True, default=1)
-    unitPrice = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
-    total = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)], blank=True, null=True)
+    unitPrice = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
+    total = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], blank=True, null=True)
     
     class Meta:
         db_table = 'InvoiceItems'

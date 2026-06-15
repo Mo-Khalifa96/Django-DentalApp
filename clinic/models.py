@@ -1,4 +1,5 @@
 import uuid 
+from decimal import Decimal
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -184,7 +185,7 @@ class Procedure(models.Model):
     name = models.CharField(max_length=255, db_index=True)
     category = models.CharField(max_length=25, choices=ProcedureCategory.choices)
     duration = models.IntegerField(blank=True, null=True, validators=[MinValueValidator(0)])
-    price = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
+    price = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
     currency = models.CharField(max_length=5, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -334,7 +335,7 @@ class LabOrder(models.Model):
     receivedDate = models.DateField(blank=True, null=True)  #to be edited post-creation
     deliveredDate = models.DateField(blank=True, null=True)  #to be edited post-creation
     status = models.CharField(max_length=20, choices=OrderStatusChoices.choices, blank=True, null=True)
-    cost = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
+    cost = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
     currency = models.CharField(max_length=5, blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)

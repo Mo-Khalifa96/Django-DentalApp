@@ -108,15 +108,12 @@ class TestVisitsAPI:
             format='multipart',
         )
 
-        # xrayUploads contract may be stricter (e.g. required array/file validation)
-        # so tolerate either full success or a 400 depending on current serializer rules.
-        assert response.status_code in (status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST)
+        visit = Visit.objects.get(id=response.data['id'])
 
-        if response.status_code == status.HTTP_201_CREATED:
-            visit = Visit.objects.get(id=response.data['id'])
-            assert visit.xray is True
-            assert response.data['xray'] is True
-            assert XRay.objects.filter(patient=patient).count() == 1
+        assert response.status_code == status.HTTP_201_CREATED
+        assert visit.xray is True
+        assert response.data['xray'] is True
+        assert XRay.objects.filter(patient=patient).count() == 1
 
 
     def test_list_visits_filters_by_date_range(
@@ -174,13 +171,13 @@ class TestVisitsAPI:
         admin_user,
         procedure_factory,
     ):
-        # procedure = procedure_factory(   #requires branch
-        #     name='Consultation',
-        #     category='diagnostic',
-        #     duration=45,
-        #     price='180.00',
-        #     currency='$',
-        # )
+        procedure = procedure_factory(   #requires branch
+            name='Consultation',
+            category='diagnostic',
+            duration=45,
+            price='180.00',
+            currency='$',
+        )
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse('procedures_options'))

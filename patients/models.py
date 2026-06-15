@@ -1,4 +1,5 @@
 import uuid 
+from decimal import Decimal
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -213,8 +214,8 @@ class Visit(models.Model):
     date = models.DateField()
     type = models.CharField(max_length=50, choices=VisitTypeChoices.choices)
     procedures = ArrayField(models.CharField(max_length=500), default=list)
-    cost = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)], blank=True, null=True)
-    paid = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)], blank=True, null=True)  
+    cost = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], blank=True, null=True)
+    paid = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], blank=True, null=True)  
     currency = models.CharField(max_length=5, blank=True, null=True)
     xray = models.BooleanField(default=False)  # xrayUrls will be served by serializer using 'patient' field and rel. to Xray
     notes = models.TextField(blank=True, null=True)
@@ -433,7 +434,7 @@ class TreatmentPlan(models.Model):
     title = models.CharField(max_length=250, blank=True, null=True)
     status = models.CharField(max_length=50, choices=TreatmentStatusChoices.choices, blank=True, null=True)
     currency = models.CharField(max_length=5, blank=True, null=True)
-    totalCost = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
+    totalCost = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
     installmentMonths = models.PositiveSmallIntegerField(choices=InstallmentMonthsChoices.choices, blank=True, null=True)
     sessions = models.PositiveSmallIntegerField(blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -478,7 +479,7 @@ class TreatmentPlanItem(models.Model):
     #Many-to-One relationship to the Procedure model (i.e., many items can reference the same procedure)
     procedure = models.ForeignKey(Procedure, related_name='treatment_items', on_delete=models.SET_NULL, null=True)
     toothNumber = models.CharField(max_length=3, blank=True, null=True, validators=[validate_toothNumber])
-    price = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
+    price = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
     session = models.PositiveSmallIntegerField(blank=True, null=True)
     status = models.CharField(max_length=25, choices=ItemStatusChoices.choices, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)

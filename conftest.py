@@ -194,7 +194,7 @@ def visit_factory():
             'patient': patient,
             'doctor': doctor,
             'date': timezone.localdate(),
-            'type': f'Visit Type {index}',
+            'type': 'follow_up',
             'procedures': [f'Procedure {index}'],
             'cost': '200.00',
             'paid': '150.00',
