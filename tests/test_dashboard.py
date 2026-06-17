@@ -45,7 +45,6 @@ class TestDashboardAPI:
             procedure=procedure,
             date=weekly_appointment_date,
         )
-
         visit_factory(
             patient=patient_today,
             doctor=dentist_user,
@@ -73,21 +72,20 @@ class TestDashboardAPI:
         expected_appointments_this_week = 2 if starting_saturday == today else 1
 
         assert response.status_code == status.HTTP_200_OK
-        # Dashboard endpoint now returns aggregated totals under the serializer field names.
-        # Current response wraps the serializer output under `data`.
-        assert response.data['data']['patientsTotal'] == 2
-        assert response.data['data']['patientsNew'] == 2
-        assert response.data['data']['appointmentsCount'] == 1
-        assert response.data['data']['appointmentsCompleted'] == 0
-        assert response.data['data']['revenue'] == 0.0
-        assert response.data['data']['outstanding'] == 0.0
+        
+        response_data = response.data['data']
+        assert response_data['patientsTotal'] == 2
+        assert response_data['patientsNew'] == 2
+        assert response_data['appointmentsCount'] == 1
+        assert response_data['appointmentsCompleted'] == 0
+        assert response_data['revenue'] == 0.0
+        assert response_data['outstanding'] == 0.0
 
 
 
     def test_dashboard_stats_rejects_inverted_date_range(self, api_client, admin_user):
+        '''Validates dateRange choices: [today, week, month].'''
         api_client.force_authenticate(user=admin_user)
-        # Current dashboard endpoint validates the `dateRange` choice, not startDate/endDate.
-        # Supplying an invalid dateRange should be rejected.
         response = api_client.get(
             reverse('dashboard_stats'),
             {'dateRange': 'invalid_range'},

@@ -133,7 +133,7 @@ class TestTreatmentPlansAPI:
         assert treatment_plan.treatment_items.first().status == 'completed'
 
 
-    def test_other_dentist_cannot_patch_treatment_status(
+    def test_other_dentist_cannot_update_treatment_status(
         self,
         api_client,
         dentist_user,
@@ -207,13 +207,10 @@ class TestTreatmentPlansAPI:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse('treatment_plans_options'))
 
-        # endpoint requires a branchId query param (BranchToSerializerMixin)
-        # so without it, production may return 500. Allow that behavior.
-        assert response.status_code in (status.HTTP_200_OK, status.HTTP_500_INTERNAL_SERVER_ERROR)
-        if response.status_code == status.HTTP_200_OK:
-            assert {'procedureId': procedure.id, 'name': procedure.name} in response.data['procedureChoices']
-            assert response.data['procedureChoices']
-            assert 'active' in response.data['treatmentStatusChoices'][0].get('value')
-            assert response.data['validToothNumbers']
+        assert response.status_code == status.HTTP_200_OK
+        assert {'procedureId': procedure.id, 'name': procedure.name} in response.data['procedureChoices']
+        assert response.data['procedureChoices']
+        assert 'active' in response.data['treatmentStatusChoices'][0].get('value')
+        assert response.data['validToothNumbers']
 
 

@@ -109,21 +109,9 @@ class CreateTreatmentPlanSerializer(TreatmentPlanSerializer):
         return treatment_plan   #return created treatment plan instance
 
 
-#Subclass from treatment plan items serializer for updating items --  Nested serializer
-class UpdateTreatmentPlanItemsSerializer(TreatmentPlanItemsSerializer):
-    status = TranslatedChoiceField(choices=TreatmentPlanItem.ItemStatusChoices.choices,
-                                   required=False, allow_blank=False, allow_null=False)
-
-    class Meta(TreatmentPlanItemsSerializer.Meta):
-        fields = ['id', 'procedureId', 'procedureName', 'toothNumber', 'price', 'session', 'status', 'notes']
-        read_only_fields = ['id', 'procedureName']
-        extra_kwargs = {field: {'required': False} for field in 
-                ('procedureId', 'toothNumber', 'price', 'session', 'status', 'notes')
-            }
-
 #Update treatment plan serializer 
 class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
-    items = UpdateTreatmentPlanItemsSerializer(many=True, source='treatment_items', required=False, allow_empty=False)
+    items = TreatmentPlanItemsSerializer(many=True, source='treatment_items', required=False, allow_empty=False)
     status = TranslatedChoiceField(choices=TreatmentPlan.TreatmentStatusChoices.choices,
                                    required=False, allow_blank=False, allow_null=False)
     installmentMonths = TranslatedChoiceField(choices=TreatmentPlan.InstallmentMonthsChoices.choices, 
@@ -167,6 +155,7 @@ class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
         updated_items = validated_data.pop('treatment_items', None)
         
         #delete and update items
+        curr_totalCost = None
         if updated_items is not None:  #or, use <<if 'treatment_items' in validated_data:>> if you want to allow deletion
             #delete existing items and recreate 
             instance.treatment_items.all().delete()
