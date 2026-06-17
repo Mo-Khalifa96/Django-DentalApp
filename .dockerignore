@@ -21,6 +21,7 @@ backup_*.sql.gz
 __pycache__/
 **/__pycache__/
 .pytest_cache/
+pytest.ini
 .vscode/
 .DS_Store
 **/.DS_Store

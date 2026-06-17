@@ -77,10 +77,6 @@ class ListCreateBillsAPIView(FilterListCreateAPIView):
             return self.filter_by_branch(bills)
         else:
             return bills.none()
-        
-    def paginate_queryset(self, queryset):
-        self.paginator.page_size = 25
-        return super().paginate_queryset(queryset)
     
     def get_serializer_class(self):
         if self.request.method == 'POST':

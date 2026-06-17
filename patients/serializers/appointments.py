@@ -18,7 +18,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
     patientName = serializers.CharField(source='patient.name', read_only=True)
     doctorId = serializers.PrimaryKeyRelatedField(source='doctor', queryset=User.objects.all())
     procedureId = serializers.PrimaryKeyRelatedField(source='procedure', queryset=Procedure.objects.all())
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)   
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
     status = TranslatedChoiceField(choices=Appointment.AppointmentStatusChoices.choices, required=False, allow_blank=True, allow_null=True)
     type = TranslatedChoiceField(choices=Visit.VisitTypeChoices.choices)
 
@@ -85,7 +85,7 @@ class CreateAppointmentSerializer(AppointmentSerializer):
             if user.branches.count() == 1:
                 branch = user.branches.first()
                 data['branch'] = branch
-            elif user.branch:  #TODO -- do the lookup using `id` 
+            elif getattr(user, 'branch_id', None):
                 branch = user.branch
                 data['branch'] = branch
             elif doctor and doctor.branches.count() == 1:
@@ -157,7 +157,7 @@ class UpdateAppointmentSerializer(AppointmentSerializer):
             if user.branches.count() == 1:
                 branch = user.branches.first()
                 data['branch'] = branch
-            elif user.branch:
+            elif getattr(user, 'branch_id', None):
                 branch = user.branch
                 data['branch'] = branch
             elif doctor and doctor.branches.count() == 1:

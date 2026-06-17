@@ -23,7 +23,7 @@ urlpatterns = [
     path('auth/password-reset/', ResetEmailAPIView.as_view(), name='password_reset'),
     path('auth/password-reset/<uidb64>/<token>/', ResetPasswordAPIView.as_view(), name='password_reset_confirm'),
     
-    #User profile url 
+    #User profile url
     path('auth/me/', RetrieveUserProfileAPIView.as_view(), name='view_user'),
 
     #User accounts urls

@@ -11,7 +11,7 @@ from utils.mixins import BranchToSerializerMixin
 from clinic.filters import LabsFilter, LabOrdersFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
-from clinic.serializers.labs import (LabSerializer, RetrieveUpdateLabSerializer, LabOrderSerializer,
+from clinic.serializers.labs import (LabSerializer, UpdateLabSerializer, LabOrderSerializer,
                                      CreateLabOrderSerializer, UpdateLabOrderSerializer, LabOrdersOptionsSerializer)
 
 
@@ -56,7 +56,7 @@ class ListCreateLabsAPIView(FilterListCreateAPIView):
 @extend_schema(tags=['Labs'])
 class RetrieveUpdateDeleteLabAPIView(RetrieveUpdateDeleteAPIView):
     queryset = Lab.objects.all()
-    serializer_class = RetrieveUpdateLabSerializer
+    serializer_class = UpdateLabSerializer
     permission_classes = [SystemUserPermissions]
     lookup_url_kwarg = 'id'
     lookup_field = 'id'

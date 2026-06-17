@@ -21,8 +21,8 @@ class TestVisitsAPI:
         visit_factory,
     ):
         patient = patient_factory(doctor=dentist_user)
-        first_visit = visit_factory(patient=patient, doctor=dentist_user, type='Cleaning')
-        visit_factory(patient=patient, doctor=dentist_user, type='Filling')
+        first_visit = visit_factory(patient=patient, doctor=dentist_user, type='cleaning')
+        visit_factory(patient=patient, doctor=dentist_user, type='filling')
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse('list_create_visits', kwargs={'id': patient.id}))
@@ -76,7 +76,7 @@ class TestVisitsAPI:
 
         assert response.status_code == status.HTTP_201_CREATED
         patient.refresh_from_db()
-        created_visit = Visit.objects.get(id=response.data['id'])
+        created_visit = Visit.objects.get(id=response.data['data']['id'])
 
         assert patient.doctor == admin_user
         assert patient.lastVisit == visit_date
@@ -108,11 +108,11 @@ class TestVisitsAPI:
             format='multipart',
         )
 
-        visit = Visit.objects.get(id=response.data['id'])
+        visit = Visit.objects.get(id=response.data['data']['id'])
 
         assert response.status_code == status.HTTP_201_CREATED
         assert visit.xray is True
-        assert response.data['xray'] is True
+        assert response.data['data']['xray'] is True
         assert XRay.objects.filter(patient=patient).count() == 1
 
 

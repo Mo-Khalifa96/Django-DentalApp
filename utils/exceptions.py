@@ -33,6 +33,8 @@ def DentalTechExceptionHandler(exc, context):
     #Let DRF convert Http404 and Django's PermissionDenied first
     response = exception_handler(exc, context)
     
+    # print('DEBUG:', exc)
+
     if response is not None:
         #extract response data 
         data = response.data

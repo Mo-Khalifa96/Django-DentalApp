@@ -19,7 +19,7 @@ class TaxConfigSerializer(UserPermissionsMixin, serializers.ModelSerializer):
 
 #Create clinic tax configurations serializer    
 class CreateTaxConfigSerializer(TaxConfigSerializer):
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
 
     class Meta(TaxConfigSerializer.Meta):
         fields = ['id', 'clinicName', 'address', 'phone', 'taxId', 'activityCode', 

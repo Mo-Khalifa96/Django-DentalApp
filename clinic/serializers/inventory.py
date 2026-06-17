@@ -9,7 +9,7 @@ from utils.mixins import UserPermissionsMixin, ValidateBranchMixin
 #SERIALIZERS FOR INVENTORY
 #General purpose inventory serializer 
 class InventorySerializer(UserPermissionsMixin, serializers.ModelSerializer):
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
 
     class Meta:
         model = Inventory
@@ -19,19 +19,21 @@ class InventorySerializer(UserPermissionsMixin, serializers.ModelSerializer):
 
 
 #Create inventory items serializer
-class CreateInventoryItemSerializer(InventorySerializer, ValidateBranchMixin):
+class CreateInventoryItemSerializer(ValidateBranchMixin, InventorySerializer):
     class Meta(InventorySerializer.Meta):
         fields = ['id', 'name', 'category', 'currentStock', 'minStock', 'unit', 
-                  'supplier', 'lastOrdered', 'branchId', 'createdAt', 'updatedAt']
-        read_only_fields = ['id', 'lastOrdered', 'createdAt', 'updatedAt']
+                  'supplier', 'lastOrdered', 'branchId', 'createdAt']
+        read_only_fields = ['id', 'lastOrdered', 'createdAt']
 
 
 #Update inventory serializer 
 class UpdateInventorySerializer(InventorySerializer):
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
+
     class Meta(InventorySerializer.Meta):
         fields = ['id', 'name', 'category', 'currentStock', 'minStock', 'unit', 
-                  'supplier', 'lastOrdered', 'createdAt', 'updatedAt']
-        read_only_fields = ['id', 'createdAt', 'updatedAt']
+                  'supplier', 'lastOrdered', 'branchId', 'updatedAt']
+        read_only_fields = ['id', 'branchId', 'updatedAt']
         extra_kwargs = {field: {'required': False} for field in 
             ('name', 'category', 'currentStock', 'minStock', 'unit', 'supplier', 'lastOrdered')
             }

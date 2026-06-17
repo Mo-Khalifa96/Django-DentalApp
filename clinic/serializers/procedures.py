@@ -10,7 +10,7 @@ from services.translation.serializers import TranslatedChoiceField
 #SERIALIZERS FOR PROCEDURES
 #General-purpose procedures serializer
 class ProcedureSerializer(UserPermissionsMixin, ValidateBranchMixin, serializers.ModelSerializer):
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
     category = TranslatedChoiceField(choices=Procedure.ProcedureCategory.choices)
 
     class Meta:
@@ -21,12 +21,13 @@ class ProcedureSerializer(UserPermissionsMixin, ValidateBranchMixin, serializers
 
 #Procedure serializer subclass for put/patch requests
 class UpdateProcedureSerializer(ProcedureSerializer):
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     category = TranslatedChoiceField(choices=Procedure.ProcedureCategory.choices, required=False)
 
     class Meta:
         model = Procedure
-        fields = ['id', 'name', 'category', 'duration', 'currency', 'price', 'description', 'createdAt']
-        read_only_fields = ['id', 'createdAt']
+        fields = ['id', 'name', 'category', 'duration', 'currency', 'price', 'description', 'branchId', 'createdAt']
+        read_only_fields = ['id', 'branchId', 'createdAt']
         extra_kwargs = {field: {'required': False} for field in 
             ('name', 'category', 'duration', 'currency', 'price', 'description')
             }

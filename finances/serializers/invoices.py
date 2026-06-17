@@ -48,7 +48,7 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
 class InvoiceSerializer(serializers.ModelSerializer):
     billId = serializers.PrimaryKeyRelatedField(source='bill', queryset=Bill.objects.all(), required=False, allow_null=True)
     patientId = serializers.PrimaryKeyRelatedField(source='patient', queryset=Patient.objects.all(), required=False, allow_null=True)
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
     items = InvoiceItemSerializer(many=True, source='invoice_items', required=True, allow_empty=False)
     status = TranslatedChoiceField(choices=Invoice.InvoiceStatusChoices.choices, read_only=True)
     patientNationalId = serializers.CharField(source='patient.nationalId', read_only=True)
@@ -126,7 +126,7 @@ class CreateInvoiceSerializer(InvoiceSerializer):
             else:
                 if user.branches.count() == 1:
                     data['branch'] = user.branches.first()
-                elif user.branch:
+                elif getattr(user, 'branch_id', None):
                     data['branch'] = user.branch
                 elif Branch.objects.exists():
                     errors['branchId'] = _('Clinic branch must be provided when at least one branch is registered. Please provide a branch ID or contact the admin to assign a branch to your account.')

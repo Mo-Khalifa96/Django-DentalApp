@@ -26,8 +26,8 @@ class SterilizationLogSerializer(serializers.ModelSerializer):
 
 
 #Create sterilization log serializer 
-class CreateSterilizationLogSerializer(SterilizationLogSerializer, ValidateBranchMixin):
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
+class CreateSterilizationLogSerializer(ValidateBranchMixin, SterilizationLogSerializer):
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
 
     class Meta(SterilizationLogSerializer.Meta):
         fields = ['id', 'date', 'time', 'cycleType', 'instrumentSets', 'operator', 'result', 'sealedAt',
@@ -60,6 +60,7 @@ class CreateSterilizationLogSerializer(SterilizationLogSerializer, ValidateBranc
 
 #Update sterilization logs serializer
 class UpdateSterilizationLogSerializer(SterilizationLogSerializer):
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     result = TranslatedChoiceField(
             choices=SterilizationLog.SterilizationResultChoices.choices, required=False, allow_blank=True, allow_null=True
         )

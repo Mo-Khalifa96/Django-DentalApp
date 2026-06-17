@@ -25,9 +25,9 @@ class PatientRecallSerializer(serializers.ModelSerializer):
 
 
 #Create patient recall serializer
-class CreatePatientRecallSerializer(PatientRecallSerializer, ValidateBranchMixin):
+class CreatePatientRecallSerializer(ValidateBranchMixin, PatientRecallSerializer):
     patientId = serializers.PrimaryKeyRelatedField(source='patient', queryset=Patient.objects.all())
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
 
     class Meta(PatientRecallSerializer.Meta):
         fields = ['id', 'patientId', 'patientName', 'phone', 'type', 'dueDate', 'notes', 

@@ -51,6 +51,7 @@ class TestInventoryAPI:
             'minStock': 4,
             'unit': 'packs',
             'supplier': 'Dental Supply Co',
+            'branchId': None,
         }
 
         api_client.force_authenticate(user=admin_user)
@@ -58,7 +59,7 @@ class TestInventoryAPI:
 
         assert response.status_code == status.HTTP_201_CREATED
 
-        item = Inventory.objects.get(id=response.data['id'])
+        item = Inventory.objects.get(id=response.data['data']['id'])
         assert item.name == payload['name']
         assert item.lastOrdered is not None
 

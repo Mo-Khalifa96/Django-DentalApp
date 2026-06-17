@@ -24,12 +24,11 @@ class DashboardStatisticsSerializer(UserPermissionsMixin, serializers.Serializer
 
     def get_fields(self):
         fields = super().get_fields()
-        user = self.context.get('request').user
-
+        request = self.context.get('request')
         #Revenue and outstanding removed for users without permission
         # if getattr(user, 'role', None) in ('dentist', 'receptionist', 'assistant'):
-        if getattr(user, 'role', None) != 'admin' and\
-         'view.financialAnalytics' not in getattr(user, 'userPermissions', []):
+        if getattr(request.user, 'role', None) != 'admin' and\
+         'view.financialAnalytics' not in getattr(request.user, 'userPermissions', []):
             fields.pop('revenue', None)
             fields.pop('outstanding', None)
             # fields.pop('currency', None)
@@ -41,14 +40,15 @@ class DashboardQueryParamSerializer(serializers.Serializer):
     dateRange = serializers.ChoiceField(choices=(('today', 'today'), ('week', 'week'), ('month', 'month')),
                                         required=False, allow_blank=True)
     
-    def validate_branchId(self, branchId):
-        user = self.context.get('request').user
-        if branchId and getattr(user, 'role', None) != 'admin':
-            if getattr(user, 'branch_id', None)  != branchId or\
-             not user.branches.filter(id=branchId).exists():
+    def validate(self, data):
+        request = self.context.get('request')
+        branchId = data.get('branchId')
+        if branchId and getattr(request.user, 'role', None) != 'admin':
+            if getattr(request.user, 'branch_id', None)  != branchId or\
+             not request.user.branches.filter(id=branchId).exists():
                 raise PermissionDenied(_('Permission denied. You do not have access to this branch.'))
                 # raise serializers.ValidationError(_('Invalid branch ID. You do not have access to this branch.'))
-        return branchId
+        return data
 
 
 #Dashboard Appointments Today serializer

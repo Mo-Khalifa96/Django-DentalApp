@@ -1,7 +1,7 @@
-import itertools
 import os
-from datetime import time, timedelta
+import itertools
 from io import BytesIO
+from datetime import time, date, timedelta
 
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'DentalTech.settings.dev')
@@ -85,10 +85,34 @@ def receptionist_user(user_factory):
         name='Receptionist User',
     )
 
-
 @pytest.fixture
 def assistant_user(user_factory):
     return user_factory(role='assistant', email='assistant@test.com', name='Assistant User')
+
+
+@pytest.fixture
+def branch_factory():
+    from clinic.models import Branch
+
+    counter = itertools.count(1)
+
+    def _create(**overrides):
+        idx = next(counter)
+        defaults = {
+            'name': f'Test Branch {idx}',
+            'phone': f'+201000000{idx:03d}',
+            'workingDays': [0, 1, 2, 3, 4],
+            'openTime': time(9, 0),
+            'closeTime': time(17, 0),
+        }
+        defaults.update(overrides)
+        return Branch.objects.create(**defaults)
+
+    return _create
+
+@pytest.fixture
+def branch(branch_factory):
+    return branch_factory()
 
 
 @pytest.fixture
@@ -132,29 +156,6 @@ def procedure_factory():
         return Procedure.objects.create(**defaults)
 
     return create_procedure
-
-
-@pytest.fixture
-def inventory_factory():
-    from clinic.models import Inventory
-
-    counter = itertools.count(1)
-
-    def create_inventory_item(**overrides):
-        index = next(counter)
-        defaults = {
-            'name': f'Inventory Item {index}',
-            'category': 'Consumables',
-            'currentStock': 10,
-            'minStock': 5,
-            'unit': 'pcs',
-            'supplier': 'Acme Supplies',
-            'lastOrdered': timezone.localdate(),
-        }
-        defaults.update(overrides)
-        return Inventory.objects.create(**defaults)
-
-    return create_inventory_item
 
 
 @pytest.fixture
@@ -266,6 +267,74 @@ def treatment_plan_factory():
 
     return create_treatment_plan
 
+
+@pytest.fixture
+def inventory_factory():
+    from clinic.models import Inventory
+
+    counter = itertools.count(1)
+
+    def create_inventory_item(**overrides):
+        index = next(counter)
+        defaults = {
+            'name': f'Inventory Item {index}',
+            'category': 'Consumables',
+            'currentStock': 10,
+            'minStock': 5,
+            'unit': 'pcs',
+            'supplier': 'Acme Supplies',
+            'lastOrdered': timezone.localdate(),
+        }
+        defaults.update(overrides)
+        return Inventory.objects.create(**defaults)
+
+    return create_inventory_item
+
+
+@pytest.fixture
+def lab_factory():
+    from clinic.models import Lab
+
+    counter = itertools.count(1)
+
+    def _create(**overrides):
+        idx = next(counter)
+        defaults = {
+            'name': f'Lab {idx}',
+            'phone': f'+201000111{idx:03d}',
+            'address': f'{idx} Lab Avenue, Cairo',
+            'contactPerson': f'Contact {idx}',
+        }
+        defaults.update(overrides)
+        return Lab.objects.create(**defaults)
+
+    return _create
+
+@pytest.fixture
+def lab_order_factory(lab_factory, patient_factory, procedure_factory):
+    """
+    Creates LabOrder instances with all required FK dependencies pre-built.
+    Override any field with a keyword argument:
+        lab_order_factory(branch=b, status='in_production')
+    """
+    from clinic.models import LabOrder
+
+    def _create(**overrides):
+        defaults = {
+            'lab':        lab_factory(),
+            'patient':    patient_factory(),
+            'procedure':  procedure_factory(),
+            'toothNumber': '11',
+            'sentDate':   date.today(),
+            'dueDate':    date.today() + timedelta(days=7),
+            'cost':       '150.00',
+            'currency':   '$',
+            'branch': None,
+        }
+        defaults.update(overrides)
+        return LabOrder.objects.create(**defaults)
+
+    return _create
 
 
 @pytest.fixture

@@ -46,6 +46,7 @@ class ClinicalTaxConfig(models.Model):
         return f'{self.clinicName} -- {self.taxId or self.commercialReg}'
 
 
+
 #Bills Manager (allows soft deleting)
 class BillManager(models.Manager):
     #Overriding get_query to filter out soft-deleted bills
@@ -67,7 +68,6 @@ class BillManager(models.Manager):
             bill.isDeleted = True
             bill.save()
         return True
-
 
 #BILLS MODEL
 class Bill(models.Model):
@@ -173,6 +173,7 @@ class Bill(models.Model):
         #         Invoice.objects.bulk_create(invoice_items)
                
         return invoice[0]
+
 
 
 #Transactions Manager 

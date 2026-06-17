@@ -10,13 +10,13 @@ from services.translation.serializers import TranslatedChoiceField
 
 
 #Waiting room serializer -- Base serializer
-class WaitingRoomSerializer(serializers.ModelSerializer, ValidateBranchMixin):
+class WaitingRoomSerializer(ValidateBranchMixin, serializers.ModelSerializer):
     patientId = serializers.PrimaryKeyRelatedField(source='appointment.patient', read_only=True)
     patientName = serializers.CharField(source='appointment.patient.name', read_only=True)
     doctorId = serializers.UUIDField(required=False, allow_null=True)  #read/write
     doctorName = serializers.CharField(source='appointment.doctor.name', read_only=True)
     appointmentId = serializers.PrimaryKeyRelatedField(source='appointment', queryset=Appointment.objects.all(), required=True)
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
     status = TranslatedChoiceField(choices=WaitingRoom.StatusChoices.choices, read_only=True)
 
     class Meta:
@@ -49,13 +49,14 @@ class WaitingRoomSerializer(serializers.ModelSerializer, ValidateBranchMixin):
         doctor_id = data.pop('doctorId', None)
         appointment = data.get('appointment')
 
+        doctor = None
         if doctor_id:
             try:
                 #query to validate and return doctor's id and name
                 doctor = User.objects.only('id', 'name').get(id=doctor_id)
             except User.DoesNotExist:
                 raise serializers.ValidationError({'doctorId': _('Doctor not found or does not exist.')})
-
+        
         #if current doctor doesn't match appointment doctor
         if doctor and doctor.id != appointment.doctor_id:
             #assign current doctor by id

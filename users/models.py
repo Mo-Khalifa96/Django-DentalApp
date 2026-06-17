@@ -3,7 +3,6 @@ import uuid
 from django.db import models
 from django.db import transaction
 from clinic.models import WorkingDaysLookUp
-from utils.validators import validate_not_empty
 from users.validators import validate_image_size
 from django.contrib.postgres.fields import ArrayField
 from django.utils.translation import gettext_lazy as _
@@ -411,7 +410,7 @@ class DoctorSchedule(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     #One-to-One relationships to the User model -- reserved for doctors
     doctor = models.OneToOneField(User, related_name='doctor_schedule', on_delete=models.CASCADE)
-    workingDays = ArrayField(models.IntegerField(choices=WorkingDaysLookUp.choices), default=list, validators=[validate_not_empty])
+    workingDays = ArrayField(models.IntegerField(choices=WorkingDaysLookUp.choices), default=list)
     startTime = models.TimeField()
     endTime = models.TimeField()
     breakStart = models.TimeField(blank=True, null=True)

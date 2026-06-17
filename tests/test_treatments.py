@@ -65,7 +65,7 @@ class TestTreatmentPlansAPI:
                     'session': 2,
                     'notes': 'Recommended treatment plan',
                 },
-            ],
+            ]
         }
         api_client.force_authenticate(user=dentist_user)
         response = api_client.post(
@@ -76,7 +76,7 @@ class TestTreatmentPlansAPI:
 
         assert response.status_code == status.HTTP_201_CREATED
 
-        treatment_plan = TreatmentPlan.objects.get(id=response.data['id'])
+        treatment_plan = TreatmentPlan.objects.get(id=response.data['data']['id'])
         assert str(treatment_plan.totalCost) == '350.00'
         assert treatment_plan.treatment_items.count() == 2
 
@@ -92,7 +92,7 @@ class TestTreatmentPlansAPI:
     ):
         patient = patient_factory(doctor=dentist_user)
         procedure = procedure_factory(name='Cleaning')
-        updated_procedure = procedure_factory(name='Implant', category='Implant')
+        updated_procedure = procedure_factory(name='Dental implant', category='implant')
         treatment_plan = treatment_plan_factory(patient=patient, procedure=procedure, doctor=dentist_user)
         detail_url = reverse(
             'retrieve_update_delete_treatment',

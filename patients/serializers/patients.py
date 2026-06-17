@@ -14,10 +14,9 @@ from patients.docs import (create_patient_schema, update_patient_schema, patient
 #SERIALIZERS FOR PATIENTS
 #Serializer for creating new patient
 @create_patient_schema
-class CreatePatientSerializer(serializers.ModelSerializer, ValidateBranchMixin):
+class CreatePatientSerializer(ValidateBranchMixin, serializers.ModelSerializer):
     gender = TranslatedChoiceField(choices=Patient.GenderChoices.choices)
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(),
-                                                  required=False, allow_null=True)
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
 
     class Meta:
         model = Patient
@@ -260,13 +259,10 @@ class DentalChartOptionsSerializer(serializers.Serializer):
 
 #Other
 #Serializer for creating new patient upon creating new appointment
-class NewPatientSerializer(serializers.ModelSerializer, ValidateBranchMixin):
+class NewPatientSerializer(serializers.ModelSerializer):
     gender = TranslatedChoiceField(choices=Patient.GenderChoices.choices)
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(),
-                                                required=False, allow_null=True)
 
     class Meta:
         model = Patient
-        fields = ['id', 'name', 'age', 'gender', 'countryCode', 'phone', 'branchId', 'createdAt']
+        fields = ['id', 'name', 'age', 'gender', 'countryCode', 'phone', 'createdAt']
         read_only_fields = ['id', 'createdAt']
-

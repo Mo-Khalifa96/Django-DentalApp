@@ -75,6 +75,7 @@ class TestAppointmentsAPI:
             'startTime': '09:00:00',
             'endTime': '10:00:00',
             'room': 'Room A',
+            'branchId': '',
         }
 
         api_client.force_authenticate(user=receptionist_user)
@@ -87,7 +88,7 @@ class TestAppointmentsAPI:
         assert response.status_code == status.HTTP_201_CREATED
 
         patient.refresh_from_db()
-        created_appointment = Appointment.objects.get(id=response.data['id'])
+        created_appointment = Appointment.objects.get(id=response.data['data']['id'])
         assert patient.doctor == dentist_user
         assert patient.nextAppointment == appointment_date
         assert created_appointment.type == 'routine_checkup'
@@ -98,6 +99,7 @@ class TestAppointmentsAPI:
         receptionist_user,
         dentist_user,
         procedure_factory,
+        branch
     ):
         procedure = procedure_factory(name='Initial Consultation')
         payload = {
@@ -116,17 +118,18 @@ class TestAppointmentsAPI:
             'startTime': '11:00:00',
             'endTime': '12:00:00',
             'room': 'Room B',
+            'branchId': str(branch.id)
         }
 
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.post(reverse('list_create_appointments'), payload, format='json')
-
+        
         assert response.status_code == status.HTTP_201_CREATED
 
         patient = Patient.objects.get(name='New Booking Patient')
         assert patient.doctor == dentist_user
         assert patient.patient_dentalchart.teeth
-        assert Appointment.objects.filter(id=response.data['id'], patient=patient).exists()
+        assert Appointment.objects.filter(id=response.data['data']['id'], patient=patient).exists()
 
     def test_create_appointment_rejects_conflicting_time_slot(
         self,
@@ -136,6 +139,7 @@ class TestAppointmentsAPI:
         patient_factory,
         procedure_factory,
         appointment_factory,
+        branch
     ):
         procedure = procedure_factory(name='Root Canal')
         patient = patient_factory(doctor=dentist_user)
@@ -158,6 +162,7 @@ class TestAppointmentsAPI:
             'startTime': '09:30:00',
             'endTime': '10:30:00',
             'room': 'Room C',
+            'branchId': str(branch.id)
         }
 
         api_client.force_authenticate(user=receptionist_user)

@@ -67,10 +67,6 @@ class ListCreateTransactionsAPIView(FilterListCreateAPIView):
         else:
             return transactions.none()
 
-    def paginate_queryset(self, queryset):
-        self.paginator.page_size = 25
-        return super().paginate_queryset(queryset)
-    
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return CreateTransactionSerializer

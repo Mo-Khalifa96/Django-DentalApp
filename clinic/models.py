@@ -4,7 +4,6 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 from django.db import transaction
-from utils.validators import validate_not_empty
 from django.core.validators import MinValueValidator
 from django.contrib.postgres.fields import ArrayField
 from django.utils.translation import gettext_lazy as _
@@ -47,7 +46,7 @@ class Branch(models.Model):
     name = models.CharField(max_length=255, db_index=True)
     address = models.CharField(max_length=500, blank=True, null=True)
     phone = models.CharField(max_length=50, validators=[validate_phone_number])
-    workingDays = ArrayField(models.IntegerField(choices=WorkingDaysLookUp.choices), default=list, validators=[validate_not_empty])
+    workingDays = ArrayField(models.IntegerField(choices=WorkingDaysLookUp.choices), default=list)
     openTime = models.TimeField()
     closeTime = models.TimeField()
     isMain = models.BooleanField(default=False)
@@ -367,15 +366,15 @@ class LabOrder(models.Model):
             if not self.status:
                 self.status = self.OrderStatusChoices.SENT
             if not self.sentDate:
-                self.sentDate = timezone.localtime(timezone.now()).date 
+                self.sentDate = timezone.localtime(timezone.now()).date()
             self.labName = self.lab.name
             self.procedureName = self.procedure.name
             self.patientName = self.patient.name
 
         if self.status == self.OrderStatusChoices.RECEIVED:
-            self.receivedDate = timezone.localtime(timezone.now()).date
+            self.receivedDate = timezone.localtime(timezone.now()).date()
         elif self.status == self.OrderStatusChoices.DELIVERED:
-            self.deliveredDate = timezone.localtime(timezone.now()).date
+            self.deliveredDate = timezone.localtime(timezone.now()).date()
         
         #save changes 
         super().save(*args, **kwargs)
@@ -447,12 +446,13 @@ class SterilizationLog(models.Model):
     @transaction.atomic
     def save(self, *args, **kwargs):
         if self._state.adding and not self.date:
-            self.date = timezone.localtime(timezone.now()).date
-            self.time = timezone.localtime(timezone.now()).time
+            current_datetime = timezone.localtime(timezone.now())
+            self.date = current_datetime.date()
+            self.time = current_datetime.time()
         
         #if result is 'passed' and no sealed date, set date to today
         if self.result == self.SterilizationResultChoices.PASSED and not self.sealedAt:
-            self.sealedAt = timezone.localtime(timezone.now()).date
+            self.sealedAt = timezone.localtime(timezone.now()).date()
 
         #save changes 
         super().save(*args, **kwargs)

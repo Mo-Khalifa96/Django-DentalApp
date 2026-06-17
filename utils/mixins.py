@@ -23,7 +23,7 @@ class UserPermissionsMixin:
 class ResponseMixin:
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)
-        is_listView = self.get_view_name().startswith('List')
+        is_listView = request.method == 'GET' and self.get_view_name().startswith('List')
 
         #Handle only success responses (2xx)
         if 200 <= response.status_code < 300 and response.data and not is_listView:   #lists are handled by the pagination class
@@ -49,7 +49,7 @@ class ValidateBranchMixin:
             user = self.context['request'].user
             if user.branches.count() == 1:
                 return user.branches.first()
-            elif user.branch:
+            elif getattr(user, 'branch_id', None):
                 return user.branch
             elif Branch.objects.exists():
                 raise serializers.ValidationError(_('Clinic branch must be provided when at least one branch is registered. Please provide a branch ID or contact the admin to assign a branch to your account.'))

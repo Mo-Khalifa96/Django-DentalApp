@@ -40,7 +40,7 @@ class UpdateDeleteWaitingRoomItemAPIViews(RetrieveUpdateDeleteAPIView):
     lookup_field = 'id'
 
     def get_serializer_class(self):
-        if self.request.method == 'PUT':
+        if self.request.method == 'PATCH':
             return UpdateWaitingRoomSerializer
         return WaitingRoomSerializer
         

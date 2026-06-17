@@ -3,6 +3,7 @@
 !README.md
 __pycache__/
 .pytest_cache/
+pytest.ini
 .vscode/
 .seeded
 /.Markdown/

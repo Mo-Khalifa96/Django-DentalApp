@@ -67,13 +67,13 @@ class UpdateDeleteSterilizationLogAPIView(UpdateAPIView, DeleteAPIView):
         super().initial(request, *args, **kwargs)
 
 
+#API view for serving choices for sterilization logs endpoints 
 @extend_schema(
     tags=['Sterilization Log'],
     parameters=[
         OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
     ]
 )
-#API view for serving choices for sterilization logs endpoints 
 class RetrieveSterilizationLogsOptionsAPIView(generics.GenericAPIView):
     serializer_class = SterilizationLogsOptionsSerializer
     permission_classes = [IsAuthenticated]

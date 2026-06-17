@@ -11,9 +11,3 @@ def validate_uuid(id, version=4):
         except ValueError:
             raise ValidationError({'branchId': 'UUID is invalid.'})
     return id
-
-
-#Validator for array fields
-def validate_not_empty(array):
-    if not array:
-        raise ValidationError(_('This field cannot be empty.'))

@@ -29,7 +29,7 @@ class ListUsersSerializer(serializers.ModelSerializer):
 class CreateUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     password2 = serializers.CharField(write_only=True)
-    branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', queryset=Branch.objects.all(), required=False, allow_null=True)
+    branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', queryset=Branch.objects.all(), required=True, allow_null=True)
     role = TranslatedChoiceField(choices=User.UserRoles.choices, required=True)
 
     class Meta:
@@ -37,7 +37,6 @@ class CreateUserSerializer(serializers.ModelSerializer):
         fields = ['id', 'email', 'name', 'role', 'specialization', 'branchIds', 'avatar', 
                   'password', 'password2', 'createdAt']
         read_only_fields = ['id', 'createdAt']
-
 
     def validate_branchIds(self, branchIds):
         if not branchIds:
@@ -60,6 +59,10 @@ class CreateUserSerializer(serializers.ModelSerializer):
         except ValidationError as exc:
             raise serializers.ValidationError({'password': exc.messages})
         
+        #force validate branch if not passed 
+        if not data.get('branches'):
+            self.validate_branchIds(None)
+
         return data 
 
     @transaction.atomic 
@@ -111,9 +114,9 @@ class RetrieveUserSerializer(UserPermissionsMixin, serializers.ModelSerializer):
 
     def get_fields(self):
         fields = super().get_fields()
-        user = self.context.get('request').user
+        request = self.context.get('request')
         #Permissions not shown to non-Admin users
-        if getattr(user, 'role', None) != 'admin':
+        if getattr(request.user, 'role', None) != 'admin':
             fields.pop('permissions', None)
         return fields
 

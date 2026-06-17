@@ -11,8 +11,8 @@ from services.translation.serializers import TranslatedChoiceField
 
 #SERIALIZERS FOR LABS 
 #Base labs serializer
-class LabSerializer(UserPermissionsMixin, serializers.ModelSerializer, ValidateBranchMixin):
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
+class LabSerializer(UserPermissionsMixin, ValidateBranchMixin, serializers.ModelSerializer):
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
 
     class Meta:
         model = Lab
@@ -21,7 +21,7 @@ class LabSerializer(UserPermissionsMixin, serializers.ModelSerializer, ValidateB
 
 
 #Retrieve/Update lab serializer
-class RetrieveUpdateLabSerializer(LabSerializer):
+class UpdateLabSerializer(LabSerializer):
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     
     class Meta(LabSerializer.Meta):
@@ -41,20 +41,19 @@ class LabOrderSerializer(serializers.ModelSerializer):
     labId = serializers.PrimaryKeyRelatedField(source='lab', queryset=Lab.objects.all())
     patientId = serializers.PrimaryKeyRelatedField(source='patient', queryset=Patient.objects.all())
     procedureId = serializers.PrimaryKeyRelatedField(source='procedure', queryset=Procedure.objects.all())
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
-    status = TranslatedChoiceField(choices=LabOrder.OrderStatusChoices.choices, allow_blank=True, allow_null=True)
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
+    status = TranslatedChoiceField(choices=LabOrder.OrderStatusChoices.choices, 
+                              required=False, allow_blank=True, allow_null=True)  #not required on create & update
 
     class Meta:
         model = LabOrder
         fields = ['id', 'labId', 'labName', 'patientId', 'patientName', 'procedureId', 'procedureName', 'toothNumber', 
                   'instructions', 'sentDate', 'dueDate', 'receivedDate', 'deliveredDate', 'status', 'cost', 'currency',
                   'branchId', 'createdAt', 'updatedAt']
-        read_only_fields = ['id', 'labName', 'patientName', 'procedureName', 'receivedDate', 'deliveredDate', 
-                            'createdAt', 'updatedAt']
 
 
 #Create lab order serializer
-class CreateLabOrderSerializer(LabOrderSerializer, ValidateBranchMixin):
+class CreateLabOrderSerializer(ValidateBranchMixin, LabOrderSerializer):
     class Meta(LabOrderSerializer.Meta):
         fields = ['id', 'labId', 'labName', 'patientId', 'patientName', 'procedureId', 'procedureName', 'toothNumber', 
                   'instructions', 'sentDate', 'dueDate', 'receivedDate', 'deliveredDate', 'status', 'cost', 'currency',
@@ -64,9 +63,6 @@ class CreateLabOrderSerializer(LabOrderSerializer, ValidateBranchMixin):
 
 #Update lab order serializer
 class UpdateLabOrderSerializer(LabOrderSerializer):
-    status = TranslatedChoiceField(choices=LabOrder.OrderStatusChoices.choices, 
-                             required=False, allow_blank=False, allow_null=False)
-
     class Meta(LabOrderSerializer.Meta):
         fields = ['id', 'labId', 'labName', 'patientId', 'patientName', 'procedureId', 'procedureName', 'toothNumber', 
                   'instructions', 'sentDate', 'dueDate', 'receivedDate', 'deliveredDate', 'status', 'cost',

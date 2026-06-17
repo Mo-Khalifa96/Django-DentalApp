@@ -67,11 +67,11 @@ class RetrieveBillSerializer(UserPermissionsMixin, BillSerializer):
 
 
 #Create bill serializer
-class CreateBillSerializer(serializers.ModelSerializer, ValidateBranchMixin):
+class CreateBillSerializer(ValidateBranchMixin, serializers.ModelSerializer):
     patientId = serializers.PrimaryKeyRelatedField(source='patient', queryset=Patient.objects.all(), required=True)
     treatmentId = serializers.PrimaryKeyRelatedField(source='treatment', queryset=TreatmentPlan.objects.all(), required=False, allow_null=True)
     visitIds = serializers.PrimaryKeyRelatedField(many=True, source='visits', queryset=Visit.objects.all(), required=True)
-    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=False, allow_null=True)
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
     total = serializers.DecimalField(source='totalAmount', max_digits=10, decimal_places=2, required=False)
 
     class Meta:

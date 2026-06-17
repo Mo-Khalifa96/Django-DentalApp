@@ -47,7 +47,7 @@ class TestPatientsAPI:
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert response.data['success'] is False
 
-    def test_create_patient_creates_default_dental_chart(self, api_client, admin_user):
+    def test_create_patient_creates_default_dental_chart(self, api_client, admin_user, branch):
         payload = {
             'name': 'Jane Smith',
             'age': 22,
@@ -56,16 +56,24 @@ class TestPatientsAPI:
             'countryCode': '20',
             'phone': '01098765432',
             'insurance': 'Delta',
+            'branchId': None
         }
 
+        #authenticate admin user
         api_client.force_authenticate(user=admin_user)
+
+        #assign branch to user 
+        admin_user.branch = branch
+
         response = api_client.post(reverse('list_create_patients'), payload, format='json')
 
+        response_data = response.data['data']
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['name'] == payload['name']
-        assert response.data['phone'] == payload['phone']
+        assert response_data['name'] == payload['name']
+        assert response_data['phone'] == payload['phone']
+        assert admin_user.branch_id == response_data['branchId']
 
-        patient = Patient.objects.get(id=response.data['id'])
+        patient = Patient.objects.get(id=response_data['id'])
         assert patient.patient_dentalchart.teeth
         assert len(patient.patient_dentalchart.teeth) == len(FDI_PERMANENT)
 

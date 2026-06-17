@@ -34,27 +34,28 @@ class TestProceduresAPI:
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_create_procedure_persists_valid_payload(self, api_client, admin_user):
+    def test_create_procedure_persists_valid_payload(self, api_client, admin_user, branch):
         payload = {
             'name': 'Composite Filling',
             'category': 'restorative',
             'duration': 45,
             'price': '320.00',
             'currency': '$',
+            'branchId': None,
         }
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(reverse('list_create_procedures'), payload, format='json')
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['name'] == payload['name']
+        assert response.data['data']['name'] == payload['name']
         assert Procedure.objects.filter(name='Composite Filling').exists()
 
     def test_update_procedure_changes_editable_fields(
         self,
         api_client,
         admin_user,
-        procedure_factory,
+        procedure_factory
     ):
         procedure = procedure_factory(name='Scaling', duration=30, price='140.00')
 

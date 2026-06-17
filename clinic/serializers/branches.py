@@ -11,7 +11,8 @@ from services.translation.serializers import TranslatedChoiceField
 #BRANCH SERIALIZERS 
 #Base branch serializer
 class BranchSerializer(UserPermissionsMixin, serializers.ModelSerializer):
-    workingDays = serializers.ListField(child=TranslatedChoiceField(choices=WorkingDaysLookUp.choices))
+    workingDays = serializers.ListField(child=TranslatedChoiceField(choices=WorkingDaysLookUp.choices),
+                                        allow_empty=False)
 
     class Meta:
         model = Branch
@@ -38,7 +39,7 @@ class CreateBranchSerializer(BranchSerializer):
 class UpdateBranchSerializer(BranchSerializer):
     workingDays = serializers.ListField(
         child=TranslatedChoiceField(choices=WorkingDaysLookUp.choices),
-         required=False)
+         required=False, allow_empty=False)
 
     class Meta(BranchSerializer.Meta):
         fields = ['id', 'name', 'address', 'phone', 'workingDays', 'openTime', 'closeTime',

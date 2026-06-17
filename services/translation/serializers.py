@@ -16,20 +16,25 @@ class TranslatedChoiceField(serializers.ChoiceField):
         #self.choices automatically hands translation when using models.TextChoices
         return str(self.choices.get(value, value)) 
 
-    def to_internal_value(self, data):
+    def to_internal_value(self, input_value):
         #Accept original (english) labels automatically
-        if data in self.choices:
-            return data
+        if input_value in self.choices:
+            return input_value
+        #account for choice fields with blank and null set to True
+        elif input_value == '' and getattr(self, 'allow_blank', False):
+            return ''
+        elif input_value is None and getattr(self, 'allow_null', False):
+            return None
 
         #Process translated labels and store values in english
         for lang_code, _ in settings.LANGUAGES:
             with translation.override(lang_code):
                 for value, label in self.choices.items():
-                    if str(label) == str(data):
+                    if str(label) == str(input_value):
                         return value
 
         raise serializers.ValidationError(
-            self.error_messages['invalid_choice'].format(input=data)
+            self.error_messages['invalid_choice'].format(input=input_value)
         )
 
 

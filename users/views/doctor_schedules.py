@@ -150,7 +150,7 @@ class DeleteScheduleExceptionAPIView(DeleteAPIView):
              )
         except ValueError:
             raise ValidationError({'date': _('Invalid date format. Expected YYYY-MM-DD.')})
-        # self.check_object_permissions(self.request, schedule_exception)
+        self.check_object_permissions(self.request, schedule_exception)
         return schedule_exception
 
 
