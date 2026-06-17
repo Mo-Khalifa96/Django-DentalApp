@@ -29,7 +29,8 @@ class ListUsersSerializer(serializers.ModelSerializer):
 class CreateUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     password2 = serializers.CharField(write_only=True)
-    branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', queryset=Branch.objects.all(), required=True, allow_null=True)
+    branchIds = serializers.PrimaryKeyRelatedField(many=True, source='branches', queryset=Branch.objects.all(), 
+                                                   required=True, allow_null=True, allow_empty=True)
     role = TranslatedChoiceField(choices=User.UserRoles.choices, required=True)
 
     class Meta:

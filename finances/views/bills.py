@@ -1,11 +1,12 @@
 from utils.base_views import *
 from users.models import User
+from django.http import Http404
 from finances.models import Bill
 from patients.models import Patient
+from finances.filters import BillsFilter
 from utils.validators import validate_uuid
 from rest_framework import status, generics
 from rest_framework.response import Response
-from finances.filters import BillsFilter
 from utils.filters import CustomOrderingFilter
 from rest_framework.filters import SearchFilter
 from users.utils import get_required_permission
@@ -152,7 +153,7 @@ class RetrieveBillsOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIVi
         if patientId:
             try:
                 Patient.objects.get(id=patientId)
-            except Patient.DoesNotExist:
+            except (Patient.DoesNotExist, Http404):
                 raise ValidationError({'patientId': _('Patient was not found or does not exist.')})
         
         if doctorId:

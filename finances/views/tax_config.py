@@ -1,6 +1,7 @@
 from utils.base_views import *
 from clinic.models import Branch
 from users.permissions import AdminOnly
+from django.http.response import Http404
 from finances.models import ClinicalTaxConfig
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
@@ -35,11 +36,10 @@ class ClinicTaxConfigAPIView(CreateAPIView, RetrieveUpdateAPIView):
 
         try:
             obj = get_object_or_404(ClinicalTaxConfig, **branch_filter)
-        except ClinicalTaxConfig.DoesNotExist:
+        except (ClinicalTaxConfig.DoesNotExist, Http404):
             raise NotFound(_('The requested tax configuration was not found or does not exist.'))
         except ClinicalTaxConfig.MultipleObjectsReturned:
             raise ValidationError(_('Clinic branch must be provided to determine the associated tax configuration.'))
-        
         return obj
     
     def get_serializer_class(self):

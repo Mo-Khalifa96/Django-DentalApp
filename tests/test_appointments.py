@@ -12,6 +12,33 @@ from services.whatsapp.exceptions import WhatsAppAPIError
 pytestmark = pytest.mark.django_db
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Factory
+# ─────────────────────────────────────────────────────────────────────────────
+
+@pytest.fixture
+def message_factory():
+    from services.models import Message
+
+    def create_message(patient, appointment, **overrides):
+        defaults = {
+            'message': 'Appointment reminder',
+            'status': 'queued',
+        }
+        defaults.update(overrides)
+        return Message.objects.create(
+            patient=patient,
+            appointment=appointment,
+            **defaults,
+        )
+
+    return create_message
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Testing Class
+# ─────────────────────────────────────────────────────────────────────────────
+
 class TestAppointmentsAPI:
     def test_list_appointments_returns_paginated_results(
         self,

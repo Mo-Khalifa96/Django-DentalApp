@@ -1,4 +1,5 @@
 import logging
+from django.http import Http404
 from django.conf import settings
 from .exceptions import WhatsAppAPIError
 
@@ -99,7 +100,7 @@ def send_twilio_message_task(obj, is_instance=False):
         message_id = obj
         try:
             message = Message.objects.select_related('patient', 'appointment__doctor').get(id=message_id)
-        except Message.DoesNotExist:
+        except (Message.DoesNotExist, Http404):
             logger.error(f'Message {message_id} not found. Skipping.')
             return
     else:

@@ -1,4 +1,5 @@
 from utils.base_views import *
+from django.http import Http404
 from rest_framework import status, generics
 from rest_framework.response import Response
 from utils.filters import CustomOrderingFilter
@@ -45,7 +46,7 @@ class ListCreateTreatmentPlansAPIView(ListCreateAPIView):
     def get_queryset(self):
         try:
             patient = Patient.objects.prefetch_related('patient_treatmentplans').get(id=self.kwargs['id'])
-        except Patient.DoesNotExist:
+        except (Patient.DoesNotExist, Http404):
             raise NotFound(_('The requested patient was not found or does not exist.'))
         return patient.patient_treatmentplans\
             .prefetch_related('treatment_items', 
@@ -87,7 +88,7 @@ class RetrieveUpdateDeleteTreatmentPlanAPIView(RetrieveUpdateDeleteAPIView):
                 obj = TreatmentPlan.objects.prefetch_related('treatment_items').get(
                     id=self.kwargs['treatmentId']
                 )
-        except TreatmentPlan.DoesNotExist:
+        except (TreatmentPlan.DoesNotExist, Http404):
             raise NotFound(_('The requested treatment plan was not found or does not exist.'))
         
         #check object permission and return treatment plan

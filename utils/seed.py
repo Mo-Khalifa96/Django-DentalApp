@@ -18,6 +18,7 @@ django.setup()
 
 
 from django.db.models import F
+from django.http import Http404
 from django.db import transaction
 from django.utils import timezone
 from patients.validators import FDI_PERMANENT
@@ -876,7 +877,7 @@ def seed_schedule_exceptions(doctors, num_exceptions=30):
         #OneToOneField reverse accessor, skip doctors with no schedule yet
         try:
             schedules.append(doctor.doctor_schedule)
-        except DoctorSchedule.DoesNotExist:
+        except (DoctorSchedule.DoesNotExist, Http404):
             continue
 
     if not schedules:

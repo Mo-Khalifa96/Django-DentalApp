@@ -1,9 +1,60 @@
 import uuid
 import pytest
+import itertools
 from django.urls import reverse
 from rest_framework import status
 from datetime import date, timedelta
 from clinic.models import Lab, LabOrder
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Factories
+# ─────────────────────────────────────────────────────────────────────────────
+@pytest.fixture
+def lab_factory():
+    from clinic.models import Lab
+
+    counter = itertools.count(1)
+
+    def _create(**overrides):
+        idx = next(counter)
+        defaults = {
+            'name': f'Lab {idx}',
+            'phone': f'+201000111{idx:03d}',
+            'address': f'{idx} Lab Avenue, Cairo',
+            'contactPerson': f'Contact {idx}',
+        }
+        defaults.update(overrides)
+        return Lab.objects.create(**defaults)
+
+    return _create
+
+@pytest.fixture
+def lab_order_factory(lab_factory, patient_factory, procedure_factory):
+    """
+    Creates LabOrder instances with all required FK dependencies pre-built.
+    Override any field with a keyword argument:
+        lab_order_factory(branch=b, status='in_production')
+    """
+    from clinic.models import LabOrder
+
+    def _create(**overrides):
+        defaults = {
+            'lab':        lab_factory(),
+            'patient':    patient_factory(),
+            'procedure':  procedure_factory(),
+            'toothNumber': '11',
+            'sentDate':   date.today(),
+            'dueDate':    date.today() + timedelta(days=7),
+            'cost':       '150.00',
+            'currency':   '$',
+            'branch': None,
+        }
+        defaults.update(overrides)
+        return LabOrder.objects.create(**defaults)
+
+    return _create
+
 
 
 #LABS TESTS

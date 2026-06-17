@@ -1,4 +1,5 @@
 from users.models import User
+from django.http import Http404
 from django.db import transaction
 from rest_framework import serializers
 from django.utils.encoding import force_str
@@ -124,7 +125,7 @@ class ResetPasswordSerializer(serializers.Serializer):
             #save user for later update/saving
             self.user = User.all_objects.get(pk=user_id)
 
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist, Http404):
             raise serializers.ValidationError({'uid': _('Invalid reset link.')})
         
         if not default_token_generator.check_token(self.user, token):

@@ -1,3 +1,4 @@
+from django.http import Http404
 from clinic.models import Branch
 from rest_framework import serializers
 from utils.validators import validate_uuid
@@ -103,7 +104,7 @@ class BranchToSerializerMixin:
         if branchId:
             try:
                 Branch.objects.get(id=branchId)
-            except Branch.DoesNotExist:
+            except (Branch.DoesNotExist, Http404):
                 raise ValidationError({'branchId': _('Branch was not found or does not exist.')})
         context['branchId'] = branchId
         return context

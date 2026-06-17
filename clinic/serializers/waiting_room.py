@@ -1,8 +1,9 @@
 from users.models import User
+from django.http import Http404
 from rest_framework import serializers
 from patients.models import Appointment
-from clinic.models import Branch, WaitingRoom
 from utils.mixins import ValidateBranchMixin
+from clinic.models import Branch, WaitingRoom
 from clinic.docs import waiting_room_options_schema
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
@@ -54,7 +55,7 @@ class WaitingRoomSerializer(ValidateBranchMixin, serializers.ModelSerializer):
             try:
                 #query to validate and return doctor's id and name
                 doctor = User.objects.only('id', 'name').get(id=doctor_id)
-            except User.DoesNotExist:
+            except (User.DoesNotExist, Http404):
                 raise serializers.ValidationError({'doctorId': _('Doctor not found or does not exist.')})
         
         #if current doctor doesn't match appointment doctor

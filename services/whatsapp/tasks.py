@@ -1,4 +1,5 @@
 import logging
+from django.http import Http404
 from django.conf import settings
 from django.utils import timezone
 from .whatsapp import WhatsAppClient
@@ -36,7 +37,7 @@ def send_whatsapp_message_task(obj, is_instance=False):
         message_id = obj
         try:
             message = Message.objects.select_related('patient', 'appointment__doctor').get(id=message_id)
-        except Message.DoesNotExist:
+        except (Message.DoesNotExist, Http404):
             logger.error(f'Message {message_id} not found. Skipping.')
             return
     else:
@@ -77,7 +78,7 @@ def send_appointment_reminder_task(appointment_id: str):
 
     try:
         appointment = Appointment.objects.select_related('patient', 'doctor').get(id=appointment_id)
-    except Appointment.DoesNotExist:
+    except (Appointment.DoesNotExist, Http404):
         logger.warning(f'Appointment {appointment_id} not found. Skipping reminder.')
         return
 

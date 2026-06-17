@@ -1,6 +1,7 @@
 from django.http import Http404
 from django.conf import settings
 from rest_framework import status
+from django.db.utils import IntegrityError
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 from rest_framework.exceptions import APIException, ErrorDetail
@@ -32,14 +33,18 @@ def DentalTechExceptionHandler(exc, context):
     '''Main (global) exception handler for the system.'''
     #Let DRF convert Http404 and Django's PermissionDenied first
     response = exception_handler(exc, context)
-    
+
     # print('DEBUG:', exc)
+    
+    #Handle Integrity error gracefully
+    if isinstance(exc, IntegrityError):
+        return _integrity_error_handler()
 
     if response is not None:
         #extract response data 
         data = response.data
 
-        ##Handle special case errors first##
+        #Handle special case errors
         #Handle AppointmentConflictError
         if isinstance(exc, AppointmentConflictError):
             return Response(
@@ -149,10 +154,17 @@ def _extract_messages(messages):
 
     #Handle dict-nested field errors
     if isinstance(messages, dict):
+        #standard:
+        # if len(messages) == 1 and 'non_field_errors' in messages:
+        #     return {
+        #         'nonFieldErrors': _extract_messages(messages['non_field_errors'])
+        #     }
+
         #collapse non_field_errors into single string message
         if len(messages) == 1 and 'non_field_errors' in messages:
             return _extract_messages(messages['non_field_errors'])
         
+
         #Handle validation errors for field errors
         return {
             field: _extract_messages(value)
@@ -169,3 +181,17 @@ def _extract_messages(messages):
 
     #Fallback 
     return str(messages)
+
+
+def _integrity_error_handler(exc=None):   #for later if you want to use str(exc) for the message
+    '''Returns json response upon hitting integrty error.'''
+    return Response(
+            {
+                'success': False,
+                'error': {
+                    'code': 'UNIQUE_CONSTRAINT_VIOLATION',
+                    'message': 'A record with this unique identifier already exists.',
+                }
+            },
+            status=status.HTTP_409_CONFLICT,  #409 for duplicate/conflict issues
+        )

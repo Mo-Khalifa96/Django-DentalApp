@@ -1,6 +1,7 @@
 import os
 import itertools
 from io import BytesIO
+from decimal import Decimal
 from datetime import time, date, timedelta
 
 
@@ -267,6 +268,17 @@ def treatment_plan_factory():
 
     return create_treatment_plan
 
+@pytest.fixture
+def png_file():
+    image_bytes = BytesIO()
+    Image.new('RGB', (1, 1), color='white').save(image_bytes, format='PNG')
+    image_bytes.seek(0)
+    return SimpleUploadedFile(
+        'xray.png',
+        image_bytes.read(),
+        content_type='image/png',
+    )
+
 
 @pytest.fixture
 def inventory_factory():
@@ -292,77 +304,33 @@ def inventory_factory():
 
 
 @pytest.fixture
-def lab_factory():
-    from clinic.models import Lab
+def bill_factory(patient_factory, dentist_user, visit_factory):
+    """
+    Creates Bill instances via the ORM with a default patient, visit, and amounts.
+    M2M visits are set after creation, which fires the m2m_changed signal and
+    updates visit.cost automatically.
+    """
 
-    counter = itertools.count(1)
+    from finances.models import Bill
 
     def _create(**overrides):
-        idx = next(counter)
+        patient = overrides.pop('patient', None) or patient_factory()
+        visits  = overrides.pop('visits', None)
+        if visits is None:
+            visits = [visit_factory(patient=patient, doctor=dentist_user)]
+
         defaults = {
-            'name': f'Lab {idx}',
-            'phone': f'+201000111{idx:03d}',
-            'address': f'{idx} Lab Avenue, Cairo',
-            'contactPerson': f'Contact {idx}',
+            'patient':     patient,
+            'description': 'Test Bill',
+            'subtotal':    Decimal('200.00'),
+            'totalAmount': Decimal('200.00'),
+            'discount':    Decimal('0.00'),
+            'currency':    '$',
         }
         defaults.update(overrides)
-        return Lab.objects.create(**defaults)
+        bill = Bill.objects.create(**defaults)
+        bill.visits.set(visits)
+        return bill
 
     return _create
 
-@pytest.fixture
-def lab_order_factory(lab_factory, patient_factory, procedure_factory):
-    """
-    Creates LabOrder instances with all required FK dependencies pre-built.
-    Override any field with a keyword argument:
-        lab_order_factory(branch=b, status='in_production')
-    """
-    from clinic.models import LabOrder
-
-    def _create(**overrides):
-        defaults = {
-            'lab':        lab_factory(),
-            'patient':    patient_factory(),
-            'procedure':  procedure_factory(),
-            'toothNumber': '11',
-            'sentDate':   date.today(),
-            'dueDate':    date.today() + timedelta(days=7),
-            'cost':       '150.00',
-            'currency':   '$',
-            'branch': None,
-        }
-        defaults.update(overrides)
-        return LabOrder.objects.create(**defaults)
-
-    return _create
-
-
-@pytest.fixture
-def message_factory():
-    from services.models import Message
-
-    def create_message(patient, appointment, **overrides):
-        defaults = {
-            'message': 'Appointment reminder',
-            'status': 'queued',
-        }
-        defaults.update(overrides)
-        return Message.objects.create(
-            patient=patient,
-            appointment=appointment,
-            **defaults,
-        )
-
-    return create_message
-
-
-@pytest.fixture
-def png_file():
-    image_bytes = BytesIO()
-    Image.new('RGB', (1, 1), color='white').save(image_bytes, format='PNG')
-    image_bytes.seek(0)
-    return SimpleUploadedFile(
-        'xray.png',
-        image_bytes.read(),
-        content_type='image/png',
-    )

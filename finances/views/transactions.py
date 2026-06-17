@@ -1,5 +1,6 @@
 from utils.base_views import *
 from users.models import User
+from django.http import Http404
 from patients.models import Patient
 from finances.models import Transaction
 from utils.validators import validate_uuid
@@ -129,7 +130,7 @@ class RetrieveTransactionsOptionsAPIView(BranchToSerializerMixin, generics.Gener
         if patientId:
             try:
                 Patient.objects.get(id=patientId)
-            except Patient.DoesNotExist:
+            except (Patient.DoesNotExist, Http404):
                 raise ValidationError({'patientId': _('Patient was not found or does not exist.')})
         
         if doctorId:
