@@ -69,7 +69,7 @@ class TestListCreateUserAPIView:
         """When no Branch rows exist the branchIds validation is skipped."""
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
-            reverse(self.URL), self._payload(), format='json'
+            reverse(self.URL), self._payload(branchIds=[]), format='json'
         )
 
         assert response.status_code == status.HTTP_201_CREATED
@@ -123,12 +123,12 @@ class TestListCreateUserAPIView:
         response = api_client.post(reverse(self.URL), payload, format='json')
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_new_user_receives_default_role_permissions(self, api_client, admin_user):
+    def test_new_user_receives_default_role_permissions(self, api_client, admin_user, branch):
         """Default permission set for the chosen role is applied on creation."""
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
             reverse(self.URL),
-            self._payload(email='dentistnew@test.com', role='dentist'),
+            self._payload(email='dentistnew@test.com', role='dentist', branchIds=[str(branch.id)]),
             format='json',
         )
 

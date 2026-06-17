@@ -40,7 +40,7 @@ urlpatterns = [
     path('treatment-plans/options/', RetrieveTreatmentPlansOptionsAPIView.as_view(), name='treatment_plans_options'),
 
     #Patient recalls urls 
-    path('recalls/', ListCreatePatientRecallsAPIView.as_view(), name='list_create_patient_recals'),
+    path('recalls/', ListCreatePatientRecallsAPIView.as_view(), name='list_create_patient_recalls'),
     path('recalls/<uuid:id>/', UpdateDeletePatientRecallAPIView.as_view(
             http_method_names=['patch', 'delete', 'options']
         ), name='update_delete_patient_recall'),

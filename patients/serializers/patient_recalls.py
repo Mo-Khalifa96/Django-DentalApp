@@ -16,7 +16,7 @@ class PatientRecallSerializer(serializers.ModelSerializer):
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     type = TranslatedChoiceField(choices=PatientRecall.RecallTypeChoices.choices)
     status = TranslatedChoiceField(choices=PatientRecall.RecallStatusChoices.choices,
-                                   required=False, allow_blank=True, allow_null=True)
+                                    required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = PatientRecall
@@ -32,7 +32,7 @@ class CreatePatientRecallSerializer(ValidateBranchMixin, PatientRecallSerializer
     class Meta(PatientRecallSerializer.Meta):
         fields = ['id', 'patientId', 'patientName', 'phone', 'type', 'dueDate', 'notes', 
                   'status', 'branchId', 'createdAt']
-        read_only_fields = ['id', 'patientName', 'status', 'createdAt']
+        read_only_fields = ['id', 'patientName', 'createdAt']
 
 
 #Update patient recall serializer

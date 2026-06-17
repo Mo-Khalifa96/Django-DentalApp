@@ -63,6 +63,13 @@ class CreateLabOrderSerializer(ValidateBranchMixin, LabOrderSerializer):
 
 #Update lab order serializer
 class UpdateLabOrderSerializer(LabOrderSerializer):
+    labId = serializers.PrimaryKeyRelatedField(source='lab', read_only=True)
+    patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
+    procedureId = serializers.PrimaryKeyRelatedField(source='procedure', read_only=True)
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
+    status = TranslatedChoiceField(choices=LabOrder.OrderStatusChoices.choices, 
+                              required=False, allow_blank=False, allow_null=False)  #not required on create & update
+
     class Meta(LabOrderSerializer.Meta):
         fields = ['id', 'labId', 'labName', 'patientId', 'patientName', 'procedureId', 'procedureName', 'toothNumber', 
                   'instructions', 'sentDate', 'dueDate', 'receivedDate', 'deliveredDate', 'status', 'cost',
