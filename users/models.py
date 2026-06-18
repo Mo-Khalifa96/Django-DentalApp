@@ -1,6 +1,7 @@
 import json
 import uuid 
 from django.db import models
+from django.conf import settings
 from django.db import transaction
 from clinic.models import WorkingDaysLookUp
 from users.validators import validate_image_size
@@ -363,7 +364,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         super().save(*args, **kwargs)
 
         #seeding condition -- remove later [TODO]
-        if self.branches.count() == 0 and self.branch:
+        if settings.DEBUG and\
+         self.branches.count() == 0\
+         and self.branch:
             self.branches.add(self.branch)
 
     @staticmethod

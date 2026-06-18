@@ -131,9 +131,6 @@ class Bill(models.Model):
     #Model function to auto-generate invoices from a bill
     @classmethod
     def generate_invoice(cls, bill):   
-        # #Identify bill by ID
-        # bill = cls.objects.get(id=billId)
-        
         #Generate invoice for bill
         invoice = Invoice.objects\
             .update_or_create(

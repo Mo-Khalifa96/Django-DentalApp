@@ -283,7 +283,8 @@ class UpdateInvoiceSerializer(CreateInvoiceSerializer):    #PUT requests only
             setattr(instance, field, value)   #i.e. instance.field = value
 
         #update instance
-        instance.save(update_fields=list(validated_data.keys()))
+        updated_fields = list(validated_data.keys()) + ['issuedAt', 'submittedAt']
+        instance.save(update_fields=list(set(updated_fields)))
         return instance
 
 
