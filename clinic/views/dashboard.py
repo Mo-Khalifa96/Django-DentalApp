@@ -36,10 +36,21 @@ class DashboardStatisticsAPIView(GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        #Exclude users without required permission
+        #Return null values for users without required permission
         if getattr(request.user, 'role', None) != 'admin' and\
          'view.clinicalAnalytics' not in getattr(request.user, 'userPermissions', []):
-            return Response({}, status=status.HTTP_200_OK)
+            data = {
+                'patientsTotal': None,
+                'patientsNew': None,
+                'appointmentsCount': None,
+                'appointmentsCompleted': None,
+                'revenue': None,
+                'outstanding': None,
+                # 'currency': None
+            }
+            #Serializer and return response
+            serializer = self.get_serializer(data)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         
         #Get date today and work days window
         today = date.today()  #date today 
@@ -48,7 +59,7 @@ class DashboardStatisticsAPIView(GenericAPIView):
         ending_friday = staring_saturday + timedelta(days=6)
 
         #serializer query parameters (if any)
-        queryparam_serializer = DashboardQueryParamSerializer(data=request.query_params)
+        queryparam_serializer = DashboardQueryParamSerializer(data=request.query_params, context=self.get_serializer_context())
         queryparam_serializer.is_valid(raise_exception=True)
         dateRange = queryparam_serializer.validated_data.get('dateRange')
         branchId = queryparam_serializer.validated_data.get('branchId')

@@ -265,7 +265,7 @@ class TestAppointmentsAPI:
         assert response.status_code == status.HTTP_200_OK
         assert {'patientId': patient.id, 'name': patient.name} in response.data['patientChoices']
         assert {'doctorId': dentist_user.id, 'name': dentist_user.name} in response.data['doctorChoices']
-        # Current appointment options serializer exposes statusChoices as list of dicts
+        #rrent appointment options serializer exposes statusChoices as list of dicts
         assert {'value': 'cancelled', 'label': 'cancelled'} in response.data['statusChoices']
 
 
@@ -325,7 +325,7 @@ class TestWhatsAppEndpoints:
             raise_whatsapp_error,
         )
         # async_task is no longer imported from patients.views.appointments
-        # (send_twilio_message_task is called directly in the serializer/view)
+        #send_twilio_message_task is called directly in the serializer/view)
         monkeypatch.setattr('services.views.async_task', Mock(), raising=False)
 
         api_client.force_authenticate(user=admin_user)

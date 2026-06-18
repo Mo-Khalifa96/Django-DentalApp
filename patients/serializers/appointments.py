@@ -91,7 +91,7 @@ class CreateAppointmentSerializer(AppointmentSerializer):
             elif doctor and doctor.branches.count() == 1:
                 branch = doctor.branches.first()
                 data['branch'] = branch
-            elif doctor and doctor.branch:
+            elif doctor and getattr(doctor, 'branch_id', None):
                 branch = doctor.branch
                 data['branch'] = branch
             elif Branch.objects.exists():
@@ -125,8 +125,8 @@ class CreateAppointmentSerializer(AppointmentSerializer):
         else:
             patient = validated_data.get('patient')
             patient.doctor = validated_data['doctor']
-            patient.branch = validated_data.get('branch', None)
-            patient.save(update_fields=['doctor', 'branch', 'updatedAt'])
+            patient.branch = validated_data.get('branch')
+            patient.save(update_fields=['branch', 'doctor', 'doctorName', 'updatedAt'])
         
         #Call parent create method to create appointment with updated data
         return super().create(validated_data)
@@ -148,7 +148,7 @@ class UpdateAppointmentSerializer(AppointmentSerializer):
     #validate patient-related data 
     def validate(self, data):
         instance = self.instance
-        doctor = data.get('doctor', instance.doctor)
+        doctor = data.get('doctor', instance.doctor) or instance.doctor
         branch = data.get('branch', instance.branch) or instance.branch
         
         #validate branch
@@ -157,13 +157,13 @@ class UpdateAppointmentSerializer(AppointmentSerializer):
             if user.branches.count() == 1:
                 branch = user.branches.first()
                 data['branch'] = branch
-            elif getattr(user, 'branch_id', None):
-                branch = user.branch
-                data['branch'] = branch
             elif doctor and doctor.branches.count() == 1:
                 branch = instance.doctor.branches.first()
                 data['branch'] = branch
-            elif doctor and doctor.branch:
+            elif getattr(user, 'branch_id', None):
+                branch = user.branch
+                data['branch'] = branch
+            elif doctor and getattr(doctor, 'branch_id', None):
                 branch = doctor.branch
                 data['branch'] = branch
             elif Branch.objects.exists():

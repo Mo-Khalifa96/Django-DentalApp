@@ -1,8 +1,7 @@
 import uuid 
 from django.db import models
-from django.db import transaction
 from django.utils import timezone
-from patients.models import Patient, Appointment
+from django.utils.translation import gettext_lazy as _
 
 
 #MESSAGES MODEL
@@ -16,17 +15,17 @@ class Message(models.Model):
         FAILED = 'failed'
 
     class MessageTypeChoices(models.TextChoices):
-        REMINDER = 'reminder'
-        RECALL = 'recall'
-        CUSTOM = 'custom'
+        REMINDER = 'reminder', _('reminder')
+        RECALL = 'recall', _('recall')
+        CUSTOM = 'custom', _('custom')
 
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     #Many-to-One relationship to the Patient model (i.e., many messages, one patient)
-    patient = models.ForeignKey(Patient, related_name='patient_reminders', on_delete=models.CASCADE, db_index=True)
+    patient = models.ForeignKey('patients.Patient', related_name='patient_reminders', on_delete=models.CASCADE, db_index=True)
 
     #Many-to-One relationship to the Appointment model (i.e., many messages, one appointment)
-    appointment = models.ForeignKey(Appointment, related_name='appointment_reminders', on_delete=models.DO_NOTHING, db_index=True) 
+    appointment = models.ForeignKey('patients.Appointment', related_name='appointment_reminders', on_delete=models.DO_NOTHING, db_index=True) 
 
     #main model fields
     message = models.TextField()

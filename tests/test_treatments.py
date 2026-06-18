@@ -45,8 +45,8 @@ class TestTreatmentPlansAPI:
         payload = {
             'installmentMonths': 3,
             'title': 'Recommended treatment plan',
-            # 'status': 'active',
-            # 'installmentMonths': '',
+            #status': 'active',
+            #installmentMonths': '',
             'currency': '$',
             'totalCost': 350.0,
             'sessions': 2,

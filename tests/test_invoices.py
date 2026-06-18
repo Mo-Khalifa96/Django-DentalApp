@@ -224,7 +224,7 @@ class TestListCreateInvoicesAPIView:
             _create_payload(
                 patient,
                 items=[{'unitPrice': '150.00', 'quantity': 2}],
-                subtotal='999.00',    # wrong; validate() recalculates to 300
+                subtotal='999.00',    #rong; validate() recalculates to 300
             ),
             format='json',
         )
@@ -286,7 +286,7 @@ class TestListCreateInvoicesAPIView:
             'items':    [{'description': 'Crown', 'unitPrice': '500.00', 'quantity': 1}],
             'subtotal': '500.00',
             'currency': '$',
-            # no patientId
+            #o patientId
         }
 
         api_client.force_authenticate(user=admin_user)

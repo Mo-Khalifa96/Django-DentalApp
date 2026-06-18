@@ -478,7 +478,6 @@ cancel_appointment_schema = extend_schema_serializer(
             value={
                 'success': True, 
                 'data': {
-                    'success': True, 
                     'message': 'Appointment cancelled successfully.'
                 }
             }

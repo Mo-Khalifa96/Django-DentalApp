@@ -334,3 +334,31 @@ def bill_factory(patient_factory, dentist_user, visit_factory):
 
     return _create
 
+
+@pytest.fixture
+def transaction_factory(bill_factory):
+    """
+    Creates Transaction instances using an existing or new Bill.
+    Patient and visit are derived from the bill (mirrors validate() logic).
+    post_save signal fires automatically, updating bill.totalPaid and
+    visit.paid.
+    """
+    from finances.models import Transaction
+
+    def _create(**overrides):
+        bill    = overrides.pop('bill',    None) or bill_factory()
+        patient = overrides.pop('patient', None) or bill.patient
+        visit   = overrides.pop('visit',   None) or bill.visits.first()
+
+        defaults = {
+            'bill':     bill,
+            'patient':  patient,
+            'visit':    visit,
+            'date':     date.today(),
+            'amount':   Decimal('150.00'),
+            'currency': '$',
+        }
+        defaults.update(overrides)
+        return Transaction.objects.create(**defaults)
+
+    return _create

@@ -175,7 +175,7 @@ class TestDentalChartAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['data']['patientId'] == patient.id
         assert len(response.data['data']['teeth']) == len(FDI_PERMANENT)
-        # Dental chart serializer exposes per-tooth status via stored teeth values.
+        #ental chart serializer exposes per-tooth status via stored teeth values.
         assert 'healthy' in [t['status'] for t in response.data['data']['teeth'].values()]
 
 

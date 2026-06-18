@@ -11,7 +11,7 @@ def _branch_payload(**overrides):
     base = {
         'name': 'New Branch',
         'phone': '+20101234567',
-        'workingDays': [0, 1, 2, 3, 4],   # Sun – Thu
+        'workingDays': [0, 1, 2, 3, 4],   #n – Thu
         'openTime': '09:00:00',
         'closeTime': '17:00:00',
     }
@@ -333,7 +333,7 @@ class TestRetrieveUpdateDeleteBranchAPIView:
 
     def test_admin_can_update_working_days(self, api_client, admin_user, branch):
         api_client.force_authenticate(user=admin_user)
-        new_days = [1, 2, 3, 4, 5]   # Mon – Fri
+        new_days = [1, 2, 3, 4, 5]   #on – Fri
         response = api_client.patch(
             self._url(branch.id), {'workingDays': new_days}, format='json'
         )
@@ -529,7 +529,7 @@ class TestRetrieveBranchOptionsAPIView:
         response = api_client.get(reverse(self.URL))
 
         returned = {c['value'] for c in response.data['weekDaysChoices']}
-        expected = set(WorkingDaysLookUp.values)   # {0, 1, 2, 3, 4, 5, 6}
+        expected = set(WorkingDaysLookUp.values)   #0, 1, 2, 3, 4, 5, 6}
         assert returned == expected
 
     def test_response_is_not_wrapped_by_response_mixin(

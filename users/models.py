@@ -1,8 +1,7 @@
 import json
 import uuid 
-from django.db import models
 from django.conf import settings
-from django.db import transaction
+from django.db import models, transaction
 from clinic.models import WorkingDaysLookUp
 from users.validators import validate_image_size
 from django.contrib.postgres.fields import ArrayField

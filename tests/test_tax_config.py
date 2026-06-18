@@ -396,7 +396,7 @@ class TestClinicTaxConfigAPIView:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Edge Cases and Branch Resolution Tests
+#ge Cases and Branch Resolution Tests
 # ══════════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.django_db
@@ -487,7 +487,7 @@ class TestTaxConfigModelManager:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Integration Tests - Multiple Tax Configs
+#ntegration Tests - Multiple Tax Configs
 # ══════════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.django_db

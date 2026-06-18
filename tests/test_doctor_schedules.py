@@ -411,7 +411,7 @@ class TestCRUDDoctorScheduleAPIView:
         api_client.force_authenticate(user=admin_user)
         api_client.put(
             _schedule_url(dentist_user.id),
-            _schedule_payload(startTime='08:00:00'),   # no 'exceptions' key
+            _schedule_payload(startTime='08:00:00'),   #o 'exceptions' key
             format='json',
         )
 
@@ -472,7 +472,7 @@ class TestCRUDDoctorScheduleAPIView:
 
 # ══════════════════════════════════════════════════════════════════════════════
 # POST  /doctor-schedule/<doctorId>/exceptions/
-# DELETE  /doctor-schedule/<doctorId>/exceptions/<date>/
+#ELETE  /doctor-schedule/<doctorId>/exceptions/<date>/
 # ══════════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.django_db
@@ -626,7 +626,7 @@ class TestScheduleExceptionsAPIView:
         schedule_factory(doctor=dentist_user)
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(
-            _exception_delete_url(dentist_user.id, '2099-12-31')   # no exception on this date
+            _exception_delete_url(dentist_user.id, '2099-12-31')   #o exception on this date
         )
         
         assert response.status_code == status.HTTP_404_NOT_FOUND

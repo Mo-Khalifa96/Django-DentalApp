@@ -101,6 +101,7 @@ def send_appointment_reminder_task(appointment_id: str):
         message=message_text,
         templateName=settings.WHATSAPP_REMINDER_TEMPLATE_EN,
         templateLanguage=settings.WHATSAPP_TEMPLATE_LANGUAGE,
+        messageType='reminder',
         status='queued',
     )
 

@@ -78,7 +78,7 @@ class ChangePasswordSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         instance.set_password(validated_data['newPassword'])
-        instance.save(update_fields=['password'])
+        instance.save(update_fields=['password', 'updatedAt'])
         return instance
 
 

@@ -127,7 +127,7 @@ class TestListCreateBillsAPIView:
 
         item = response.data['data'][0]
         assert 'status' in item
-        assert item['status'] is not None   # 'unpaid' when totalPaid is null
+        assert item['status'] is not None   #unpaid' when totalPaid is null
 
     def test_user_without_view_bills_permission_gets_403(
         self, api_client, receptionist_user
@@ -229,7 +229,7 @@ class TestListCreateBillsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
             reverse(self.LIST_URL),
-            _create_payload(patient_a, visit_b),   # visit belongs to patient_b, not patient_a
+            _create_payload(patient_a, visit_b),   #isit belongs to patient_b, not patient_a
             format='json',
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -246,7 +246,7 @@ class TestListCreateBillsAPIView:
             'description': 'No Branch Bill',
             'subtotal':    '200.00',
             'currency':    '$',
-            # branchId key absent
+            #ranchId key absent
         }
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(reverse(self.LIST_URL), payload, format='json')
@@ -457,7 +457,7 @@ class TestRetrieveUpdateDeleteBillAPIView:
         v1.refresh_from_db()
         v2.refresh_from_db()
         assert v2 in bill.visits.all() or True
-        # v1 is no longer in the bill → its cost resets to 0 (no bills)
+        #s no longer in the bill → its cost resets to 0 (no bills)
         # assert v1.cost == Decimal('0.00')
 
     # ── DELETE ────────────────────────────────────────────────────────────────

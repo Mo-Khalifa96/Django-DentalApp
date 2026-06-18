@@ -314,7 +314,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
         assert response.status_code == status.HTTP_200_OK
 
         receptionist_user.refresh_from_db()
-        assert receptionist_user.name == 'Updated Name'       # name update went through
+        assert receptionist_user.name == 'Updated Name'       #ame update went through
         assert receptionist_user.role == original_role          # role unchanged
         assert receptionist_user.userPermissions == original_perms  # permissions unchanged
 
@@ -502,7 +502,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
         response = api_client.delete(self._url(uid))
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
-        # Default manager (filters is_deleted=False) must not find the record
+        #efault manager (filters is_deleted=False) must not find the record
         assert not User.objects.filter(id=uid).exists()
         # all_objects bypasses that filter; record must exist and be flagged
         deleted = User.all_objects.get(id=uid)
@@ -652,7 +652,7 @@ class TestSetActiveBranchAPIView:
     def test_user_cannot_activate_branch_they_dont_belong_to(
         self, api_client, dentist_user, branch
     ):
-        # dentist_user.branches does NOT include `branch`
+        #entist_user.branches does NOT include `branch`
         api_client.force_authenticate(user=dentist_user)
         response = api_client.post(
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
@@ -661,7 +661,7 @@ class TestSetActiveBranchAPIView:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_missing_branch_id_returns_400_when_branch_exists(
-        self, api_client, dentist_user, branch  # `branch` fixture ensures a row exists
+        self, api_client, dentist_user, branch  #branch` fixture ensures a row exists
     ):
         api_client.force_authenticate(user=dentist_user)
         response = api_client.post(reverse(self.URL), {}, format='json')

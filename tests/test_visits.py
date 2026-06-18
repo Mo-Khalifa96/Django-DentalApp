@@ -191,7 +191,7 @@ class TestVisitsAPI:
         #     'category': procedure.category,
         #     'duration': procedure.duration,
         #     'price': '$180.00',
-        # } in optional_choices
+        # in optional_choices
 
 
 

@@ -241,12 +241,11 @@ class UpdateBillSerializer(serializers.ModelSerializer):
         visits = validated_data.pop('visits', None)
 
         #update fields with new values
-        update_fields = []
         for field, value in validated_data.items():
             setattr(instance, field, value)  #i.e. instance.field = value
-            update_fields.append(field)
+
         #update instance
-        instance.save(update_fields=[*update_fields, 'updatedAt'])
+        instance.save()
 
         #add new visits only -- TODO: to be confirmed
         # instance.visits.add(*visits)

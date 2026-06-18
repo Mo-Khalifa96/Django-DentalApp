@@ -12,6 +12,7 @@ from utils.filters import CustomOrderingFilter
 from utils.mixins import BranchToSerializerMixin
 from users.permissions import PatientDataPermissions
 from rest_framework.permissions import IsAuthenticated
+from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
 from services.whatsapp.tasks import schedule_appointment_reminder
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
@@ -126,7 +127,7 @@ class RetrieveUpdateCancelAppointmentAPIView(RetrieveUpdateDeleteAPIView):
                 name=f'Schedule reminder for appointment {appointment.id}'
             ).delete()
 
-        return Response({'success': True, 'message': 'Appointment cancelled successfully.'}, status=status.HTTP_200_OK)
+        return Response({'message': _('Appointment cancelled successfully.')}, status=status.HTTP_200_OK)
 
 
 #API View for serving choice options for appointment creation

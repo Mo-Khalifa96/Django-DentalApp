@@ -1,10 +1,8 @@
 import uuid 
 from decimal import Decimal
-from django.db import models
 from django.db.models import Q
 from django.utils import timezone
-from django.db import transaction
-from clinic.models import Branch, Procedure
+from django.db import models, transaction
 from patients.utils import normalize_phone_number
 from utils.exceptions import AppointmentConflictError
 from django.core.validators import MinValueValidator
@@ -74,7 +72,7 @@ class Patient(models.Model):
     #Many-to-One relationship to the User model (i.e., many patients, one doctor)
     doctor = models.ForeignKey('users.User', related_name='doctor_patients', on_delete=models.SET_NULL, null=True, blank=True, db_index=True)
     #Many-to-One relationship to the Branch model (i.e., many patients, one branch)
-    branch = models.ForeignKey(Branch, related_name='branch_patients', blank=True,
+    branch = models.ForeignKey('clinic.Branch', related_name='branch_patients', blank=True,
                                 null=True, on_delete=models.SET_NULL, db_index=True)
     #Patient fields 
     name = models.CharField(max_length=255, db_index=True)
@@ -300,9 +298,9 @@ class Appointment(models.Model):
     #Many-to-One relationship to the Patient model (i.e., many appointments, one patient)
     patient = models.ForeignKey(Patient, related_name='patient_appointments', on_delete=models.CASCADE, db_index=True)
     #Many-to-One relationship to the Procedure model (i.e., many appointments, one procedure) -- #TODO: may need to change to ManyToMany(); to be confirmed...
-    procedure = models.ForeignKey(Procedure, related_name='related_appointments', on_delete=models.SET_NULL, null=True, db_index=True)
+    procedure = models.ForeignKey('clinic.Procedure', related_name='related_appointments', on_delete=models.SET_NULL, null=True, db_index=True)
     #Many-to-One relationship to the Branch model (i.e., many appointments, one branch)
-    branch = models.ForeignKey(Branch, related_name='branch_appointments', blank=True,
+    branch = models.ForeignKey('clinic.Branch', related_name='branch_appointments', blank=True,
                                 null=True, on_delete=models.SET_NULL, db_index=True)
     #Other appointment fields
     date = models.DateField()
@@ -477,7 +475,7 @@ class TreatmentPlanItem(models.Model):
     #Many-to-One relationship to the TreatmentPlan model (i.e., many items, one treatmentPlan)
     treatmentPlan = models.ForeignKey(TreatmentPlan, related_name='treatment_items', on_delete=models.CASCADE)
     #Many-to-One relationship to the Procedure model (i.e., many items can reference the same procedure)
-    procedure = models.ForeignKey(Procedure, related_name='treatment_items', on_delete=models.SET_NULL, null=True)
+    procedure = models.ForeignKey('clinic.Procedure', related_name='treatment_items', on_delete=models.SET_NULL, null=True)
     toothNumber = models.CharField(max_length=3, blank=True, null=True, validators=[validate_toothNumber])
     price = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
     session = models.PositiveSmallIntegerField(blank=True, null=True)
@@ -523,7 +521,7 @@ class PatientRecall(models.Model):
     #Many-to-One relationship to the Patient model (i.e., many recalls, one patient)
     patient = models.ForeignKey(Patient, related_name='patient_recalls', on_delete=models.CASCADE)  #TODO - add phone to choices
     #Many-to-One relationship to the Branch model (i.e., many recalls, one branch)
-    branch = models.ForeignKey(Branch, related_name='branch_patient_recalls', on_delete=models.CASCADE, blank=True, null=True, db_index=True)
+    branch = models.ForeignKey('clinic.Branch', related_name='branch_patient_recalls', on_delete=models.CASCADE, blank=True, null=True, db_index=True)
     #other fields
     phone = models.CharField(max_length=50, blank=True, null=True, validators=[validate_phone_number])
     type = models.CharField(max_length=50, choices=RecallTypeChoices.choices)

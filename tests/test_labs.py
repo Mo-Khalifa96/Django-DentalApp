@@ -461,7 +461,7 @@ class TestRetrieveUpdateDeleteLabAPIView:
         SystemBasePermission: obj.branch_id is None → branch membership check
         is skipped entirely → has_object_permission returns True.
         """
-        branch_factory()                        # makes Branch.objects.exists() True
+        branch_factory()                        #akes Branch.objects.exists() True
         user = user_factory(role='assistant')   # has view.labs
         lab = lab_factory(branch=None)
 
@@ -625,7 +625,7 @@ class TestRetrieveUpdateDeleteLabAPIView:
         api_client.force_authenticate(user=admin_user)
         api_client.delete(self._url(lid))
 
-        # Must be absent from both managers
+        #st be absent from both managers
         assert not Lab.objects.filter(id=lid).exists()
         assert not Lab.all_objects.filter(id=lid).exists()
 
@@ -1389,7 +1389,7 @@ class TestRetrieveLabOrdersOptionsAPIView:
         procedure_factory(branch=b)
 
         api_client.force_authenticate(user=admin_user)
-        response = api_client.get(reverse(self.URL))   # no branchId QP
+        response = api_client.get(reverse(self.URL))   #o branchId QP
 
         assert response.data['labChoices']       == []
         assert response.data['patientChoices']   == []

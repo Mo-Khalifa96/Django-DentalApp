@@ -103,7 +103,6 @@ class Bill(models.Model):
     #to access all objects
     all_objects = models.Manager()
 
-
     class Meta: 
         db_table = 'Bills'
         verbose_name_plural = 'Bills'

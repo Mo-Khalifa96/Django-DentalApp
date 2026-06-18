@@ -13,7 +13,7 @@ from services.translation.serializers import TranslatedChoiceField
 class PatientVisitSerializer(serializers.ModelSerializer):
     #patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
     patientName = serializers.CharField(source='patient.name', read_only=True)
-    doctorId = serializers.PrimaryKeyRelatedField(source='doctor', read_only=True)
+    doctorId = serializers.PrimaryKeyRelatedField(source='doctor', allow_null=True, read_only=True)
     type = TranslatedChoiceField(choices=Visit.VisitTypeChoices.choices)
     xrayUploads = serializers.ListField(child=serializers.ImageField(required=False, allow_empty_file=True),
                                         required=False, write_only=True, allow_empty=True, allow_null=True)
@@ -41,6 +41,10 @@ class PatientVisitSerializer(serializers.ModelSerializer):
         #fetch request and patient from context
         request = self.context.get('request')
         patient = self.context['patient']
+        doctor = (request.user  #TODO -- needs testing if None will be accepted
+                  if getattr(request.user, 'role', None) in ('admin', 'dentist')
+                   else patient.doctor if getattr(patient, 'doctor_id', None)
+                   else None)
 
         #fetch xray uploads before creating visit
         xray_images = validated_data.pop('xrayUploads', [])
@@ -48,12 +52,12 @@ class PatientVisitSerializer(serializers.ModelSerializer):
         #create visit
         visit = Visit.objects.create(**validated_data,
                                      patient=patient,
-                                     doctor=request.user)
+                                     doctor=doctor)
         
         #update doctor if None
         if not patient.doctor:
             patient.doctor = request.user
-            patient.save(update_fields=['doctor', 'updatedAt'])
+            patient.save(update_fields=['doctor', 'doctorName', 'updatedAt'])
 
         #Handle image uploads
         if xray_images:

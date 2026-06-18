@@ -108,6 +108,37 @@ class SetActiveBranchAPIView(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
         #get current user and branch
         user = request.user
+        if 'branchId' not in request.data.keys():
+            raise ValidationError({'branchId': _('Branch ID is required.')})
+
+        #Get branch ID from request data
+        branchId = request.data.get('branchId')
+        if branchId in (None, ''):
+            active_branch = None
+        else:
+            #Verify branch exists
+            active_branch = get_object_or_404(Branch.objects.only('id'), id=branchId)
+
+            #Verify branch belongs to the user
+            if not user.branches.exists() or not user.branches.filter(id=branchId).exists():
+                raise PermissionDenied(_('Permission denied. You do not belong to this branch.'))
+        
+        #Assign active branch
+        user.branch = active_branch
+        user.save(update_fields=['branch', 'updatedAt'])
+        return Response({'success': True}, status=status.HTTP_200_OK)
+
+#Proposed alternative for setting for setting only (cannot set branch to None)
+@extend_schema(tags=['Users'])
+class SetActiveBranchAPIView_SetOnly(generics.GenericAPIView):
+    queryset = User.objects.all()
+    serializer_class = SetActiveBranchSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        #get current user and branch
+        user = request.user
+
         branchId = request.data.get('branchId')
         if not branchId and Branch.objects.exists():
             raise ValidationError({'branchId': _('Branch ID is required to activate user branch.')})
@@ -116,39 +147,8 @@ class SetActiveBranchAPIView(generics.GenericAPIView):
         active_branch = get_object_or_404(Branch.objects.only('id'), id=branchId)
 
         #Verify branch belongs to the user
-        if not user.branches or not user.branches.filter(id=branchId).exists():
+        if not user.branches.exists() or not user.branches.filter(id=branchId).exists():
             raise PermissionDenied(_('Permission denied. You do not belong to this branch.'))
-        
-        #Assign active branch
-        user.branch = active_branch
-        user.save(update_fields=['branch', 'updatedAt'])
-        return Response({'success': True}, status=status.HTTP_200_OK)
-
-
-
-#Proposed alternative for setting and unsetting branch (need to review relevant endpoints)
-@extend_schema(tags=['Users'])
-class Alternative_SetActiveBranchAPIView(generics.GenericAPIView):
-    queryset = User.objects.all()
-    serializer_class = SetActiveBranchSerializer
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        #get current user and branch
-        user = request.user
-        if 'branchId' not in request.data.keys():
-            raise ValidationError({'branchId': _('Branch ID is required.')})
-
-        #Verify branch exists
-        branchId = request.data.get('branchId')
-        if branchId in (None, ''):
-            active_branch = None
-        else:
-            active_branch = get_object_or_404(Branch.objects.only('id'), id=branchId)
-
-            #Verify branch belongs to the user
-            if not user.branches.filter(id=branchId).exists():
-                raise PermissionDenied(_('Permission denied. You do not belong to this branch.'))
         
         #Assign active branch
         user.branch = active_branch

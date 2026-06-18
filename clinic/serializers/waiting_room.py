@@ -49,8 +49,8 @@ class WaitingRoomSerializer(ValidateBranchMixin, serializers.ModelSerializer):
     def validate(self, data):
         doctor_id = data.pop('doctorId', None)
         appointment = data.get('appointment')
-
         doctor = None
+        
         if doctor_id:
             try:
                 #query to validate and return doctor's id and name

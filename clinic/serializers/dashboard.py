@@ -27,7 +27,7 @@ class DashboardStatisticsSerializer(UserPermissionsMixin, serializers.Serializer
         request = self.context.get('request')
         #Revenue and outstanding removed for users without permission
         # if getattr(user, 'role', None) in ('dentist', 'receptionist', 'assistant'):
-        if getattr(request.user, 'role', None) != 'admin' and\
+        if request and getattr(request.user, 'role', None) != 'admin' and\
          'view.financialAnalytics' not in getattr(request.user, 'userPermissions', []):
             fields.pop('revenue', None)
             fields.pop('outstanding', None)
@@ -38,14 +38,16 @@ class DashboardStatisticsSerializer(UserPermissionsMixin, serializers.Serializer
 class DashboardQueryParamSerializer(serializers.Serializer):
     branchId = serializers.UUIDField(required=False, allow_null=True)
     dateRange = serializers.ChoiceField(choices=(('today', 'today'), ('week', 'week'), ('month', 'month')),
-                                        required=False, allow_blank=True)
+                                        required=False, allow_blank=True, allow_null=True)
     
     def validate(self, data):
         request = self.context.get('request')
         branchId = data.get('branchId')
-        if branchId and getattr(request.user, 'role', None) != 'admin':
-            if getattr(request.user, 'branch_id', None)  != branchId or\
-             not request.user.branches.filter(id=branchId).exists():
+        print('branchId:', branchId)
+        print(not request.user.branches.filter(id=branchId).exists())
+        if branchId and request and getattr(request.user, 'role', None) != 'admin':
+            if getattr(request.user, 'branch_id', None) != branchId\
+             and not request.user.branches.filter(id=branchId).exists():
                 raise PermissionDenied(_('Permission denied. You do not have access to this branch.'))
                 # raise serializers.ValidationError(_('Invalid branch ID. You do not have access to this branch.'))
         return data
@@ -65,7 +67,6 @@ class DashboardAppointmentTodaySerializer(serializers.ModelSerializer):
         model = Appointment
         fields = ['id', 'patientId', 'patientName', 'doctorId', 'doctorName', 
                   'branchId', 'startTime', 'endTime', 'type', 'room', 'status']
-
 
 
 #Serializer for serving choices for dashboard filtering

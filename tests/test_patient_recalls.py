@@ -210,7 +210,7 @@ class TestListCreatePatientRecallsAPIView:
             'patientId': str(patient.id),
             'type': 'checkup',
             'dueDate': str(date.today() + timedelta(days=30)),
-            # no branchId key
+            #o branchId key
         }
         response = api_client.post(reverse(self.LIST_URL), payload, format='json')
         assert response.status_code == status.HTTP_400_BAD_REQUEST

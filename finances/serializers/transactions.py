@@ -59,9 +59,7 @@ class CreateTransactionSerializer(TransactionSerializer):
         bill = data.get('bill')
         visit = data.get('visit')
         data['patient'] = bill.patient or visit.patient
-        data['branch'] = (data['bill'].branch 
-                        or data['visit'].branch 
-                        or data['patient'].branch)
+        data['branch'] = bill.branch or data['patient'].branch
         
         return data
 
