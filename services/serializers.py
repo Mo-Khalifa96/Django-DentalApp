@@ -23,5 +23,5 @@ class WhatsappMessageSerializer(serializers.ModelSerializer):
     def validate(self, data):
         message_type = data.get('messageType')
         if not message_type:
-            data['type'] = 'custom'
+            data['messageType'] = 'custom'
         return data

@@ -43,8 +43,6 @@ class DashboardQueryParamSerializer(serializers.Serializer):
     def validate(self, data):
         request = self.context.get('request')
         branchId = data.get('branchId')
-        print('branchId:', branchId)
-        print(not request.user.branches.filter(id=branchId).exists())
         if branchId and request and getattr(request.user, 'role', None) != 'admin':
             if getattr(request.user, 'branch_id', None) != branchId\
              and not request.user.branches.filter(id=branchId).exists():

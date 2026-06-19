@@ -244,9 +244,9 @@ class TestAppointmentsAPI:
         assert response.status_code == status.HTTP_200_OK
 
         appointment.refresh_from_db()
+        assert response.data['success'] == True
         assert appointment.status == 'cancelled'
         assert appointment.notes == 'Patient requested a reschedule.'
-        assert response.data['data']['success'] is True
 
     def test_appointment_options_returns_patients_doctors_and_procedures(
         self,
@@ -297,6 +297,12 @@ class TestWhatsAppEndpoints:
             format='json',
         )
 
+        print('\n\n'+'='*50)
+        print('status code:', response.status_code)
+        print('='*50)
+        print('response data:', response.data)
+        print('='*50+'\n\n')
+
         assert response.status_code == status.HTTP_201_CREATED
         sender.assert_called_once()
         message = Message.objects.get(id=response.data['data']['messageId'])
@@ -324,7 +330,7 @@ class TestWhatsAppEndpoints:
             'services.views.send_twilio_message_task',
             raise_whatsapp_error,
         )
-        # async_task is no longer imported from patients.views.appointments
+
         #send_twilio_message_task is called directly in the serializer/view)
         monkeypatch.setattr('services.views.async_task', Mock(), raising=False)
 
