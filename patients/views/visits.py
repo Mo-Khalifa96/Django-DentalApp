@@ -16,7 +16,6 @@ from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
 from patients.serializers.visits import PatientVisitSerializer, VisitOptionsSerializer
 
 
-
 #PATIENT VISITS API VIEWS 
 #List/Create patient visits API view 
 @extend_schema(tags=['Visit History'])

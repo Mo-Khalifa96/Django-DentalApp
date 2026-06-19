@@ -166,7 +166,7 @@ class ProcedureManager(models.Manager):
                 models.Q(branch__isnull=True) | models.Q(branch__is_deleted=False)
             )
 
-#PROCEDURES MODEL 
+#PROCEDURES MODEL
 class Procedure(models.Model): 
     class ProcedureCategory(models.TextChoices):
         CheckUp = 'routine_checkup', _('Routine Checkup')
@@ -221,14 +221,13 @@ class Procedure(models.Model):
     #     super().save(*args, **kwargs)
        
 
-#Inventory Manager 
+#Inventory Manager
 class InventoryManager(models.Manager):
     #Overriding get_query to filter out soft-deleted branches
     def get_queryset(self): 
         return super().get_queryset().filter(
                 models.Q(branch__isnull=True) | models.Q(branch__is_deleted=False)
             )
-
 
 #INVENTORY MODEL
 class Inventory(models.Model):
@@ -267,7 +266,7 @@ class Inventory(models.Model):
         super().save(*args, **kwargs)
 
 
-#Lab Manager 
+#Lab Manager
 class LabsManager(models.Manager):
     #Overriding get_query to filter out soft-deleted branches
     def get_queryset(self): 
@@ -275,7 +274,7 @@ class LabsManager(models.Manager):
                 models.Q(branch__isnull=True) | models.Q(branch__is_deleted=False)
             )
 
-#LAB MODEL 
+#LAB MODEL
 class Lab(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
@@ -302,7 +301,7 @@ class Lab(models.Model):
         return self.name
 
 
-#Lab Orders Manager 
+#Lab Orders Manager
 class LabOrdersManager(models.Manager):
     #Overriding get_query to filter out soft-deleted branches
     def get_queryset(self): 
@@ -379,7 +378,7 @@ class LabOrder(models.Model):
         super().save(*args, **kwargs)
 
 
-#Sterilization Log Manager 
+#Sterilization Log Manager
 class SterilizationLogManager(models.Manager):
     #Overriding get_query to filter out soft-deleted branches
     def get_queryset(self): 

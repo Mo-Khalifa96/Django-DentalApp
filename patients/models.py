@@ -44,7 +44,6 @@ class PatientsManager(models.Manager):
 
         return True 
 
-
 #PATIENTS MODEL 
 class Patient(models.Model):
     class GenderChoices(models.TextChoices):
@@ -463,7 +462,6 @@ class TreatmentPlan(models.Model):
                 self.doctorName = self.doctor.name
         #save changes 
         super().save(*args, **kwargs)
-
 
 #TREATMENT PLAN ITEMS MODEL -- supplements the TreatmentPlan model 
 class TreatmentPlanItem(models.Model):
