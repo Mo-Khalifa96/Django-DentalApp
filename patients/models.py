@@ -24,7 +24,6 @@ class PatientsManager(models.Manager):
         '''Custom method to soft-delete patients.'''
         if user.role == 'admin':
             patient.delete()
-            
         else:
             #Set is_deleted flag to True
             patient.is_deleted = True
@@ -370,8 +369,8 @@ class Appointment(models.Model):
              status__in=['pending', 'confirmed', 'completed']  #ignore cancelled
         )
         
-        if branchId:
-            appointments_byDate.filter(branch_id=branchId)
+        if branchId:  #NOTE: checking here is restricted by branch; but conflicts may be evident across branches
+            appointments_byDate = appointments_byDate.filter(branch_id=branchId)
 
         if current_id:
             appointments_byDate = appointments_byDate.exclude(id=current_id)
@@ -517,7 +516,7 @@ class PatientRecall(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     #Many-to-One relationship to the Patient model (i.e., many recalls, one patient)
-    patient = models.ForeignKey(Patient, related_name='patient_recalls', on_delete=models.CASCADE)  #TODO - add phone to choices
+    patient = models.ForeignKey(Patient, related_name='patient_recalls', on_delete=models.CASCADE)
     #Many-to-One relationship to the Branch model (i.e., many recalls, one branch)
     branch = models.ForeignKey('clinic.Branch', related_name='branch_patient_recalls', on_delete=models.CASCADE, blank=True, null=True, db_index=True)
     #other fields

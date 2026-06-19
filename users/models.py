@@ -288,7 +288,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         
         'dentist': [
             perm for perm in USER_PERMISSIONS 
-            if perm not in ('delete.patient', 'view.financialAnalytics', 'view.waitingRoom', 
+            if perm not in ('view.financialAnalytics', 'view.waitingRoom', 
                             'send.whatsappMessage', 'view.settings')
         ], 
 
@@ -329,7 +329,6 @@ class User(AbstractBaseUser, PermissionsMixin):
      # doctor.doctor_appointments.all() for related_name='doctor_appointments' on Appointment
      # doctor.doctor_treatmentplans.all() for related_name='doctor_treatmentplans' on TreatmentPlan
      # doctor.doctor_schedule for related_name='doctor_schedule' on DoctorSchedule
-
 
     class Meta:
         db_table = 'Users'

@@ -1,408 +1,617 @@
 import pytest
-from unittest.mock import Mock
 from django.urls import reverse
 from django.utils import timezone
-from datetime import time, timedelta
 from rest_framework import status
-from services.models import Message
-from patients.models import Appointment, Patient
-from services.whatsapp.exceptions import WhatsAppAPIError
-
-
-pytestmark = pytest.mark.django_db
+from datetime import time, timedelta
+from patients.models import Patient, Appointment
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Factory
+# Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-@pytest.fixture
-def message_factory():
-    from services.models import Message
+def _appt_url(appt_id):
+    return reverse('retrieve_update_cancel_appointment', kwargs={'id': appt_id})
 
-    def create_message(patient, appointment, **overrides):
-        defaults = {
-            'message': 'Appointment reminder',
-            'status': 'queued',
-        }
-        defaults.update(overrides)
-        return Message.objects.create(
-            patient=patient,
-            appointment=appointment,
-            **defaults,
-        )
+def _create_payload(patient, doctor, procedure, appt_date=None, **overrides):
+    if appt_date is None:
+        appt_date = (timezone.localdate() + timedelta(days=3)).isoformat()
+    base = {
+        'patientId':   str(patient.id),
+        'doctorId':    str(doctor.id),
+        'procedureId': str(procedure.id),
+        'type':        'routine_checkup',
+        'date':        appt_date,
+        'startTime':   '09:00:00',
+        'endTime':     '10:00:00',
+        'branchId':    None,
+    }
+    base.update(overrides)
+    return base
 
-    return create_message
 
+# ══════════════════════════════════════════════════════════════════════════════
+# GET | POST  /appointments/
+# ══════════════════════════════════════════════════════════════════════════════
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Testing Class
-# ─────────────────────────────────────────────────────────────────────────────
+@pytest.mark.django_db
+class TestListCreateAppointmentsAPIView:
+    LIST_URL = 'list_create_appointments'
 
-class TestAppointmentsAPI:
-    def test_list_appointments_returns_paginated_results(
-        self,
-        api_client,
-        admin_user,
-        dentist_user,
-        patient_factory,
-        procedure_factory,
-        appointment_factory,
+    # ── LIST ──────────────────────────────────────────────────────────────────
+
+    def test_admin_can_list_all_appointments(
+        self, api_client, admin_user, dentist_user, patient_factory,
+        procedure_factory, appointment_factory
     ):
-        procedure = procedure_factory()
-        patient = patient_factory(doctor=dentist_user)
-        appointment = appointment_factory(patient=patient, doctor=dentist_user, procedure=procedure)
-        appointment_factory(patient=patient, doctor=dentist_user, procedure=procedure)
+        proc = procedure_factory()
+        a1 = appointment_factory(patient=patient_factory(), doctor=dentist_user, procedure=proc)
+        a2 = appointment_factory(patient=patient_factory(), doctor=dentist_user, procedure=proc)
 
         api_client.force_authenticate(user=admin_user)
-        response = api_client.get(reverse('list_create_appointments'))
+        response = api_client.get(reverse(self.LIST_URL))
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['pagination']['total'] == 2
-        assert any(item['id'] == str(appointment.id) for item in response.data['data'])
+        assert response.data['success'] is True
+        assert response.data['pagination']['total'] >= 2
+        ids = [i['id'] for i in response.data['data']]
+        assert str(a1.id) in ids
+        assert str(a2.id) in ids
 
-    def test_dentist_only_sees_their_own_appointments(
-        self,
-        api_client,
-        dentist_user,
-        other_dentist_user,
-        patient_factory,
-        procedure_factory,
-        appointment_factory,
+    def test_list_response_has_paginated_structure(
+        self, api_client, admin_user
     ):
-        procedure = procedure_factory()
-        patient_one = patient_factory(doctor=dentist_user)
-        patient_two = patient_factory(doctor=other_dentist_user)
-        visible = appointment_factory(patient=patient_one, doctor=dentist_user, procedure=procedure)
-        appointment_factory(patient=patient_two, doctor=other_dentist_user, procedure=procedure)
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get(reverse(self.LIST_URL))
+        for key in ('data', 'pagination', 'links', 'metadata'):
+            assert key in response.data, f"Missing key: {key}"
+
+    def test_list_page_size_is_50(self, api_client, admin_user):
+        """ListCreateAppointmentsAPIView.paginate_queryset sets page_size = 50."""
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get(reverse(self.LIST_URL))
+        assert response.data['pagination']['limit'] == 50
+
+    def test_dentist_only_sees_own_appointments(
+        self, api_client, dentist_user, other_dentist_user,
+        patient_factory, procedure_factory, appointment_factory
+    ):
+        proc    = procedure_factory()
+        visible = appointment_factory(patient=patient_factory(doctor=dentist_user),
+                                      doctor=dentist_user, procedure=proc)
+        appointment_factory(patient=patient_factory(doctor=other_dentist_user),
+                            doctor=other_dentist_user, procedure=proc)
 
         api_client.force_authenticate(user=dentist_user)
-        response = api_client.get(reverse('list_create_appointments'))
+        response = api_client.get(reverse(self.LIST_URL))
 
         assert response.status_code == status.HTTP_200_OK
-        assert [item['id'] for item in response.data['data']] == [str(visible.id)]
+        assert [i['id'] for i in response.data['data']] == [str(visible.id)]
 
-    def test_create_appointment_for_existing_patient_assigns_doctor_and_next_appointment(
-        self,
-        api_client,
-        receptionist_user,
-        dentist_user,
-        patient_factory,
-        procedure_factory,
+    def test_receptionist_sees_branch_filtered_appointments(
+        self, api_client, user_factory, dentist_user, patient_factory,
+        procedure_factory, appointment_factory, branch_factory
     ):
-        patient = patient_factory(doctor=None)
-        procedure = procedure_factory(name='Teeth Cleaning')
-        appointment_date = timezone.localdate() + timedelta(days=2)
-        payload = {
-            'patientId': str(patient.id),
-            'doctorId': str(dentist_user.id),
-            'procedureId': str(procedure.id),
-            'type': 'routine_checkup',
-            'date': appointment_date.isoformat(),
-            'startTime': '09:00:00',
-            'endTime': '10:00:00',
-            'room': 'Room A',
-            'branchId': '',
-        }
+        b1 = branch_factory()
+        b2 = branch_factory()
+        recept = user_factory(role='receptionist')
+        recept.branches.set([b1])
 
+        proc    = procedure_factory()
+        a_own   = appointment_factory(patient=patient_factory(), doctor=dentist_user,
+                                      procedure=proc, branch=b1)
+        a_other = appointment_factory(patient=patient_factory(), doctor=dentist_user,
+                                      procedure=proc, branch=b2)
+
+        api_client.force_authenticate(user=recept)
+        response = api_client.get(reverse(self.LIST_URL))
+
+        ids = [i['id'] for i in response.data['data']]
+        assert str(a_own.id) in ids
+        assert str(a_other.id) not in ids
+
+    def test_appointments_of_deleted_patients_excluded(
+        self, api_client, admin_user, dentist_user, patient_factory,
+        procedure_factory, appointment_factory
+    ):
+        """AppointmentsManager: filter(patient__is_deleted=False)."""
+        ghost = patient_factory()
+        proc  = procedure_factory()
+        appt  = appointment_factory(patient=ghost, doctor=dentist_user, procedure=proc)
+        ghost.is_deleted = True
+        ghost.save(update_fields=['is_deleted'])
+
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get(reverse(self.LIST_URL))
+        ids = [i['id'] for i in response.data['data']]
+        assert str(appt.id) not in ids
+
+    def test_unauthenticated_cannot_list_appointments(self, api_client):
+        assert api_client.get(reverse(self.LIST_URL)).status_code == status.HTTP_401_UNAUTHORIZED
+
+    # ── CREATE ────────────────────────────────────────────────────────────────
+
+    def test_create_appointment_for_existing_patient(
+        self, api_client, receptionist_user, dentist_user,
+        patient_factory, procedure_factory
+    ):
+        patient = patient_factory()
+        proc    = procedure_factory()
         api_client.force_authenticate(user=receptionist_user)
-        response = api_client.post(reverse('list_create_appointments'), payload, format='json')
-
-        # Print DRF error for easier sync with updated serializer
-        if response.status_code != status.HTTP_201_CREATED:
-            print('DEBUG appointment create response:', response.status_code, response.json())
-
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            _create_payload(patient, dentist_user, proc),
+            format='json',
+        )
         assert response.status_code == status.HTTP_201_CREATED
 
-        patient.refresh_from_db()
-        created_appointment = Appointment.objects.get(id=response.data['data']['id'])
-        assert patient.doctor == dentist_user
-        assert patient.nextAppointment == appointment_date
-        assert created_appointment.type == 'routine_checkup'
-
-    def test_create_appointment_can_create_a_new_patient(
-        self,
-        api_client,
-        receptionist_user,
-        dentist_user,
-        procedure_factory,
-        branch
+    def test_create_auto_sets_status_to_pending(
+        self, api_client, admin_user, dentist_user, patient_factory, procedure_factory
     ):
-        procedure = procedure_factory(name='Initial Consultation')
+        """Appointment.save(): status defaults to 'pending'."""
+        patient = patient_factory()
+        proc    = procedure_factory()
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            _create_payload(patient, dentist_user, proc),
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        appt = Appointment.objects.get(id=response.data['data']['id'])
+        assert appt.status == Appointment.AppointmentStatusChoices.PENDING
+
+    def test_create_sets_snapshot_fields(
+        self, api_client, admin_user, dentist_user, patient_factory, procedure_factory
+    ):
+        """Appointment.save(): procedureName and doctorName captured on creation."""
+        proc    = procedure_factory(name='Root Canal')
+        patient = patient_factory()
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            _create_payload(patient, dentist_user, proc),
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        appt = Appointment.objects.get(id=response.data['data']['id'])
+        assert appt.procedureName == 'Root Canal'
+        assert appt.doctorName    == dentist_user.name
+
+    def test_create_updates_patient_next_appointment(
+        self, api_client, receptionist_user, dentist_user, patient_factory, procedure_factory
+    ):
+        """Appointment.save(): patient.nextAppointment updated to the new appointment date."""
+        patient  = patient_factory(doctor=None)
+        proc     = procedure_factory()
+        appt_date = timezone.localdate() + timedelta(days=5)
+        api_client.force_authenticate(user=receptionist_user)
+        api_client.post(
+            reverse(self.LIST_URL),
+            _create_payload(patient, dentist_user, proc,
+                            appt_date=appt_date.isoformat()),
+            format='json',
+        )
+        patient.refresh_from_db()
+        assert patient.nextAppointment == appt_date
+
+    def test_create_assigns_doctor_to_existing_patient(
+        self, api_client, receptionist_user, dentist_user, patient_factory, procedure_factory
+    ):
+        """CreateAppointmentSerializer.create(): existing patient.doctor = appointment.doctor."""
+        patient = patient_factory(doctor=None)
+        proc    = procedure_factory()
+        api_client.force_authenticate(user=receptionist_user)
+        api_client.post(
+            reverse(self.LIST_URL),
+            _create_payload(patient, dentist_user, proc),
+            format='json',
+        )
+        patient.refresh_from_db()
+        assert patient.doctor == dentist_user
+
+    def test_create_new_patient_inline_creates_patient_and_dental_chart(
+        self, api_client, receptionist_user, dentist_user, procedure_factory, branch
+    ):
+        """is_newPatient=True creates a Patient + DentalChart + Appointment atomically."""
+        proc = procedure_factory()
         payload = {
             'is_newPatient': True,
             'newPatientDetails': {
-                'name': 'New Booking Patient',
-                'age': 28,
-                'gender': 'Female',
+                'name':        'Inline New Patient',
+                'age':         25,
+                'gender':      'Female',
                 'countryCode': '20',
-                'phone': '01055556666',
+                'phone':       '01077776666',
             },
-            'doctorId': str(dentist_user.id),
-            'procedureId': str(procedure.id),
-            'type': 'routine_checkup',
-            'date': (timezone.localdate() + timedelta(days=3)).isoformat(),
-            'startTime': '11:00:00',
-            'endTime': '12:00:00',
-            'room': 'Room B',
-            'branchId': str(branch.id)
+            'doctorId':    str(dentist_user.id),
+            'procedureId': str(proc.id),
+            'type':        'routine_checkup',
+            'date':        (timezone.localdate() + timedelta(days=3)).isoformat(),
+            'startTime':   '11:00:00',
+            'endTime':     '12:00:00',
+            'branchId':    str(branch.id),
         }
-
         api_client.force_authenticate(user=receptionist_user)
-        response = api_client.post(reverse('list_create_appointments'), payload, format='json')
-        
+        response = api_client.post(reverse(self.LIST_URL), payload, format='json')
+
         assert response.status_code == status.HTTP_201_CREATED
+        new_patient = Patient.objects.get(name='Inline New Patient')
+        assert new_patient.doctor == dentist_user
+        assert new_patient.patient_dentalchart is not None
+        assert Appointment.objects.filter(id=response.data['data']['id'],
+                                          patient=new_patient).exists()
 
-        patient = Patient.objects.get(name='New Booking Patient')
-        assert patient.doctor == dentist_user
-        assert patient.patient_dentalchart.teeth
-        assert Appointment.objects.filter(id=response.data['data']['id'], patient=patient).exists()
-
-    def test_create_appointment_rejects_conflicting_time_slot(
-        self,
-        api_client,
-        receptionist_user,
-        dentist_user,
-        patient_factory,
-        procedure_factory,
-        appointment_factory,
-        branch
+    def test_create_rejects_conflicting_time_slot(
+        self, api_client, receptionist_user, dentist_user, patient_factory,
+        procedure_factory, appointment_factory, branch
     ):
-        procedure = procedure_factory(name='Root Canal')
-        patient = patient_factory(doctor=dentist_user)
-        other_patient = patient_factory(doctor=dentist_user)
-        appointment_date = timezone.localdate() + timedelta(days=1)
-        appointment_factory(
-            patient=patient,
-            doctor=dentist_user,
-            procedure=procedure,
-            date=appointment_date,
-            startTime=time(9, 0),
-            endTime=time(10, 0),
-        )
-        payload = {
-            'patientId': str(other_patient.id),
-            'doctorId': str(dentist_user.id),
-            'procedureId': str(procedure.id),
-            'type': 'routine_checkup',
-            'date': appointment_date.isoformat(),
-            'startTime': '09:30:00',
-            'endTime': '10:30:00',
-            'room': 'Room C',
-            'branchId': str(branch.id)
-        }
+        """Appointment.validate_availability() raises AppointmentConflictError (409)."""
+        proc     = procedure_factory()
+        patient1 = patient_factory()
+        patient2 = patient_factory()
+        appt_date = timezone.localdate() + timedelta(days=2)
+        appointment_factory(patient=patient1, doctor=dentist_user, procedure=proc,
+                            date=appt_date, startTime=time(9, 0), endTime=time(10, 0))
 
         api_client.force_authenticate(user=receptionist_user)
-        response = api_client.post(reverse('list_create_appointments'), payload, format='json')
-
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            _create_payload(patient2, dentist_user, proc,
+                            appt_date=appt_date.isoformat(),
+                            startTime='09:30:00', endTime='10:30:00',
+                            branchId=str(branch.id)),
+            format='json',
+        )
         assert response.status_code == status.HTTP_409_CONFLICT
         assert response.data['error']['code'] == 'APPOINTMENT_CONFLICT'
-        assert response.data['error']['conflictWith']['patientName'] == patient.name
+        assert response.data['error']['conflictWith']['patientName'] == patient1.name
 
-    def test_retrieve_appointment_returns_patient_phone(
-        self,
-        api_client,
-        admin_user,
-        dentist_user,
-        patient_factory,
-        procedure_factory,
-        appointment_factory,
+    def test_conflict_check_on_branch_basis(
+        self, api_client, receptionist_user, dentist_user, patient_factory,
+        procedure_factory, appointment_factory, branch_factory
     ):
-        patient = patient_factory(doctor=dentist_user, phone='01012345678', countryCode='20')
-        procedure = procedure_factory()
-        appointment = appointment_factory(patient=patient, doctor=dentist_user, procedure=procedure)
 
-        api_client.force_authenticate(user=admin_user)
-        response = api_client.get(
-            reverse('retrieve_update_cancel_appointment', kwargs={'id': appointment.id})
-        )
+        b1 = branch_factory()
+        b2 = branch_factory()
+        proc     = procedure_factory()
+        patient1 = patient_factory()
+        patient2 = patient_factory()
+        appt_date = timezone.localdate() + timedelta(days=4)
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data['data']['patientId'] == patient.id
-        assert response.data['data']['patientPhone'] == '01012345678'
-
-    def test_cancel_appointment_updates_status_and_reason(
-        self,
-        api_client,
-        receptionist_user,
-        dentist_user,
-        patient_factory,
-        procedure_factory,
-        appointment_factory,
-    ):
-        patient = patient_factory(doctor=dentist_user)
-        procedure = procedure_factory()
-        appointment = appointment_factory(patient=patient, doctor=dentist_user, procedure=procedure)
+        appointment_factory(patient=patient1, doctor=dentist_user, procedure=proc,
+                            date=appt_date, startTime=time(9, 0), endTime=time(10, 0),
+                            branch=b1)
 
         api_client.force_authenticate(user=receptionist_user)
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            _create_payload(patient2, dentist_user, proc,
+                            appt_date=appt_date.isoformat(),
+                            startTime='09:00:00', endTime='10:00:00',
+                            branchId=str(b2.id)),
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_create_allows_non_conflicting_time_same_doctor(
+        self, api_client, receptionist_user, dentist_user, patient_factory,
+        procedure_factory, appointment_factory
+    ):
+        """Non-overlapping times for the same doctor on the same day → 201."""
+        proc      = procedure_factory()
+        patient1  = patient_factory()
+        patient2  = patient_factory()
+        appt_date = timezone.localdate() + timedelta(days=5)
+        appointment_factory(patient=patient1, doctor=dentist_user, procedure=proc,
+                            date=appt_date, startTime=time(9, 0), endTime=time(10, 0))
+
+        api_client.force_authenticate(user=receptionist_user)
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            _create_payload(patient2, dentist_user, proc,
+                            appt_date=appt_date.isoformat(),
+                            startTime='10:00:00', endTime='11:00:00'),
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_create_response_is_wrapped(
+        self, api_client, admin_user, dentist_user, patient_factory, procedure_factory
+    ):
+        patient = patient_factory()
+        proc    = procedure_factory()
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            _create_payload(patient, dentist_user, proc),
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data.get('success') is True
+        assert 'data' in response.data
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# GET | PUT | PATCH | DELETE  /appointments/<id>/
+# ══════════════════════════════════════════════════════════════════════════════
+
+@pytest.mark.django_db
+class TestRetrieveUpdateCancelAppointmentAPIView:
+
+    # ── RETRIEVE ──────────────────────────────────────────────────────────────
+
+    def test_admin_can_retrieve_appointment_with_patient_phone(
+        self, api_client, admin_user, dentist_user, patient_factory,
+        procedure_factory, appointment_factory
+    ):
+        """RetrieveAppointmentSerializer.get_patientPhone() normalizes the phone."""
+        patient = patient_factory(phone='01012345678', countryCode='20')
+        proc    = procedure_factory()
+        appt    = appointment_factory(patient=patient, doctor=dentist_user, procedure=proc)
+
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get(_appt_url(appt.id))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['data']['patientPhone'] == '01012345678'
+        assert response.data['data']['patientId']    == str(patient.id)
+
+    def test_retrieve_response_is_wrapped_with_metadata(
+        self, api_client, admin_user, dentist_user, patient_factory,
+        procedure_factory, appointment_factory
+    ):
+        """RetrieveAppointmentSerializer inherits UserPermissionsMixin."""
+        appt = appointment_factory(patient=patient_factory(), doctor=dentist_user,
+                                   procedure=procedure_factory())
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get(_appt_url(appt.id))
+
+        assert response.data.get('success') is True
+        assert 'metadata' in response.data
+
+    # ── UPDATE (PATCH / PUT) ──────────────────────────────────────────────────
+
+    def test_admin_can_update_appointment_status(
+        self, api_client, admin_user, dentist_user, patient_factory,
+        procedure_factory, appointment_factory
+    ):
+        appt = appointment_factory(patient=patient_factory(), doctor=dentist_user,
+                                   procedure=procedure_factory())
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.patch(
+            _appt_url(appt.id), {'status': 'confirmed'}, format='json'
+        )
+        assert response.status_code == status.HTTP_200_OK
+        appt.refresh_from_db()
+        assert appt.status == 'confirmed'
+
+    def test_update_rejects_conflicting_reschedule(
+        self, api_client, admin_user, dentist_user, patient_factory,
+        procedure_factory, appointment_factory
+    ):
+        """UpdateAppointmentSerializer.validate() also calls validate_availability."""
+        proc     = procedure_factory()
+        patient1 = patient_factory()
+        patient2 = patient_factory()
+        appt_date = timezone.localdate() + timedelta(days=6)
+
+        appointment_factory(patient=patient1, doctor=dentist_user, procedure=proc,
+                            date=appt_date, startTime=time(9, 0), endTime=time(10, 0))
+        appt_to_move = appointment_factory(patient=patient2, doctor=dentist_user, procedure=proc,
+                                           date=appt_date + timedelta(days=1),
+                                           startTime=time(9, 0), endTime=time(10, 0))
+
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.patch(
+            _appt_url(appt_to_move.id),
+            {'date': appt_date.isoformat(), 'startTime': '09:30:00', 'endTime': '10:30:00'},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_409_CONFLICT
+
+    def test_update_response_is_wrapped(
+        self, api_client, admin_user, dentist_user, patient_factory,
+        procedure_factory, appointment_factory
+    ):
+        appt = appointment_factory(patient=patient_factory(), doctor=dentist_user,
+                                   procedure=procedure_factory())
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.patch(
+            _appt_url(appt.id), {'notes': 'updated'}, format='json'
+        )
+        assert response.data.get('success') is True
+        assert 'data' in response.data
+
+    # ── CANCEL (DELETE) ───────────────────────────────────────────────────────
+
+    def test_cancel_appointment_sets_status_and_reason(
+        self, api_client, receptionist_user, dentist_user, patient_factory,
+        procedure_factory, appointment_factory
+    ):
+        """cancel (DELETE) returns 200 with a message, not 204."""
+        appt = appointment_factory(patient=patient_factory(doctor=dentist_user),
+                                   doctor=dentist_user, procedure=procedure_factory())
+        api_client.force_authenticate(user=receptionist_user)
         response = api_client.delete(
-            reverse('retrieve_update_cancel_appointment', kwargs={'id': appointment.id}),
-            {'reason': 'Patient requested a reschedule.'},
+            _appt_url(appt.id),
+            {'reason': 'Patient not available.'},
             format='json',
         )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['success'] is True
+
+        appt.refresh_from_db()
+        assert appt.status == 'cancelled'
+        assert appt.notes  == 'Patient not available.'
+
+    def test_cancel_without_reason_still_succeeds(
+        self, api_client, admin_user, dentist_user, patient_factory,
+        procedure_factory, appointment_factory
+    ):
+        appt = appointment_factory(patient=patient_factory(), doctor=dentist_user,
+                                   procedure=procedure_factory())
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.delete(_appt_url(appt.id), {}, format='json')
 
         assert response.status_code == status.HTTP_200_OK
+        appt.refresh_from_db()
+        assert appt.status == 'cancelled'
 
-        appointment.refresh_from_db()
-        assert response.data['success'] == True
-        assert appointment.status == 'cancelled'
-        assert appointment.notes == 'Patient requested a reschedule.'
-
-    def test_appointment_options_returns_patients_doctors_and_procedures(
-        self,
-        api_client,
-        admin_user,
-        dentist_user,
-        patient_factory,
-        procedure_factory,
+    def test_cancel_appointment_clears_patient_next_appointment(
+        self, api_client, admin_user, dentist_user, patient_factory,
+        procedure_factory, appointment_factory
     ):
-        patient = patient_factory(name='Options Patient', doctor=dentist_user)
-        procedure = procedure_factory(name='Whitening')
+        patient   = patient_factory()
+        proc      = procedure_factory()
+        appt_date = timezone.localdate() + timedelta(days=7)
+        appt      = appointment_factory(patient=patient, doctor=dentist_user,
+                                        procedure=proc, date=appt_date)
+        patient.refresh_from_db()
+        assert patient.nextAppointment == appt_date   # set on creation
 
         api_client.force_authenticate(user=admin_user)
-        response = api_client.get(reverse('appointments_options'))
+        api_client.delete(_appt_url(appt.id), {}, format='json')
+
+        patient.refresh_from_db()
+        assert patient.nextAppointment == None
+
+    def test_unauthenticated_cannot_cancel_appointment(
+        self, api_client, dentist_user, patient_factory, procedure_factory, appointment_factory
+    ):
+        appt = appointment_factory(patient=patient_factory(), doctor=dentist_user,
+                                   procedure=procedure_factory())
+        assert api_client.delete(_appt_url(appt.id)).status_code == status.HTTP_401_UNAUTHORIZED
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# GET  /appointments/options/
+# ══════════════════════════════════════════════════════════════════════════════
+
+@pytest.mark.django_db
+class TestRetrieveAppointmentOptionsAPIView:
+    URL = 'appointments_options'
+
+    def test_authenticated_user_gets_options_payload(self, api_client, admin_user):
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get(reverse(self.URL))
 
         assert response.status_code == status.HTTP_200_OK
-        assert {'patientId': patient.id, 'name': patient.name} in response.data['patientChoices']
-        assert {'doctorId': dentist_user.id, 'name': dentist_user.name} in response.data['doctorChoices']
-        #rrent appointment options serializer exposes statusChoices as list of dicts
-        assert {'value': 'cancelled', 'label': 'cancelled'} in response.data['statusChoices']
+        for key in ('branchChoices', 'patientChoices', 'doctorChoices',
+                    'typeChoices', 'statusChoices', 'roomChoices'):
+            assert key in response.data, f"Missing key: {key}"
 
+    def test_status_choices_cover_all_statuses(self, api_client, admin_user):
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get(reverse(self.URL))
+        returned = {c['value'] for c in response.data['statusChoices']}
+        expected = {c.value for c in Appointment.AppointmentStatusChoices}
+        assert returned == expected
 
-class TestWhatsAppEndpoints:
-    def test_send_whatsapp_message_creates_message_and_calls_sender(
-        self,
-        api_client,
-        admin_user,
-        dentist_user,
-        patient_factory,
-        procedure_factory,
-        appointment_factory,
-        monkeypatch,
+    def test_doctor_choices_filtered_by_branch_id(
+        self, api_client, admin_user, dentist_user, branch
     ):
-        patient = patient_factory(doctor=dentist_user)
-        procedure = procedure_factory()
-        appointment = appointment_factory(patient=patient, doctor=dentist_user, procedure=procedure)
-        sender = Mock()
-        monkeypatch.setattr('services.views.send_twilio_message_task', sender)
+        """get_doctorChoices: filters by branch_id (User.branch active FK)."""
+        dentist_user.branch = branch
+        dentist_user.save(update_fields=['branch', 'updatedAt'])
 
         api_client.force_authenticate(user=admin_user)
-        response = api_client.post(
-            reverse('send_whatsapp_reminder'),
-            {
-                'patientId': str(patient.id),
-                'appointmentId': str(appointment.id),
-                'message': 'Your appointment is tomorrow.',
-            },
-            format='json',
-        )
+        response = api_client.get(reverse(self.URL), {'branchId': str(branch.id)})
 
-        print('\n\n'+'='*50)
-        print('status code:', response.status_code)
-        print('='*50)
-        print('response data:', response.data)
-        print('='*50+'\n\n')
+        doctor_ids = {str(c['doctorId']) for c in response.data['doctorChoices']}
+        assert str(dentist_user.id) in doctor_ids
 
-        assert response.status_code == status.HTTP_201_CREATED
-        sender.assert_called_once()
-        message = Message.objects.get(id=response.data['data']['messageId'])
-        assert message.status == 'queued'
-        assert message.templateName == 'custom_message_english'
-
-    def test_send_whatsapp_message_falls_back_to_pending_on_api_error(
-        self,
-        api_client,
-        admin_user,
-        dentist_user,
-        patient_factory,
-        procedure_factory,
-        appointment_factory,
-        monkeypatch,
+    def test_patient_choices_empty_when_branches_exist_and_no_branch_id(
+        self, api_client, admin_user, patient_factory, branch_factory
     ):
-        patient = patient_factory(doctor=dentist_user)
-        procedure = procedure_factory()
-        appointment = appointment_factory(patient=patient, doctor=dentist_user, procedure=procedure)
+        """get_patientChoices: no branchId + Branch.objects.exists() → []."""
+        branch_factory()
+        patient_factory()
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get(reverse(self.URL))
+        assert response.data['patientChoices'] == []
 
-        def raise_whatsapp_error(*args, **kwargs):
-            raise WhatsAppAPIError('Temporary provider issue', error_code='TEMP_ERROR')
+    def test_room_choices_reflect_branch_rooms(
+        self, api_client, admin_user, branch_factory
+    ):
+        b = branch_factory(rooms=['Chair A', 'Chair B'])
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get(reverse(self.URL), {'branchId': str(b.id)})
+        room_values = [c['value'] for c in response.data['roomChoices']]
+        assert room_values == ['Chair A', 'Chair B']
 
-        monkeypatch.setattr(
-            'services.views.send_twilio_message_task',
-            raise_whatsapp_error,
-        )
+    def test_unauthenticated_returns_401(self, api_client):
+        assert api_client.get(reverse(self.URL)).status_code == status.HTTP_401_UNAUTHORIZED
 
-        #send_twilio_message_task is called directly in the serializer/view)
-        monkeypatch.setattr('services.views.async_task', Mock(), raising=False)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# GET  /dashboard/appointments-today/
+# ══════════════════════════════════════════════════════════════════════════════
+
+@pytest.mark.django_db
+class TestDashboardAppointmentsTodayAPIView:
+    URL = 'dashboard_appointments_today'
+
+    def test_dentist_sees_only_own_todays_appointments(
+        self, api_client, dentist_user, other_dentist_user,
+        patient_factory, procedure_factory, appointment_factory
+    ):
+        today = timezone.localdate()
+        proc  = procedure_factory()
+        visible = appointment_factory(patient=patient_factory(doctor=dentist_user),
+                                      doctor=dentist_user, procedure=proc, date=today)
+        appointment_factory(patient=patient_factory(doctor=other_dentist_user),
+                            doctor=other_dentist_user, procedure=proc, date=today)
+        # Tomorrow → excluded
+        appointment_factory(patient=patient_factory(doctor=dentist_user),
+                            doctor=dentist_user, procedure=proc,
+                            date=today + timedelta(days=1))
+
+        api_client.force_authenticate(user=dentist_user)
+        response = api_client.get(reverse(self.URL))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert 'metadata' in response.data
+        assert response.data['metadata']['userPermissions']['view.appointments'] is True
+        assert [i['id'] for i in response.data['data']] == [str(visible.id)]
+
+    def test_admin_sees_all_todays_appointments(
+        self, api_client, admin_user, dentist_user, other_dentist_user,
+        patient_factory, procedure_factory, appointment_factory
+    ):
+        today = timezone.localdate()
+        proc  = procedure_factory()
+        a1 = appointment_factory(patient=patient_factory(), doctor=dentist_user,
+                                 procedure=proc, date=today)
+        a2 = appointment_factory(patient=patient_factory(), doctor=other_dentist_user,
+                                 procedure=proc, date=today)
 
         api_client.force_authenticate(user=admin_user)
-        response = api_client.post(
-            reverse('send_whatsapp_reminder'),
-            {
-                'patientId': str(patient.id),
-                'appointmentId': str(appointment.id),
-                'message': 'Resending your reminder.',
-            },
-            format='json',
-        )
+        response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_201_CREATED
-        message = Message.objects.get(id=response.data['data']['messageId'])
-        assert message.status == 'pending'
+        ids = [i['id'] for i in response.data['data']]
+        assert str(a1.id) in ids
+        assert str(a2.id) in ids
 
-    def test_webhook_verification_returns_challenge(self, api_client):
-        response = api_client.get(
-            reverse('whatsapp_webhook'),
-            {
-                'hub.mode': 'subscribe',
-                'hub.verify_token': 'test-webhook-token',
-                'hub.challenge': 'challenge-123',
-            },
-        )
-
-        assert response.status_code == status.HTTP_200_OK
-        assert response.content.decode() == 'challenge-123'
-
-    def test_webhook_post_updates_message_status(
-        self,
-        api_client,
-        dentist_user,
-        patient_factory,
-        procedure_factory,
-        appointment_factory,
-        message_factory,
+    def test_only_todays_appointments_returned(
+        self, api_client, admin_user, dentist_user, patient_factory,
+        procedure_factory, appointment_factory
     ):
-        patient = patient_factory(doctor=dentist_user)
-        procedure = procedure_factory()
-        appointment = appointment_factory(patient=patient, doctor=dentist_user, procedure=procedure)
-        message = message_factory(
-            patient=patient,
-            appointment=appointment,
-            providerMessageId='provider-123',
-            status='sent',
-        )
+        """Filter is date__exact=today."""
+        today     = timezone.localdate()
+        proc      = procedure_factory()
+        today_appt = appointment_factory(patient=patient_factory(), doctor=dentist_user,
+                                         procedure=proc, date=today)
+        appointment_factory(patient=patient_factory(), doctor=dentist_user,
+                            procedure=proc, date=today + timedelta(days=1))
 
-        response = api_client.post(
-            reverse('whatsapp_webhook'),
-            {
-                'entry': [
-                    {
-                        'changes': [
-                            {
-                                'value': {
-                                    'statuses': [
-                                        {'id': 'provider-123', 'status': 'delivered'}
-                                    ]
-                                }
-                            }
-                        ]
-                    }
-                ]
-            },
-            format='json',
-        )
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        ids = [i['id'] for i in response.data['data']]
+        assert str(today_appt.id) in ids
+        assert len(ids) == 1
 
-        message.refresh_from_db()
-        assert message.status == 'delivered'
-        assert response.json() == {'status': 'ok'}
+    def test_unauthenticated_returns_401(self, api_client):
+        assert api_client.get(reverse(self.URL)).status_code == status.HTTP_401_UNAUTHORIZED

@@ -113,6 +113,10 @@ class RetrieveUpdateCancelAppointmentAPIView(RetrieveUpdateDeleteAPIView):
         #set appointment status as cancelled 
         appointment.status = 'cancelled'
 
+        #Set patient's nextAppointment to None
+        appointment.patient.nextAppointment = None
+        appointment.patient.save(update_fields=['nextAppointment', 'updatedAt'])
+
         #get reason from serializer and return response
         serializer = self.get_serializer(data=getattr(request, 'data', {}))
         serializer.is_valid(raise_exception=True)
