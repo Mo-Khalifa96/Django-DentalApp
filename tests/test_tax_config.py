@@ -1,9 +1,9 @@
 import uuid
 import itertools
 import pytest
+from .utils import render_error
 from django.urls import reverse
 from rest_framework import status
-from clinic.models import Branch
 from finances.models import ClinicalTaxConfig
 
 
@@ -78,7 +78,7 @@ class TestClinicTaxConfigAPIView:
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['data']['clinicName'] == tax_config.clinicName
 
     def test_retrieve_response_is_wrapped(
@@ -92,7 +92,7 @@ class TestClinicTaxConfigAPIView:
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -149,7 +149,7 @@ class TestClinicTaxConfigAPIView:
 
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
 
     def test_retrieve_with_nonexistent_branch_returns_404(
         self, api_client, admin_user
@@ -162,7 +162,7 @@ class TestClinicTaxConfigAPIView:
             reverse(self.URL), {'branchId': str(fake_branch_id)}, format='json'
         )
 
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     def test_retrieve_not_found_returns_404(
         self, api_client, admin_user, branch
@@ -174,7 +174,7 @@ class TestClinicTaxConfigAPIView:
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
 
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     def test_non_admin_cannot_retrieve_tax_config(
         self, api_client, receptionist_user, branch
@@ -186,7 +186,7 @@ class TestClinicTaxConfigAPIView:
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_retrieve_tax_config(self, api_client, branch):
         """Unauthenticated requests should return 401."""
@@ -194,7 +194,7 @@ class TestClinicTaxConfigAPIView:
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── CREATE (POST) ────────────────────────────────────────────────────────
 
@@ -207,7 +207,7 @@ class TestClinicTaxConfigAPIView:
 
         response = api_client.post(reverse(self.URL), payload, format='json')
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert ClinicalTaxConfig.objects.filter(
             clinicName='Test Clinic', branch=branch
         ).exists()
@@ -221,7 +221,7 @@ class TestClinicTaxConfigAPIView:
 
         response = api_client.post(reverse(self.URL), payload, format='json')
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -242,7 +242,7 @@ class TestClinicTaxConfigAPIView:
 
         response = api_client.post(reverse(self.URL), payload, format='json')
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         config = ClinicalTaxConfig.objects.get(branch=branch)
         assert config.clinicName == 'Full Test Clinic'
         assert config.taxId == 'TAX-999999'
@@ -258,7 +258,7 @@ class TestClinicTaxConfigAPIView:
 
         response = api_client.post(reverse(self.URL), payload, format='json')
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         config = ClinicalTaxConfig.objects.get(branch=branch)
         assert config.taxId is None
 
@@ -271,7 +271,7 @@ class TestClinicTaxConfigAPIView:
 
         response = api_client.post(reverse(self.URL), payload, format='json')
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_missing_required_fields_returns_400(
         self, api_client, admin_user, branch
@@ -281,7 +281,7 @@ class TestClinicTaxConfigAPIView:
 
         response = api_client.post(reverse(self.URL), {}, format='json')
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_without_branch_returns_400(
         self, api_client, admin_user
@@ -292,7 +292,7 @@ class TestClinicTaxConfigAPIView:
 
         response = api_client.post(reverse(self.URL), payload, format='json')
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_non_admin_cannot_create_tax_config(
         self, api_client, receptionist_user, branch
@@ -303,7 +303,7 @@ class TestClinicTaxConfigAPIView:
 
         response = api_client.post(reverse(self.URL), payload, format='json')
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_create_tax_config(
         self, api_client, branch
@@ -313,7 +313,7 @@ class TestClinicTaxConfigAPIView:
 
         response = api_client.post(reverse(self.URL), payload, format='json')
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── UPDATE (PUT) ────────────────────────────────────────────────────────
 
@@ -338,7 +338,7 @@ class TestClinicTaxConfigAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         tax_config.refresh_from_db()
         assert tax_config.clinicName == 'Updated Clinic Name'
 
@@ -363,7 +363,7 @@ class TestClinicTaxConfigAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         tax_config.refresh_from_db()
         assert tax_config.clinicName == 'Partially Updated'
 
@@ -380,7 +380,7 @@ class TestClinicTaxConfigAPIView:
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
 
-        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED or render_error(response)
 
     # ── OPTIONS ────────────────────────────────────────────────────────────
 
@@ -392,7 +392,7 @@ class TestClinicTaxConfigAPIView:
 
         response = api_client.options(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -415,7 +415,7 @@ class TestClinicTaxConfigBranchResolution:
 
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
 
     def test_multiple_branches_requires_branchId(
         self, api_client, admin_user, branch_factory, tax_config_factory
@@ -432,7 +432,7 @@ class TestClinicTaxConfigBranchResolution:
         #Without branchId, behavior depends on implementation
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_404_NOT_FOUND 
+        assert response.status_code == status.HTTP_404_NOT_FOUND  or render_error(response)
 
 
 @pytest.mark.django_db
@@ -505,7 +505,7 @@ class TestMultipleTaxConfigs:
 
         response = api_client.post(reverse(self.URL), payload, format='json')
 
-        assert response.status_code == status.HTTP_409_CONFLICT 
+        assert response.status_code == status.HTTP_409_CONFLICT  or render_error(response)
 
     def test_global_tax_config_without_branch(
         self, api_client, admin_user, tax_config_factory
@@ -525,4 +525,4 @@ class TestMultipleTaxConfigs:
 
         response = api_client.post(reverse(self.URL), payload, format='json')
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)

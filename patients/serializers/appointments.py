@@ -16,7 +16,7 @@ from patients.docs import appointments_options_schema, cancel_appointment_schema
 class AppointmentSerializer(serializers.ModelSerializer):
     patientId = serializers.PrimaryKeyRelatedField(source='patient', queryset=Patient.objects.all())  #read/write
     patientName = serializers.CharField(source='patient.name', read_only=True)
-    doctorId = serializers.PrimaryKeyRelatedField(source='doctor', queryset=User.objects.all())
+    doctorId = serializers.PrimaryKeyRelatedField(source='doctor', queryset=User.objects.filter(role__in=['admin', 'dentist', 'assistant']))
     procedureId = serializers.PrimaryKeyRelatedField(source='procedure', queryset=Procedure.objects.all())
     branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
     status = TranslatedChoiceField(choices=Appointment.AppointmentStatusChoices.choices, required=False, allow_blank=True, allow_null=True)
@@ -50,7 +50,7 @@ class CreateAppointmentSerializer(AppointmentSerializer):
                                                    required=False, allow_null=True)
     #new fields for creating new patients
     is_newPatient = serializers.BooleanField(default=False, required=False, write_only=True)
-    newPatientDetails = NewPatientSerializer(many=False, required=False, write_only=True)
+    newPatientDetails = NewPatientSerializer(many=False, allow_null=True, required=False, write_only=True)
 
     class Meta(AppointmentSerializer.Meta):
         fields = ['id', 'patientId', 'patientName', 'is_newPatient', 'newPatientDetails', 'doctorId', 
@@ -58,7 +58,7 @@ class CreateAppointmentSerializer(AppointmentSerializer):
                   'notes', 'branchId', 'createdAt', 'updatedAt']
         read_only_fields = ['id', 'patientName', 'doctorName', 'status', 'createdAt', 'updatedAt']
 
-    #validate patient-related data 
+    #validate patient-related data
     def validate(self, data):
         is_new = data.get('is_newPatient', False)
         patient = data.get('patient') #patientId accessed as simply patient given source param
@@ -134,7 +134,9 @@ class CreateAppointmentSerializer(AppointmentSerializer):
 
 #Update appointment serializer
 class UpdateAppointmentSerializer(AppointmentSerializer):
-    doctorId = serializers.PrimaryKeyRelatedField(source='doctor', queryset=User.objects.all(), required=False)
+    doctorId = serializers.PrimaryKeyRelatedField(source='doctor', 
+                queryset=User.objects.filter(role__in=['admin', 'dentist', 'assistant']), 
+                required=False)
     status = TranslatedChoiceField(choices=Appointment.AppointmentStatusChoices.choices, required=False, allow_blank=False, allow_null=False)
 
     class Meta(AppointmentSerializer.Meta):

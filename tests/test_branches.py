@@ -1,5 +1,6 @@
 import uuid
 import pytest
+from .utils import render_error
 from django.urls import reverse
 from rest_framework import status
 from clinic.models import Branch, WorkingDaysLookUp
@@ -33,7 +34,7 @@ class TestListCreateBranchesAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         ids = [str(b['id']) for b in response.data['data']]
         assert str(branch.id) in ids
 
@@ -43,7 +44,7 @@ class TestListCreateBranchesAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['success'] is True
         for key in ('data', 'pagination', 'links', 'metadata'):
             assert key in response.data, f"Missing top-level key: {key}"
@@ -100,18 +101,18 @@ class TestListCreateBranchesAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL), {'search': 'Alpha'})
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         ids = [str(b['id']) for b in response.data['data']]
         assert str(alpha.id) in ids
 
     def test_non_admin_cannot_list_branches(self, api_client, receptionist_user):
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.get(reverse(self.URL))
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_list_branches(self, api_client):
         response = api_client.get(reverse(self.URL))
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── CREATE ────────────────────────────────────────────────────────────────
 
@@ -121,7 +122,7 @@ class TestListCreateBranchesAPIView:
             reverse(self.URL), _branch_payload(), format='json'
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Branch.objects.filter(name='New Branch').exists()
 
     def test_create_response_is_wrapped(self, api_client, admin_user):
@@ -130,7 +131,7 @@ class TestListCreateBranchesAPIView:
             reverse(self.URL), _branch_payload(), format='json'
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -214,7 +215,7 @@ class TestListCreateBranchesAPIView:
             reverse(self.URL), _branch_payload(workingDays=[]), format='json'
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_invalid_working_day_value_returns_400(
         self, api_client, admin_user
@@ -225,7 +226,7 @@ class TestListCreateBranchesAPIView:
             reverse(self.URL), _branch_payload(workingDays=[0, 7, 99]), format='json'
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_invalid_phone_returns_400(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
@@ -233,14 +234,14 @@ class TestListCreateBranchesAPIView:
             reverse(self.URL), _branch_payload(phone='not-a-phone'), format='json'
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_missing_required_fields_returns_400(
         self, api_client, admin_user
     ):
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(reverse(self.URL), {}, format='json')
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_non_admin_cannot_create_branch(self, api_client, receptionist_user):
         api_client.force_authenticate(user=receptionist_user)
@@ -248,14 +249,14 @@ class TestListCreateBranchesAPIView:
             reverse(self.URL), _branch_payload(), format='json'
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_create_branch(self, api_client):
         response = api_client.post(
             reverse(self.URL), _branch_payload(), format='json'
         )
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -274,7 +275,7 @@ class TestRetrieveUpdateDeleteBranchAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(self._url(branch.id))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['data']['name'] == branch.name
 
     def test_retrieve_response_is_wrapped(self, api_client, admin_user, branch):
@@ -308,16 +309,16 @@ class TestRetrieveUpdateDeleteBranchAPIView:
     ):
         api_client.force_authenticate(user=dentist_user)
         response = api_client.get(self._url(branch.id))
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_retrieve_branch(self, api_client, branch):
         response = api_client.get(self._url(branch.id))
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     def test_nonexistent_branch_returns_404(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(self._url(uuid.uuid4()))
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     # ── UPDATE (PATCH) ────────────────────────────────────────────────────────
 
@@ -327,7 +328,7 @@ class TestRetrieveUpdateDeleteBranchAPIView:
             self._url(branch.id), {'name': 'Renamed Branch'}, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         branch.refresh_from_db()
         assert branch.name == 'Renamed Branch'
 
@@ -338,7 +339,7 @@ class TestRetrieveUpdateDeleteBranchAPIView:
             self._url(branch.id), {'workingDays': new_days}, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         branch.refresh_from_db()
         assert branch.workingDays == new_days
 
@@ -359,7 +360,7 @@ class TestRetrieveUpdateDeleteBranchAPIView:
             self._url(branch.id), {'workingDays': []}, format='json'
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_admin_can_update_rooms(self, api_client, admin_user, branch):
         api_client.force_authenticate(user=admin_user)
@@ -368,7 +369,7 @@ class TestRetrieveUpdateDeleteBranchAPIView:
             self._url(branch.id), {'rooms': new_rooms}, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         branch.refresh_from_db()
         assert branch.rooms == new_rooms
 
@@ -378,7 +379,7 @@ class TestRetrieveUpdateDeleteBranchAPIView:
             self._url(branch.id), {'isMain': True}, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         branch.refresh_from_db()
         assert branch.isMain is True
 
@@ -390,7 +391,7 @@ class TestRetrieveUpdateDeleteBranchAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         branch.refresh_from_db()
         assert branch.address == '123 Nile Street, Cairo'
 
@@ -411,14 +412,14 @@ class TestRetrieveUpdateDeleteBranchAPIView:
             self._url(branch.id), {'name': 'Hijacked'}, format='json'
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_patch_branch(self, api_client, branch):
         response = api_client.patch(
             self._url(branch.id), {'name': 'Hijacked'}, format='json'
         )
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── UPDATE (PUT) ──────────────────────────────────────────────────────────
 
@@ -434,7 +435,7 @@ class TestRetrieveUpdateDeleteBranchAPIView:
         }
         response = api_client.put(self._url(branch.id), payload, format='json')
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         branch.refresh_from_db()
         assert branch.name == 'Fully Updated Branch'
         assert branch.openTime.strftime('%H:%M:%S') == '08:00:00'
@@ -448,7 +449,7 @@ class TestRetrieveUpdateDeleteBranchAPIView:
             self._url(branch.id), _branch_payload(), format='json'
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     # ── DELETE ────────────────────────────────────────────────────────────────
 
@@ -461,7 +462,7 @@ class TestRetrieveUpdateDeleteBranchAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(self._url(bid))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
         assert not Branch.objects.filter(id=bid).exists()
         assert not Branch.all_objects.filter(id=bid).exists()
 
@@ -470,16 +471,16 @@ class TestRetrieveUpdateDeleteBranchAPIView:
     ):
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.delete(self._url(branch.id))
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_delete_branch(self, api_client, branch):
         response = api_client.delete(self._url(branch.id))
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     def test_delete_nonexistent_branch_returns_404(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(self._url(uuid.uuid4()))
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -499,14 +500,14 @@ class TestRetrieveBranchOptionsAPIView:
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert 'weekDaysChoices' in response.data
 
     def test_non_admin_can_access_options(self, api_client, dentist_user):
         """Options requires IsAuthenticated only, not AdminOnly."""
         api_client.force_authenticate(user=dentist_user)
         response = api_client.get(reverse(self.URL))
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
 
     def test_week_days_choices_cover_all_seven_days(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
@@ -547,4 +548,4 @@ class TestRetrieveBranchOptionsAPIView:
 
     def test_unauthenticated_returns_401(self, api_client):
         response = api_client.get(reverse(self.URL))
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)

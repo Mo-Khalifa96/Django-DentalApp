@@ -2,8 +2,8 @@ import re
 import uuid
 import pytest
 from decimal import Decimal
+from .utils import render_error
 from django.urls import reverse
-from time import sleep
 from rest_framework import status
 from finances.models import Invoice, InvoiceItem
 
@@ -86,7 +86,7 @@ class TestListCreateInvoicesAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert str(invoice.id) in [str(i['id']) for i in response.data['data']]
 
     def test_list_response_has_paginated_structure(
@@ -127,7 +127,7 @@ class TestListCreateInvoicesAPIView:
         api_client.force_authenticate(user=dentist_user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         ids = [str(i['id']) for i in response.data['data']]
         assert str(inv_own.id) in ids
         assert str(inv_other.id) not in ids
@@ -137,10 +137,12 @@ class TestListCreateInvoicesAPIView:
     ):
         """receptionist default permissions do not include 'view.invoices'."""
         api_client.force_authenticate(user=receptionist_user)
-        assert api_client.get(reverse(self.LIST_URL)).status_code == status.HTTP_403_FORBIDDEN
+        response = api_client.get(reverse(self.LIST_URL))
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_gets_401(self, api_client):
-        assert api_client.get(reverse(self.LIST_URL)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(reverse(self.LIST_URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── CREATE ────────────────────────────────────────────────────────────────
 
@@ -151,7 +153,7 @@ class TestListCreateInvoicesAPIView:
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Invoice.objects.filter(patient=patient).exists()
 
     def test_admin_create_auto_sets_status_to_issued_and_records_issued_at(
@@ -246,7 +248,7 @@ class TestListCreateInvoicesAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_without_items_returns_400(
         self, api_client, admin_user, patient_factory
@@ -260,7 +262,7 @@ class TestListCreateInvoicesAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_without_branch_id_key_returns_400(
         self, api_client, admin_user, patient_factory
@@ -273,7 +275,7 @@ class TestListCreateInvoicesAPIView:
         api_client.force_authenticate(user=admin_user)
 
         response = api_client.post(reverse(self.LIST_URL), payload, format='json')
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_patient_auto_assigned_from_bill_when_no_patient_id(
         self, api_client, admin_user, bill_factory
@@ -292,7 +294,7 @@ class TestListCreateInvoicesAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(reverse(self.LIST_URL), payload, format='json')
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         invoice = Invoice.objects.get(bill=bill)
         assert invoice.patient == bill.patient
 
@@ -306,7 +308,7 @@ class TestListCreateInvoicesAPIView:
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_create_response_is_wrapped(self, api_client, admin_user, patient_factory):
         patient = patient_factory()
@@ -315,7 +317,7 @@ class TestListCreateInvoicesAPIView:
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -336,7 +338,7 @@ class TestRetrieveUpdateDeleteInvoiceAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(_invoice_url(invoice.id))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['data']['id'] == str(invoice.id)
 
     def test_retrieve_response_includes_metadata(
@@ -378,7 +380,8 @@ class TestRetrieveUpdateDeleteInvoiceAPIView:
         invoice.save(update_fields=['isDeleted'])
 
         api_client.force_authenticate(user=admin_user)
-        assert api_client.get(_invoice_url(invoice.id)).status_code == status.HTTP_200_OK
+        response = api_client.get(_invoice_url(invoice.id))
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
 
     def test_non_admin_cannot_retrieve_soft_deleted_invoice(
         self, api_client, user_factory, invoice_factory, branch_factory
@@ -391,7 +394,8 @@ class TestRetrieveUpdateDeleteInvoiceAPIView:
         invoice.save(update_fields=['isDeleted'])
 
         api_client.force_authenticate(user=accountant)
-        assert api_client.get(_invoice_url(invoice.id)).status_code == status.HTTP_404_NOT_FOUND
+        response = api_client.get(_invoice_url(invoice.id))
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     # ── UPDATE – PATCH (status only) ──────────────────────────────────────────
 
@@ -404,7 +408,7 @@ class TestRetrieveUpdateDeleteInvoiceAPIView:
             _invoice_url(invoice.id), {'status': 'accepted'}, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         invoice.refresh_from_db()
         assert invoice.status == Invoice.InvoiceStatusChoices.ACCEPTED
 
@@ -462,7 +466,7 @@ class TestRetrieveUpdateDeleteInvoiceAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.put(_invoice_url(invoice.id), payload, format='json')
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
 
         invoice.refresh_from_db()
         assert invoice.subtotal == Decimal('500.00')
@@ -507,7 +511,7 @@ class TestRetrieveUpdateDeleteInvoiceAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.put(_invoice_url(invoice.id), payload, format='json')
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         invoice.refresh_from_db()
         submittedAt_after = invoice.submittedAt
         assert invoice.status == 'submitted'
@@ -546,7 +550,7 @@ class TestRetrieveUpdateDeleteInvoiceAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(_invoice_url(iid))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
         assert not Invoice.objects.filter(id=iid).exists()
         assert not Invoice.all_objects.filter(id=iid).exists()
 
@@ -562,14 +566,15 @@ class TestRetrieveUpdateDeleteInvoiceAPIView:
         api_client.force_authenticate(user=accountant)
         response = api_client.delete(_invoice_url(iid))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
         assert not Invoice.objects.filter(id=iid).exists()
         deleted = Invoice.all_objects.get(id=iid)
         assert deleted.isDeleted is True
 
     def test_unauthenticated_cannot_delete(self, api_client, invoice_factory):
         invoice = invoice_factory()
-        assert api_client.delete(_invoice_url(invoice.id)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.delete(_invoice_url(invoice.id))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -585,7 +590,7 @@ class TestRetrieveInvoicesOptionsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         for key in ('branchChoices', 'billChoices', 'patientChoices',
                     'invoiceStatusChoices', 'taxCodeChoices'):
             assert key in response.data, f"Missing key: {key}"
@@ -632,7 +637,8 @@ class TestRetrieveInvoicesOptionsAPIView:
         """get_serializer_context validates doctorId must be dentist or admin."""
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL), {'doctorId': str(uuid.uuid4())})
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_unauthenticated_returns_401(self, api_client):
-        assert api_client.get(reverse(self.URL)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(reverse(self.URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)

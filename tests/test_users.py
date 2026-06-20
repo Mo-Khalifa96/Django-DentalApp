@@ -1,10 +1,10 @@
 import uuid
 import pytest
-from datetime import time
-from django.contrib.auth import get_user_model
-from django.contrib.auth.hashers import check_password
+from .utils import render_error
 from django.urls import reverse
 from rest_framework import status
+from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import check_password
 
 User = get_user_model()
 
@@ -36,7 +36,7 @@ class TestListCreateUserAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         ids = [str(user['id']) for user in response.data['data']]
         assert str(dentist_user.id) in ids
 
@@ -50,18 +50,18 @@ class TestListCreateUserAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         ids = [str(user['id']) for user in response.data['data']]
         assert str(receptionist_user.id) not in ids
 
     def test_non_admin_cannot_list_users(self, api_client, receptionist_user):
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.get(reverse(self.URL))
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_list_users(self, api_client):
         response = api_client.get(reverse(self.URL))
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── CREATE ────────────────────────────────────────────────────────────────
 
@@ -72,7 +72,7 @@ class TestListCreateUserAPIView:
             reverse(self.URL), self._payload(branchIds=[]), format='json'
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert User.objects.filter(email='newuser@test.com').exists()
 
     def test_admin_can_create_user_with_branch(self, api_client, admin_user, branch):
@@ -80,7 +80,7 @@ class TestListCreateUserAPIView:
         payload = self._payload(email='branchuser@test.com', branchIds=[str(branch.id)])
         response = api_client.post(reverse(self.URL), payload, format='json')
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         created = User.objects.get(email='branchuser@test.com')
         assert created.branches.filter(id=branch.id).exists()
 
@@ -102,7 +102,7 @@ class TestListCreateUserAPIView:
             reverse(self.URL), self._payload(), format='json'
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_mismatched_passwords_returns_400(
         self, api_client, admin_user
@@ -114,14 +114,14 @@ class TestListCreateUserAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_missing_passwords_returns_400(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
         payload = self._payload()
         payload.pop('password2')
         response = api_client.post(reverse(self.URL), payload, format='json')
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_new_user_receives_default_role_permissions(self, api_client, admin_user, branch):
         """Default permission set for the chosen role is applied on creation."""
@@ -132,7 +132,7 @@ class TestListCreateUserAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         created = User.objects.get(email='dentistnew@test.com')
         assert set(created.userPermissions) == set(User.DEFAULT_ROLE_PERMISSIONS['dentist'])
 
@@ -144,7 +144,7 @@ class TestListCreateUserAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_duplicate_email_returns_400(self, api_client, admin_user, dentist_user):
         api_client.force_authenticate(user=admin_user)
@@ -154,7 +154,7 @@ class TestListCreateUserAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -169,7 +169,7 @@ class TestRetrieveUserProfileAPIView:
         api_client.force_authenticate(user=dentist_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['data']['email'] == dentist_user.email
         assert response.data['data']['name'] == dentist_user.name
 
@@ -177,19 +177,19 @@ class TestRetrieveUserProfileAPIView:
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         for field in ('id', 'email', 'name', 'role', 'activeBranchId', 'branchIds', 'isActive'):
             assert field in response.data['data'], f"Missing field: {field}"
 
     def test_unauthenticated_returns_401(self, api_client):
         response = api_client.get(reverse(self.URL))
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     def test_admin_profile_includes_permissions_field(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert 'permissions' in response.data['data']
 
     def test_non_admin_profile_excludes_permissions_field(
@@ -198,7 +198,7 @@ class TestRetrieveUserProfileAPIView:
         api_client.force_authenticate(user=dentist_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert 'permissions' not in response.data['data']
 
     def test_active_branch_id_reflected_in_profile(
@@ -243,7 +243,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(self._url(dentist_user.id))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['data']['email'] == dentist_user.email
 
     def test_authenticated_user_can_retrieve_own_profile(
@@ -252,13 +252,13 @@ class TestRetrieveUpdateDeleteUserAPIView:
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.get(self._url(receptionist_user.id))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['data']['email'] == receptionist_user.email
 
     def test_nonexistent_user_returns_404(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(self._url(uuid.uuid4()))
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     # ── UPDATE – role & permissions ───────────────────────────────────────────
 
@@ -284,7 +284,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
             self._url(receptionist_user.id), payload, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
 
         receptionist_user.refresh_from_db()
         assert receptionist_user.name == 'Updated Receptionist'
@@ -311,7 +311,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
             self._url(receptionist_user.id), payload, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
 
         receptionist_user.refresh_from_db()
         assert receptionist_user.name == 'Updated Name'       #ame update went through
@@ -362,7 +362,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
             self._url(dentist_user.id), payload, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         dentist_user.refresh_from_db()
         assert dentist_user.branches.filter(id=branch.id).exists()
 
@@ -376,7 +376,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
             self._url(receptionist_user.id), payload, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         receptionist_user.refresh_from_db()
         assert not receptionist_user.branches.filter(id=branch.id).exists()
 
@@ -389,7 +389,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
             self._url(receptionist_user.id), payload, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         receptionist_user.refresh_from_db()
         assert receptionist_user.isActive is False
 
@@ -403,7 +403,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
             self._url(receptionist_user.id), payload, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         receptionist_user.refresh_from_db()
         assert receptionist_user.isActive is True   # unchanged
 
@@ -420,7 +420,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
             self._url(receptionist_user.id), payload, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         receptionist_user.refresh_from_db()
         assert check_password('Strongpass123!', receptionist_user.password)
 
@@ -435,7 +435,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
             self._url(receptionist_user.id), payload, format='json'
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_password_mismatch_returns_400(self, api_client, receptionist_user):
         api_client.force_authenticate(user=receptionist_user)
@@ -448,7 +448,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
             self._url(receptionist_user.id), payload, format='json'
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_new_password_same_as_current_returns_400(self, api_client, receptionist_user):
         api_client.force_authenticate(user=receptionist_user)
@@ -461,7 +461,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
             self._url(receptionist_user.id), payload, format='json'
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_new_password_without_current_returns_400(self, api_client, receptionist_user):
         """Supplying newPassword but omitting currentPassword must be rejected."""
@@ -474,7 +474,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
             self._url(receptionist_user.id), payload, format='json'
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_user_cannot_change_another_users_password(
         self, api_client, receptionist_user, dentist_user
@@ -490,7 +490,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
             self._url(dentist_user.id), payload, format='json'
         )
         # Request succeeds but target's password must be unchanged
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         dentist_user.refresh_from_db()
         assert not check_password('Hackpass123!', dentist_user.password)
 
@@ -501,7 +501,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(self._url(uid))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
         #efault manager (filters is_deleted=False) must not find the record
         assert not User.objects.filter(id=uid).exists()
         # all_objects bypasses that filter; record must exist and be flagged
@@ -514,11 +514,11 @@ class TestRetrieveUpdateDeleteUserAPIView:
     ):
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.delete(self._url(assistant_user.id))
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_delete_user(self, api_client, receptionist_user):
         response = api_client.delete(self._url(receptionist_user.id))
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     def test_soft_deleting_dentist_nullifies_patient_and_appointment_doctor_refs(
         self,
@@ -543,7 +543,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(self._url(dentist_user.id))
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
 
         patient.refresh_from_db()
         assert patient.doctor is None
@@ -564,7 +564,7 @@ class TestRetrieveUsersOptionsAPIView:
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert 'roleChoices' in response.data
         assert 'branchChoices' in response.data
 
@@ -605,7 +605,7 @@ class TestRetrieveUsersOptionsAPIView:
 
     def test_unauthenticated_returns_401(self, api_client):
         response = api_client.get(reverse(self.URL))
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -626,7 +626,7 @@ class TestSetActiveBranchAPIView:
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data == {'success': True}
         dentist_user.refresh_from_db()
         assert dentist_user.branch_id == branch.id
@@ -645,7 +645,7 @@ class TestSetActiveBranchAPIView:
             reverse(self.URL), {'branchId': str(b2.id)}, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         dentist_user.refresh_from_db()
         assert dentist_user.branch_id == b2.id
 
@@ -658,14 +658,14 @@ class TestSetActiveBranchAPIView:
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_missing_branch_id_returns_400_when_branch_exists(
         self, api_client, dentist_user, branch  #branch` fixture ensures a row exists
     ):
         api_client.force_authenticate(user=dentist_user)
         response = api_client.post(reverse(self.URL), {}, format='json')
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_nonexistent_branch_id_returns_404(self, api_client, dentist_user):
         api_client.force_authenticate(user=dentist_user)
@@ -673,11 +673,11 @@ class TestSetActiveBranchAPIView:
             reverse(self.URL), {'branchId': str(uuid.uuid4())}, format='json'
         )
 
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     def test_unauthenticated_returns_401(self, api_client, branch):
         response = api_client.post(
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)

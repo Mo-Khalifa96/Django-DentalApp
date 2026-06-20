@@ -1,7 +1,7 @@
 from users.models import User
-from django.db.models import F
 from utils.filters import BaseFilterSet
 from patients.models import Patient, Appointment
+from django.db.models import F, Q, Func, Value, CharField
 from clinic.models import Branch, Procedure, Inventory, Lab, LabOrder, WaitingRoom, SterilizationLog
 from django_filters.rest_framework import (FilterSet, CharFilter, ChoiceFilter, ModelChoiceFilter, 
                                            BooleanFilter, DateFilter)
@@ -80,7 +80,7 @@ class InventoryFilter(BaseFilterSet):
         #populated filter field with the obtained choices
         self.filters['category'].field.choices = [(cat, cat) for cat in available_categories if cat]
 
-    #TODO - switch to charfield if choices aren't served properly
+    #NOTE - switch to charfield if choices aren't served properly
     #Example:
     # category = CharFilter(method='filter_category')
 
@@ -142,9 +142,22 @@ class SterilizationLogsFilter(FilterSet):
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
     date = DateFilter(field_name='date', lookup_expr='exact')
     sealedAt = DateFilter(field_name='sealedAt', lookup_expr='exact')
-    search = CharFilter(field_name='instrumentSets', lookup_expr='icontains')
+    search = CharFilter(method='filter_search')
     result = ChoiceFilter(choices=SterilizationLog.SterilizationResultChoices.choices)
 
+    #Custom method for case-insensitive searching by 'operator', 'cycleType', & 'instrumentSets'
+    def filter_search(self, queryset, name, value):
+        return queryset.annotate(
+            instrumentSets_text=Func(
+                'instrumentSets', Value(' '),
+                function='array_to_string', output_field=CharField(),
+            )
+        ).filter(
+            Q(operator__icontains=value) | 
+            Q(cycleType__icontains=value) | 
+            Q(instrumentSets_text__icontains=value)
+        )
+    
     class Meta:
         model = SterilizationLog
         fields = []

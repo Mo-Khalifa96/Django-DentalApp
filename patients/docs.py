@@ -425,6 +425,11 @@ visit_options_schema = extend_schema_serializer(
                     {'branchId': '9ca1d622-94af-4ea5-b87a-bf9f6611d6ab', 'name': 'Main Branch'},
                     {'branchId': '8ef5c0eb-ab95-4d13-a1b4-04f634534587', 'name': 'Heliopolis Branch'},
                 ],
+                'doctorChoices': [
+                    {'doctorId': '8d9e0abc-7abb-4497-a2ed-19737c92a229', 'doctorName': 'Layla Hassan'},
+                    {'doctorId': 'ec4ebe94-c8a6-45d5-8cc6-675cef7bbafe', 'doctorName': 'Ahmed Hassan'}, 
+                    {'doctorId': '0078af5e-7b68-4c29-9c81-04c8665fee68', 'doctorName': 'Ghassan Mattar'}
+                ],
                 'visitTypeChoices': [
                     {'value': 'routine_checkup', 'label': 'Routine Checkup'},
                     {'value': 'follow_up', 'label': 'Follow up'},

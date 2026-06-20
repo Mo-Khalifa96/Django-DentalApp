@@ -1,6 +1,7 @@
 from users.models import User
 from clinic.models import Branch
 from utils.filters import BaseFilterSet
+from django.db.models import Q, Func, Value, CharField
 from patients.models import Patient, Visit, Appointment, TreatmentPlan, PatientRecall
 from django_filters.rest_framework import (CharFilter, FilterSet, ChoiceFilter, ModelChoiceFilter, DateFilter)
 
@@ -37,7 +38,19 @@ class PatientsFilter(BaseFilterSet):
 class VisitsFilter(FilterSet):
     startDate = DateFilter(field_name='date', lookup_expr='gte')
     endDate = DateFilter(field_name='date', lookup_expr='lte')
-    search = CharFilter(field_name='procedures', lookup_expr='icontains')
+    search = CharFilter(method='filter_search')
+
+    #Custom method for case-insensitive searching by visit 'type' and 'procedures'
+    def filter_search(self, queryset, name, value):
+        return queryset.annotate(
+            procedures_text=Func(
+                'procedures', Value(' '),
+                function='array_to_string', output_field=CharField(),
+            )
+        ).filter(
+            Q(type__icontains=value) | 
+            Q(procedures_text__icontains=value)
+        )
 
     class Meta:
         model = Visit

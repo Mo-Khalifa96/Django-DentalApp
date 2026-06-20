@@ -251,6 +251,16 @@ LOGGING = {
             'maxBytes': 10*1024*1024,   #10MB max file size
             'backupCount': 5,
             'encoding': 'utf-8'
+        },
+        'server_errors_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': f'{BASE_DIR}/logs/server_errors.log',
+            'filters': ['ignore_requests'],  #filter applied globally
+            'formatter': 'verbose',
+            'level': 'ERROR',   #only ERROR and CRITICAL are logged
+            'maxBytes': 5*1024*1024,   #5MB max file size
+            'backupCount': 5,
+            'encoding': 'utf-8'
         }
     },
     'filters': {
@@ -267,21 +277,21 @@ LOGGING = {
         '': {  
             'handlers': ['console', 'general_file', 'errors_file'],
             'level': 'WARNING',  
-            'propagate': False,
+            'propagate': False
         },
 
         #configure django's logger 
         'django': { 
             'handlers': ['console', 'general_file', 'errors_file'],
             'level': 'WARNING', 
-            'propagate': False,
+            'propagate': False
         },
         
         #configure django disallowed host -- ignore messages unless critical
         'django.security.DisallowedHost': {
             'handlers': ['console', 'general_file', 'errors_file'],
             'level': 'CRITICAL',   #only pass through if critical (unlikely to trigger)
-            'propagate': False,
+            'propagate': False
         },
 
         #configure django's requests logger
@@ -289,7 +299,7 @@ LOGGING = {
             'handlers': ['console', 'general_file', 'errors_file'],
             # 'filters': ['ignore_requests'],   #no need - it's activated globally
             'level': 'WARNING',
-            'propagate': False,
+            'propagate': False
         },
 
         #configure logger for core modules
@@ -297,31 +307,31 @@ LOGGING = {
             'handlers': ['console', 'general_file', 'errors_file'],
             'filters': ['django_q_filter'],
             'level': 'INFO',
-            'propagate': False,
+            'propagate': False
         },
         'clinic': {
             'handlers': ['console', 'general_file', 'errors_file'],
             'filters': ['django_q_filter'],
             'level': 'INFO',
-            'propagate': False,
+            'propagate': False
         },
         'users': {
             'handlers': ['console', 'general_file', 'errors_file'],
             'filters': ['django_q_filter'],
             'level': 'INFO',
-            'propagate': False,
+            'propagate': False
         },
         'finances': {
             'handlers': ['console', 'general_file', 'errors_file'],
             'filters': ['django_q_filter'],
             'level': 'INFO',
-            'propagate': False,
+            'propagate': False
         },
         'services': {
             'handlers': ['console', 'general_file', 'errors_file'],
             'filters': ['django_q_filter'],
             'level': 'INFO',
-            'propagate': False,
+            'propagate': False
         },
 
         #configure Django-Q's logger
@@ -329,7 +339,7 @@ LOGGING = {
             'handlers': ['console', 'general_file', 'errors_file'],
             'filters': ['django_q_filter'],
             'level': 'INFO', 
-            'propagate': False,
+            'propagate': False
         },
 
         #configure whatsapp logger 
@@ -338,6 +348,13 @@ LOGGING = {
             'level': 'INFO',
             'propogate': False
         },
-    },
+
+        #Configure debugging logger
+        'debugging_logger': {
+            'handlers': ['console', 'server_errors_file'],
+            'level': 'ERROR',
+            'propogate': False
+        }
+    }
 }
 

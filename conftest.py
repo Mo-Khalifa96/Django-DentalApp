@@ -176,7 +176,7 @@ def appointment_factory():
             'endTime': time(10 + (index - 1), 0),
             'type': procedure.name,
             'room': f'Room {index}',
-            'status': 'pending',
+            'status': 'pending'
         }
         defaults.update(overrides)
         return Appointment.objects.create(**defaults)

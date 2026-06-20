@@ -1,3 +1,4 @@
+import logging
 from django.http import Http404
 from django.conf import settings
 from rest_framework import status
@@ -7,6 +8,10 @@ from rest_framework.views import exception_handler
 from rest_framework.exceptions import APIException, ErrorDetail
 from django.utils.translation import gettext_lazy as _
 from services.whatsapp.exceptions import WhatsAppAPIError
+
+
+#Instantiate logger for debugging 
+logger = logging.getLogger('debugging_logger')
 
 
 #SPECIAL-CASE EXCEPTIONS 
@@ -115,6 +120,7 @@ def DentalTechExceptionHandler(exc, context):
         
     
     #Unhandled exception (500 Server Error)
+    logger.error('Unhandled exception -- 500 Server Error', exc_info=exc)
     if settings.DEBUG:
         return None  #let Django's debug page show
     else:
@@ -181,7 +187,6 @@ def _extract_messages(messages):
 
     #Fallback 
     return str(messages)
-
 
 def _integrity_error_handler(exc=None):   #for later if you want to use str(exc) for the message
     '''Returns json response upon hitting integrty error.'''

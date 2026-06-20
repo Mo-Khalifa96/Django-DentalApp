@@ -1,5 +1,6 @@
 import uuid
 import pytest
+from .utils import render_error
 from django.urls import reverse
 from rest_framework import status
 from datetime import date, timedelta
@@ -65,7 +66,7 @@ class TestListCreatePatientRecallsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         ids = [str(r['id']) for r in response.data['data']]
         assert str(r1.id) in ids
         assert str(r2.id) in ids
@@ -100,7 +101,7 @@ class TestListCreatePatientRecallsAPIView:
         api_client.force_authenticate(user=dentist_user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         ids = [str(r['id']) for r in response.data['data']]
         assert str(recall_own.id) in ids
         assert str(recall_other.id) not in ids
@@ -119,7 +120,7 @@ class TestListCreatePatientRecallsAPIView:
         api_client.force_authenticate(user=user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         ids = [str(r['id']) for r in response.data['data']]
         assert str(recall_own.id) in ids
         assert str(recall_other.id) not in ids
@@ -144,10 +145,11 @@ class TestListCreatePatientRecallsAPIView:
         """assistant default permissions do not include view.recalls."""
         api_client.force_authenticate(user=assistant_user)
         response = api_client.get(reverse(self.LIST_URL))
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_gets_401(self, api_client):
-        assert api_client.get(reverse(self.LIST_URL)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(reverse(self.LIST_URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── CREATE ────────────────────────────────────────────────────────────────
 
@@ -159,7 +161,8 @@ class TestListCreatePatientRecallsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert PatientRecall.objects.filter(patient=patient).exists()
 
     def test_create_auto_sets_status_to_pending(
@@ -213,7 +216,7 @@ class TestListCreatePatientRecallsAPIView:
             #o branchId key
         }
         response = api_client.post(reverse(self.LIST_URL), payload, format='json')
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_auto_assigns_branch_from_user_active_branch(
         self, api_client, admin_user, patient_factory, branch
@@ -239,7 +242,8 @@ class TestListCreatePatientRecallsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -252,7 +256,8 @@ class TestListCreatePatientRecallsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_assistant_cannot_create_recall(
         self, api_client, assistant_user, patient_factory
@@ -262,14 +267,16 @@ class TestListCreatePatientRecallsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_create(self, api_client, patient_factory):
         patient = patient_factory()
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -283,7 +290,8 @@ class TestUpdateDeletePatientRecallAPIView:
         """GET excluded from http_method_names → 405."""
         recall = recall_factory()
         api_client.force_authenticate(user=admin_user)
-        assert api_client.get(_recall_url(recall.id)).status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+        response = api_client.get(_recall_url(recall.id))
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED or render_error(response)
 
     def test_admin_can_update_status(self, api_client, admin_user, recall_factory):
         recall = recall_factory()
@@ -291,7 +299,8 @@ class TestUpdateDeletePatientRecallAPIView:
         response = api_client.patch(
             _recall_url(recall.id), {'status': 'confirmed'}, format='json'
         )
-        assert response.status_code == status.HTTP_200_OK
+
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         recall.refresh_from_db()
         assert recall.status == PatientRecall.RecallStatusChoices.CONFIRMED
 
@@ -306,7 +315,8 @@ class TestUpdateDeletePatientRecallAPIView:
         response = api_client.patch(
             _recall_url(recall.id), {'status': 'contacted'}, format='json'
         )
-        assert response.status_code == status.HTTP_200_OK
+
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         recall.refresh_from_db()
         assert recall.contactedAt is not None
 
@@ -321,7 +331,8 @@ class TestUpdateDeletePatientRecallAPIView:
             {'dueDate': new_due, 'notes': 'Follow up required'},
             format='json',
         )
-        assert response.status_code == status.HTTP_200_OK
+
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         recall.refresh_from_db()
         assert str(recall.dueDate) == new_due
         assert recall.notes == 'Follow up required'
@@ -357,6 +368,7 @@ class TestUpdateDeletePatientRecallAPIView:
         response = api_client.patch(
             _recall_url(recall.id), {'status': 'no_answer'}, format='json'
         )
+
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -369,7 +381,8 @@ class TestUpdateDeletePatientRecallAPIView:
         response = api_client.patch(
             _recall_url(recall.id), {'status': 'no_answer'}, format='json'
         )
-        assert response.status_code == status.HTTP_200_OK
+
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
 
     def test_user_not_in_recall_branch_cannot_update(
         self, api_client, user_factory, recall_factory, branch_factory
@@ -385,7 +398,8 @@ class TestUpdateDeletePatientRecallAPIView:
         response = api_client.patch(
             _recall_url(recall.id), {'status': 'confirmed'}, format='json'
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_admin_can_delete_recall(self, api_client, admin_user, recall_factory):
         recall = recall_factory()
@@ -393,7 +407,7 @@ class TestUpdateDeletePatientRecallAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(_recall_url(rid))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
         assert not PatientRecall.objects.filter(id=rid).exists()
         assert not PatientRecall.all_objects.filter(id=rid).exists()
 
@@ -402,18 +416,18 @@ class TestUpdateDeletePatientRecallAPIView:
     ):
         recall = recall_factory()
         api_client.force_authenticate(user=assistant_user)
-        assert api_client.delete(_recall_url(recall.id)).status_code == status.HTTP_403_FORBIDDEN
+        response = api_client.delete(_recall_url(recall.id))
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_delete(self, api_client, recall_factory):
         recall = recall_factory()
-        assert api_client.delete(_recall_url(recall.id)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.delete(_recall_url(recall.id))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     def test_delete_nonexistent_recall_returns_404(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
-        assert (
-            api_client.delete(_recall_url(uuid.uuid4())).status_code
-            == status.HTTP_404_NOT_FOUND
-        )
+        response = api_client.delete(_recall_url(uuid.uuid4()))
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -434,7 +448,7 @@ class TestRetrievePatientRecallsOptionsAPIView:
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         for key in ('branchChoices', 'patientChoices', 'recallTypeChoices', 'recallStatusChoices'):
             assert key in response.data, f"Missing key: {key}"
 
@@ -508,7 +522,7 @@ class TestRetrievePatientRecallsOptionsAPIView:
         """Provided doctorId must belong to a dentist or admin user."""
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL), {'doctorId': str(uuid.uuid4())})
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_receptionist_as_doctor_id_returns_400(
         self, api_client, admin_user, receptionist_user
@@ -518,7 +532,9 @@ class TestRetrievePatientRecallsOptionsAPIView:
         response = api_client.get(
             reverse(self.URL), {'doctorId': str(receptionist_user.id)}
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_unauthenticated_returns_401(self, api_client):
-        assert api_client.get(reverse(self.URL)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(reverse(self.URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)

@@ -14,7 +14,7 @@ class LogsFormatter(logging.Formatter):
 #Custom filters
 #Custom filter to exclude web-crawler 404 requests
 class RequestsFilter(logging.Filter):
-    ALLOWED_PATHS = [  #TODO
+    ALLOWED_PATHS = [
             '/api/auth/',
             'api/users/',
             'api/branches/',
@@ -27,6 +27,7 @@ class RequestsFilter(logging.Filter):
             'api/inventory/',
             'api/labs/',
             'api/lab-orders/',
+            'api/insurance/',
             'api/bills/',
             'api/transactions/',
             'api/invoices/',
@@ -35,6 +36,10 @@ class RequestsFilter(logging.Filter):
             'api/doctor-schedules/',
             'api/recalls/',
             'api/whatsapp/',
+            'api/roles/',
+            'api/permissions/',
+            'api/settings/',
+            'api/preferences/',
             '/admin/',
             '/static/',
             '/media/',

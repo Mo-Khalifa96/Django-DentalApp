@@ -1,6 +1,7 @@
 import uuid
 import pytest
 from decimal import Decimal
+from .utils import render_error
 from django.urls import reverse
 from rest_framework import status
 from finances.models import Bill
@@ -53,7 +54,7 @@ class TestListCreateBillsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         ids = [str(b['id']) for b in response.data['data']]
         assert str(b1.id) in ids
         assert str(b2.id) in ids
@@ -135,10 +136,11 @@ class TestListCreateBillsAPIView:
         """receptionist default permissions do not include 'view.bills'."""
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.get(reverse(self.LIST_URL))
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_gets_401(self, api_client):
-        assert api_client.get(reverse(self.LIST_URL)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(reverse(self.LIST_URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── CREATE ────────────────────────────────────────────────────────────────
 
@@ -153,7 +155,8 @@ class TestListCreateBillsAPIView:
             _create_payload(patient, visit),
             format='json',
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Bill.objects.filter(patient=patient).exists()
 
     def test_create_auto_sets_snapshot_fields(
@@ -201,7 +204,8 @@ class TestListCreateBillsAPIView:
             _create_payload(patient, visit, subtotal='200.00', discount='50.00'),
             format='json',
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         bill = Bill.objects.get(patient=patient)
         assert bill.totalAmount == Decimal('150.00')
 
@@ -216,7 +220,8 @@ class TestListCreateBillsAPIView:
             _create_payload(patient, visit, subtotal='100.00', discount='150.00'),
             format='json',
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_visit_belonging_to_wrong_patient_returns_400(
         self, api_client, admin_user, patient_factory, dentist_user, visit_factory
@@ -232,7 +237,8 @@ class TestListCreateBillsAPIView:
             _create_payload(patient_a, visit_b),   #isit belongs to patient_b, not patient_a
             format='json',
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_without_branch_id_returns_400(
         self, api_client, admin_user, patient_factory, dentist_user, visit_factory
@@ -250,7 +256,7 @@ class TestListCreateBillsAPIView:
         }
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(reverse(self.LIST_URL), payload, format='json')
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_m2m_signal_updates_visit_cost_after_bill_created(
         self, api_client, admin_user, patient_factory, dentist_user, visit_factory
@@ -287,7 +293,8 @@ class TestListCreateBillsAPIView:
             _create_payload(patient, visit),
             format='json',
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_create_response_is_wrapped(
         self, api_client, admin_user, patient_factory, dentist_user, visit_factory
@@ -298,7 +305,8 @@ class TestListCreateBillsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient, visit), format='json'
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -319,7 +327,7 @@ class TestRetrieveUpdateDeleteBillAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(_bill_url(bill.id))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['data']['id'] == str(bill.id)
 
     def test_retrieve_response_includes_metadata(
@@ -357,7 +365,7 @@ class TestRetrieveUpdateDeleteBillAPIView:
         api_client.force_authenticate(user=accountant)
         response = api_client.get(_bill_url(bill.id))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         data = response.data['data']
         for field in ('branchName', 'createdBy', 'isDeleted', 'treatmentTitle', 'procedures'):
             assert field not in data, f"Non-admin should NOT see '{field}'"
@@ -372,7 +380,7 @@ class TestRetrieveUpdateDeleteBillAPIView:
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(_bill_url(bill.id))
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
 
     def test_non_admin_cannot_retrieve_soft_deleted_bill(
         self, api_client, user_factory, bill_factory, branch_factory
@@ -387,7 +395,7 @@ class TestRetrieveUpdateDeleteBillAPIView:
 
         api_client.force_authenticate(user=accountant)
         response = api_client.get(_bill_url(bill.id))
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     # ── UPDATE ────────────────────────────────────────────────────────────────
 
@@ -399,7 +407,8 @@ class TestRetrieveUpdateDeleteBillAPIView:
         response = api_client.patch(
             _bill_url(bill.id), {'description': 'Updated Description'}, format='json'
         )
-        assert response.status_code == status.HTTP_200_OK
+
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         bill.refresh_from_db()
         assert bill.description == 'Updated Description'
 
@@ -471,7 +480,7 @@ class TestRetrieveUpdateDeleteBillAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(_bill_url(bid))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
         assert not Bill.objects.filter(id=bid).exists()
         assert not Bill.all_objects.filter(id=bid).exists()
 
@@ -488,14 +497,15 @@ class TestRetrieveUpdateDeleteBillAPIView:
         api_client.force_authenticate(user=accountant)
         response = api_client.delete(_bill_url(bid))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
         assert not Bill.objects.filter(id=bid).exists()
         deleted = Bill.all_objects.get(id=bid)
         assert deleted.isDeleted is True
 
     def test_unauthenticated_cannot_delete(self, api_client, bill_factory):
         bill = bill_factory()
-        assert api_client.delete(_bill_url(bill.id)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.delete(_bill_url(bill.id))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -514,7 +524,8 @@ class TestAutogenerateInvoiceAPIView:
             {'billId': str(bill.id)},
             format='json',
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Invoice.objects.filter(bill=bill).exists()
 
     def test_user_with_create_invoice_permission_can_generate(
@@ -532,7 +543,8 @@ class TestAutogenerateInvoiceAPIView:
             {'billId': str(bill.id)},
             format='json',
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_generate_invoice_response_is_wrapped(
         self, api_client, admin_user, bill_factory
@@ -544,7 +556,8 @@ class TestAutogenerateInvoiceAPIView:
             {'billId': str(bill.id)},
             format='json',
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -555,7 +568,8 @@ class TestAutogenerateInvoiceAPIView:
         response = api_client.post(
             _invoice_url(bill.id), {'billId': str(bill.id)}, format='json'
         )
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -576,7 +590,7 @@ class TestRetrieveBillsOptionsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         for key in ('branchChoices', 'patientChoices',
                     'patientTreatmentChoices', 'patientVisitChoices'):
             assert key in response.data, f"Missing key: {key}"
@@ -627,7 +641,7 @@ class TestRetrieveBillsOptionsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL), {'patientId': str(p1.id)})
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         visit_ids = {str(c['visitId']) for c in response.data['patientVisitChoices']}
         assert str(visit_p1.id) in visit_ids
 
@@ -635,7 +649,8 @@ class TestRetrieveBillsOptionsAPIView:
         """BranchToSerializerMixin-level validation via get_serializer_context."""
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL), {'patientId': str(uuid.uuid4())})
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_unauthenticated_returns_401(self, api_client):
-        assert api_client.get(reverse(self.URL)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(reverse(self.URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)

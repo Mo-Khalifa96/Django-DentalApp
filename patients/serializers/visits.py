@@ -1,3 +1,4 @@
+from users.models import User
 from django.db import transaction
 from rest_framework import serializers
 from patients.models import Visit, XRay
@@ -8,12 +9,16 @@ from django.utils.translation import gettext_lazy as _
 from services.translation.serializers import TranslatedChoiceField
 
 
+
 #SERIALIZERS FOR PATIENT VISITS
 #Serializer for listing and creating patient visits
 class PatientVisitSerializer(serializers.ModelSerializer):
+    doctorId = serializers.PrimaryKeyRelatedField(source='doctor', 
+                    queryset=User.objects.filter(
+                        role__in=['admin', 'dentist', 'assistant']
+                    ), required=False, allow_null=True)
     #patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
     patientName = serializers.CharField(source='patient.name', read_only=True)
-    doctorId = serializers.PrimaryKeyRelatedField(source='doctor', allow_null=True, read_only=True)
     type = TranslatedChoiceField(choices=Visit.VisitTypeChoices.choices)
     xrayUploads = serializers.ListField(child=serializers.ImageField(required=False, allow_empty_file=True),
                                         required=False, write_only=True, allow_empty=True, allow_null=True)
@@ -23,7 +28,7 @@ class PatientVisitSerializer(serializers.ModelSerializer):
         model = Visit
         fields = ['id', 'doctorId', 'doctorName', 'patientName', 'date', 'type', 'procedures', 'currency', 
                   'cost', 'paid', 'notes', 'xray', 'xrayUploads', 'xrayUrls', 'createdAt']
-        read_only_fields = ['id', 'patientName', 'doctorId', 'doctorName', 'xrayUrls', 'createdAt']
+        read_only_fields = ['id', 'patientName', 'doctorName', 'xrayUrls', 'createdAt']
         extra_kwargs = {
             'currency': {'required': False}, 'xray': {'default': False},
         }
@@ -41,10 +46,15 @@ class PatientVisitSerializer(serializers.ModelSerializer):
         #fetch request and patient from context
         request = self.context.get('request')
         patient = self.context['patient']
-        doctor = (request.user  #TODO -- needs testing if None will be accepted
-                  if getattr(request.user, 'role', None) in ('admin', 'dentist')
-                   else patient.doctor if getattr(patient, 'doctor_id', None)
-                   else None)
+
+        #handle doctor assignment manually
+        doctor = validated_data.pop('doctor', None)
+        if not doctor:
+            doctor = (
+                patient.doctor if getattr(patient, 'doctor_id', None) else
+                request.user if getattr(request.user, 'role', None) in ('admin', 'dentist')
+                else None
+                )
 
         #fetch xray uploads before creating visit
         xray_images = validated_data.pop('xrayUploads', [])
@@ -53,10 +63,10 @@ class PatientVisitSerializer(serializers.ModelSerializer):
         visit = Visit.objects.create(**validated_data,
                                      patient=patient,
                                      doctor=doctor)
-        
+
         #update doctor if None
-        if not patient.doctor:
-            patient.doctor = request.user
+        if doctor and not patient.doctor:
+            patient.doctor = doctor
             patient.save(update_fields=['doctor', 'doctorName', 'updatedAt'])
 
         #Handle image uploads
@@ -79,6 +89,7 @@ class PatientVisitSerializer(serializers.ModelSerializer):
 @visit_options_schema
 class VisitOptionsSerializer(serializers.Serializer):
     branchChoices = serializers.SerializerMethodField()
+    doctorChoices = serializers.SerializerMethodField()
     visitTypeChoices = serializers.SerializerMethodField()
     optionalProcedureChoices = serializers.SerializerMethodField()
     optionalProcedureTypeChoices = serializers.SerializerMethodField()
@@ -93,6 +104,22 @@ class VisitOptionsSerializer(serializers.Serializer):
                     for branch_id,name in Branch.objects\
                     .values_list('id', 'name').order_by('name')
                 ]
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.DictField(child=serializers.CharField(allow_blank=True, allow_null=True))
+        ))
+    def get_doctorChoices(self, obj):
+        branchId = self.context.get('branchId')
+        if not branchId and Branch.objects.exists():
+            return []
+        
+        filters = {'branch_id': branchId, 'role__in': ['dentist', 'admin']} if branchId else {'role__in': ['dentist', 'admin']}
+        return [
+                {'doctorId': doctor_id, 'doctorName': name}
+                 for doctor_id,name in User.objects.only('id','name','role', 'branch')\
+                    .filter(**filters).values_list('id', 'name').order_by('name')
+            ]
 
     @extend_schema_field(
         serializers.ListField(

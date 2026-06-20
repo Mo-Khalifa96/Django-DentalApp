@@ -15,8 +15,8 @@ if settings.DEBUG:
                 'invoice_items__description': 'itemDescription'}
     
     CHAR_SEARCH_FIELDS = {
-        'ListCreateSterilizationLogsAPIView': ['instrumentSets'],
-        'ListCreateVisitsAPIView': ['procedures'],
+        'ListCreateSterilizationLogsAPIView': ['operator', 'cycleType', 'instrumentSets'],
+        'ListCreateVisitsAPIView': ['type', 'procedures'],
     }
 
     class QueryingFilterExtension(OpenApiFilterExtension):
@@ -128,28 +128,28 @@ if settings.DEBUG:
             
             # #Handle char filters documentation
             # if isinstance(filter_field, CharFilter):
-                lookup_expr = getattr(filter_field, 'lookup_expr', 'exact')
-                lookup_descriptions = {
-                    'icontains': 'Case-insensitive substring match.',
-                    'contains':  'Case-sensitive substring match.',
-                    'exact':     'Exact match.',
-                    'istartswith': 'Case-insensitive prefix match.',
-                    'startswith':  'Case-sensitive prefix match.',
-                }
+            #     lookup_expr = getattr(filter_field, 'lookup_expr', 'exact')
+            #     lookup_descriptions = {
+            #         'icontains': 'Case-insensitive substring match.',
+            #         'contains':  'Case-sensitive substring match.',
+            #         'exact':     'Exact match.',
+            #         'istartswith': 'Case-insensitive prefix match.',
+            #         'startswith':  'Case-sensitive prefix match.',
+            #     }
 
-                description = (
-                    f'<b>Filter by `{filter_name}`</b> — '
-                    f'{lookup_descriptions.get(lookup_expr, f"Lookup: {lookup_expr}")}'
-                )
-                return {
-                    'name': filter_name,
-                    'in': 'query',
-                    'schema': {
-                        'type': 'string',
-                    },
-                    'description': description,
-                    'required': getattr(filter_field.field, 'required', False)
-                }
+            #     description = (
+            #         f'<b>Filter by `{filter_name}`</b> — '
+            #         f'{lookup_descriptions.get(lookup_expr, f"Lookup: {lookup_expr}")}'
+            #     )
+            #     return {
+            #         'name': filter_name,
+            #         'in': 'query',
+            #         'schema': {
+            #             'type': 'string',
+            #         },
+            #         'description': description,
+            #         'required': getattr(filter_field.field, 'required', False)
+            #     }
 
             #Handle boolean filters documentation
             if isinstance(filter_field, BooleanFilter):
@@ -182,7 +182,7 @@ if settings.DEBUG:
 
             #Handle char filters
             view_name = auto_schema.view.__class__.__name__
-            search_fields += CHAR_SEARCH_FIELDS.get(view_name, [])
+            search_fields += [field for field in CHAR_SEARCH_FIELDS.get(view_name, []) if field not in search_fields]
 
             #exit if no search fields are found
             if not search_fields:

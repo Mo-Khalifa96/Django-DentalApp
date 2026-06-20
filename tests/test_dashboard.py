@@ -1,5 +1,6 @@
 import pytest
 from decimal import Decimal
+from .utils import render_error
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -29,13 +30,14 @@ class TestDashboardStatsAPI:
     # ══════════════════════════════════════════════════════════════════════════════
 
     def test_unauthenticated_returns_401(self, api_client):
-        assert _get(api_client).status_code == status.HTTP_401_UNAUTHORIZED
+        response = _get(api_client)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     def test_admin_gets_full_stats(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
         response = _get(api_client)
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['success'] == True
         assert 'data' in response.data
         assert 'metadata' in response.data
@@ -47,7 +49,7 @@ class TestDashboardStatsAPI:
         api_client.force_authenticate(user=receptionist_user)
         response = _get(api_client)
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert 'data' in response.data
 
     def test_user_without_clinical_analytics_gets_wrapped_response_with_null_values(
@@ -60,7 +62,7 @@ class TestDashboardStatsAPI:
         api_client.force_authenticate(user=user)
         response = _get(api_client)
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['success'] == True
         assert 'data' in response.data
         assert 'metadata' in response.data
@@ -93,7 +95,7 @@ class TestDashboardStatsAPI:
     def test_invalid_date_range_returns_400(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL), {'dateRange': 'invalid'})
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
 
     # ══════════════════════════════════════════════════════════════════════════════
@@ -393,54 +395,77 @@ class TestDashboardStatsAPI:
         print('response data:', response.data)
         print('='*50+'\n\n')
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
 
 
 @pytest.mark.django_db
 class TestDashboardAppointmentsTodayAPI:
     URL = 'dashboard_appointments_today'
 
-    def test_dashboard_appointments_today_filters_by_authenticated_dentist(
-        self,
-        api_client,
-        dentist_user,
-        other_dentist_user,
-        patient_factory,
-        procedure_factory,
-        appointment_factory,
+    # ══════════════════════════════════════════════════════════════════════════════
+    # GET  /dashboard/appointments-today/
+    # ══════════════════════════════════════════════════════════════════════════════
+
+    def test_dentist_sees_only_own_todays_appointments(
+        self, api_client, dentist_user, other_dentist_user,
+        patient_factory, procedure_factory, appointment_factory
     ):
         today = timezone.localdate()
-        procedure = procedure_factory()
-        visible_patient = patient_factory(doctor=dentist_user)
-        hidden_patient = patient_factory(doctor=other_dentist_user)
-
-        visible_appointment = appointment_factory(
-            patient=visible_patient,
-            doctor=dentist_user,
-            procedure=procedure,
-            date=today,
-        )
-        appointment_factory(
-            patient=hidden_patient,
-            doctor=other_dentist_user,
-            procedure=procedure,
-            date=today,
-        )
-        appointment_factory(
-            patient=visible_patient,
-            doctor=dentist_user,
-            procedure=procedure,
-            date=today + timedelta(days=1),
-        )
+        proc  = procedure_factory()
+        visible = appointment_factory(patient=patient_factory(doctor=dentist_user),
+                                      doctor=dentist_user, procedure=proc, date=today)
+        appointment_factory(patient=patient_factory(doctor=other_dentist_user),
+                            doctor=other_dentist_user, procedure=proc, date=today)
+        #Tomorrow → excluded
+        appointment_factory(patient=patient_factory(doctor=dentist_user),
+                            doctor=dentist_user, procedure=proc,
+                            date=today + timedelta(days=1))
 
         api_client.force_authenticate(user=dentist_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert 'metadata' in response.data
         assert response.data['metadata']['userPermissions']['view.appointments'] is True
-        
-        #ListAPIView returns a paginated list; appointments are under `data`.
-        appointments = response.data['data']
-        assert [item['id'] for item in appointments] == [str(visible_appointment.id)]
+        assert [i['id'] for i in response.data['data']] == [str(visible.id)]
 
+    def test_admin_sees_all_todays_appointments(
+        self, api_client, admin_user, dentist_user, other_dentist_user,
+        patient_factory, procedure_factory, appointment_factory
+    ):
+        today = timezone.localdate()
+        proc  = procedure_factory()
+        a1 = appointment_factory(patient=patient_factory(), doctor=dentist_user,
+                                 procedure=proc, date=today)
+        a2 = appointment_factory(patient=patient_factory(), doctor=other_dentist_user,
+                                 procedure=proc, date=today)
+
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get(reverse(self.URL))
+
+        ids = [i['id'] for i in response.data['data']]
+        assert str(a1.id) in ids
+        assert str(a2.id) in ids
+
+    def test_only_todays_appointments_returned(
+        self, api_client, admin_user, dentist_user, patient_factory,
+        procedure_factory, appointment_factory
+    ):
+        """Filter is date__exact=today."""
+        today     = timezone.localdate()
+        proc      = procedure_factory()
+        today_appt = appointment_factory(patient=patient_factory(), doctor=dentist_user,
+                                         procedure=proc, date=today)
+        appointment_factory(patient=patient_factory(), doctor=dentist_user,
+                            procedure=proc, date=today + timedelta(days=1))
+
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get(reverse(self.URL))
+
+        ids = [i['id'] for i in response.data['data']]
+        assert str(today_appt.id) in ids
+        assert len(ids) == 1
+
+    def test_unauthenticated_returns_401(self, api_client):
+        response = api_client.get(reverse(self.URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)

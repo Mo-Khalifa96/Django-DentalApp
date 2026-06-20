@@ -1,5 +1,6 @@
 import uuid
 import pytest
+from .utils import render_error
 from django.urls import reverse
 from rest_framework import status
 from clinic.models import WaitingRoom
@@ -49,7 +50,7 @@ class TestListCreateWaitingRoomItemsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert str(item.id) in [str(i['id']) for i in response.data['data']]
 
     def test_list_response_has_paginated_structure(
@@ -71,7 +72,7 @@ class TestListCreateWaitingRoomItemsAPIView:
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert str(item.id) in [str(i['id']) for i in response.data['data']]
 
     def test_list_filtered_by_user_branch(
@@ -88,7 +89,7 @@ class TestListCreateWaitingRoomItemsAPIView:
         api_client.force_authenticate(user=user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         ids = [str(i['id']) for i in response.data['data']]
         assert str(item_own.id) in ids
         assert str(item_other.id) not in ids
@@ -118,11 +119,11 @@ class TestListCreateWaitingRoomItemsAPIView:
         """Dentist role explicitly excludes 'view.waitingRoom' from default perms."""
         api_client.force_authenticate(user=dentist_user)
         response = api_client.get(reverse(self.LIST_URL))
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_gets_401(self, api_client):
         response = api_client.get(reverse(self.LIST_URL))
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── CREATE ────────────────────────────────────────────────────────────────
 
@@ -140,7 +141,7 @@ class TestListCreateWaitingRoomItemsAPIView:
             format='json',
         )
         
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert WaitingRoom.objects.filter(appointment=appt).exists()
 
     def test_create_auto_sets_status_to_waiting(
@@ -191,7 +192,7 @@ class TestListCreateWaitingRoomItemsAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert WaitingRoom.objects.get(appointment=appt).branch == branch
 
     def test_create_without_appointment_returns_400(
@@ -203,7 +204,7 @@ class TestListCreateWaitingRoomItemsAPIView:
             reverse(self.LIST_URL), {'branchId': None}, format='json'
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_response_is_wrapped(
         self, api_client, admin_user, appointment_factory, patient_factory,
@@ -219,7 +220,7 @@ class TestListCreateWaitingRoomItemsAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -238,7 +239,7 @@ class TestListCreateWaitingRoomItemsAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -256,7 +257,8 @@ class TestUpdateDeleteWaitingRoomItemAPIView:
     ):
         item = waiting_room_factory()
         api_client.force_authenticate(user=admin_user)
-        assert api_client.get(self._url(item.id)).status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+        response = api_client.get(self._url(item.id))
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED or render_error(response)
 
     def test_receptionist_can_update_room(
         self, api_client, receptionist_user, waiting_room_factory
@@ -271,7 +273,8 @@ class TestUpdateDeleteWaitingRoomItemAPIView:
             payload,
             format='json',
         )
-        assert response.status_code == status.HTTP_200_OK
+
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         item.refresh_from_db()
         assert item.room == 'Chair 3'
 
@@ -306,7 +309,7 @@ class TestUpdateDeleteWaitingRoomItemAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -330,7 +333,7 @@ class TestUpdateDeleteWaitingRoomItemAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_user_without_permission_cannot_update(
         self, api_client, dentist_user, waiting_room_factory
@@ -346,7 +349,7 @@ class TestUpdateDeleteWaitingRoomItemAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_admin_can_delete_waiting_room_item(
         self, api_client, admin_user, waiting_room_factory
@@ -356,7 +359,7 @@ class TestUpdateDeleteWaitingRoomItemAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(self._url(iid))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
         assert not WaitingRoom.objects.filter(id=iid).exists()
         assert not WaitingRoom.all_objects.filter(id=iid).exists()
 
@@ -365,18 +368,18 @@ class TestUpdateDeleteWaitingRoomItemAPIView:
     ):
         item = waiting_room_factory()
         api_client.force_authenticate(user=dentist_user)
-        assert api_client.delete(self._url(item.id)).status_code == status.HTTP_403_FORBIDDEN
+        response = api_client.delete(self._url(item.id))
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_delete(self, api_client, waiting_room_factory):
         item = waiting_room_factory()
-        assert api_client.delete(self._url(item.id)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.delete(self._url(item.id))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     def test_delete_nonexistent_item_returns_404(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
-        assert (
-            api_client.delete(self._url(uuid.uuid4())).status_code
-            == status.HTTP_404_NOT_FOUND
-        )
+        response = api_client.delete(self._url(uuid.uuid4()))
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -391,7 +394,7 @@ class TestRetrieveWaitingRoomOptionsAPIView:
     def test_authenticated_user_gets_options(self, api_client, receptionist_user):
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.get(reverse(self.URL))
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         for key in ('branchChoices', 'doctorChoices', 'statusChoices', 'roomChoices'):
             assert key in response.data, f"Missing key: {key}"
 
@@ -452,7 +455,8 @@ class TestRetrieveWaitingRoomOptionsAPIView:
         """BranchToSerializerMixin raises ValidationError for nonexistent branchId."""
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL), {'branchId': str(uuid.uuid4())})
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_unauthenticated_returns_401(self, api_client):
-        assert api_client.get(reverse(self.URL)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(reverse(self.URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)

@@ -1,9 +1,10 @@
 import uuid
 import pytest
 from copy import deepcopy
+from .utils import render_error
 from django.urls import reverse
 from rest_framework import status
-from patients.utils import FDI_PERMANENT
+from patients.validators import FDI_PERMANENT
 from patients.models import Patient, DentalChart, XRay
 
 
@@ -48,7 +49,7 @@ class TestListCreatePatientsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['success'] is True
         ids = [item['id'] for item in response.data['data']]
         assert str(p1.id) in ids
@@ -61,7 +62,7 @@ class TestListCreatePatientsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         for key in ('data', 'pagination', 'links', 'metadata'):
             assert key in response.data, f"Missing key: {key}"
         assert response.data['pagination']['total'] >= 1
@@ -75,7 +76,7 @@ class TestListCreatePatientsAPIView:
         api_client.force_authenticate(user=dentist_user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert [i['id'] for i in response.data['data']] == [str(visible.id)]
 
     def test_receptionist_sees_branch_filtered_patients(
@@ -91,7 +92,7 @@ class TestListCreatePatientsAPIView:
         api_client.force_authenticate(user=recept)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         ids = [i['id'] for i in response.data['data']]
         assert str(p_own.id) in ids
         assert str(p_other.id) not in ids
@@ -117,11 +118,12 @@ class TestListCreatePatientsAPIView:
         api_client.force_authenticate(user=assistant_user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
         assert response.data['success'] is False
 
     def test_unauthenticated_cannot_list_patients(self, api_client):
-        assert api_client.get(reverse(self.LIST_URL)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(reverse(self.LIST_URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── CREATE ────────────────────────────────────────────────────────────────
 
@@ -130,7 +132,8 @@ class TestListCreatePatientsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Patient.objects.filter(name='Test Patient').exists()
 
     def test_create_auto_sets_status_to_active(self, api_client, admin_user):
@@ -139,6 +142,7 @@ class TestListCreatePatientsAPIView:
         api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
+
         assert Patient.objects.get(name='Test Patient').status == Patient.StatusChoices.ACTIVE
 
     def test_create_auto_creates_dental_chart(self, api_client, admin_user):
@@ -147,7 +151,8 @@ class TestListCreatePatientsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         patient = Patient.objects.get(id=response.data['data']['id'])
         chart   = patient.patient_dentalchart
         assert chart is not None
@@ -165,7 +170,8 @@ class TestListCreatePatientsAPIView:
             _create_payload(phone='01099887766', countryCode='20'),
             format='json',
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         # Local display must match original input
         assert response.data['data']['phone'] == '01099887766'
 
@@ -195,7 +201,8 @@ class TestListCreatePatientsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         patient = Patient.objects.get(id=response.data['data']['id'])
         assert patient.branch == branch
 
@@ -205,7 +212,7 @@ class TestListCreatePatientsAPIView:
         payload = _create_payload()
         payload.pop('branchId')
         response = api_client.post(reverse(self.LIST_URL), payload, format='json')
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_invalid_country_code_returns_400(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
@@ -214,7 +221,8 @@ class TestListCreatePatientsAPIView:
             _create_payload(countryCode='abc'),
             format='json',
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_invalid_email_returns_400(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
@@ -223,7 +231,8 @@ class TestListCreatePatientsAPIView:
             _create_payload(email='not-an-email'),
             format='json',
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
         assert 'email' in response.data['error']['fields']
 
     def test_create_invalid_phone_returns_400(self, api_client, admin_user):
@@ -233,7 +242,8 @@ class TestListCreatePatientsAPIView:
             _create_payload(phone='not-a-phone-!!!!'),
             format='json',
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_receptionist_with_create_patient_permission_can_create(
         self, api_client, receptionist_user
@@ -243,14 +253,16 @@ class TestListCreatePatientsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_create_response_is_wrapped(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-        assert response.status_code == status.HTTP_201_CREATED
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -271,7 +283,7 @@ class TestRetrieveUpdateDeletePatientAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(_patient_url(patient.id))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['data']['id'] == str(patient.id)
 
     def test_retrieve_response_is_wrapped_with_metadata(
@@ -305,12 +317,13 @@ class TestRetrieveUpdateDeletePatientAPIView:
         api_client.force_authenticate(user=dentist_user)
         response = api_client.get(_patient_url(patient.id))
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
         assert response.data['error']['code'] == 'PERMISSION_DENIED'
 
     def test_nonexistent_patient_returns_404(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
-        assert api_client.get(_patient_url(uuid.uuid4())).status_code == status.HTTP_404_NOT_FOUND
+        response = api_client.get(_patient_url(uuid.uuid4()))
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     # ── UPDATE ────────────────────────────────────────────────────────────────
 
@@ -324,7 +337,8 @@ class TestRetrieveUpdateDeletePatientAPIView:
             {'address': '123 New Street', 'notes': 'Updated notes'},
             format='json',
         )
-        assert response.status_code == status.HTTP_200_OK
+
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         patient.refresh_from_db()
         assert patient.address == '123 New Street'
         assert patient.notes   == 'Updated notes'
@@ -352,7 +366,8 @@ class TestRetrieveUpdateDeletePatientAPIView:
             {'phone': '01011112222'},
             format='json',
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
         assert 'phone' in response.data['error']['fields']
 
     def test_update_country_code_without_phone_returns_400(
@@ -365,7 +380,8 @@ class TestRetrieveUpdateDeletePatientAPIView:
             {'countryCode': '44'},
             format='json',
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_update_phone_pair_together_succeeds(
         self, api_client, admin_user, patient_factory
@@ -377,7 +393,8 @@ class TestRetrieveUpdateDeletePatientAPIView:
             {'countryCode': '20', 'phone': '01088889999'},
             format='json',
         )
-        assert response.status_code == status.HTTP_200_OK
+
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         # Response displays normalized local number
         assert response.data['data']['phone'] == '01088889999'
 
@@ -387,6 +404,7 @@ class TestRetrieveUpdateDeletePatientAPIView:
         response = api_client.patch(
             _patient_url(patient.id), {'notes': 'test'}, format='json'
         )
+
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -403,7 +421,8 @@ class TestRetrieveUpdateDeletePatientAPIView:
         response = api_client.patch(
             _patient_url(patient.id), {'notes': 'Updated by receptionist'}, format='json'
         )
-        assert response.status_code == status.HTTP_200_OK
+
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
 
     # ── DELETE ────────────────────────────────────────────────────────────────
 
@@ -413,7 +432,7 @@ class TestRetrieveUpdateDeletePatientAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(_patient_url(pid))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
         assert not Patient.objects.filter(id=pid).exists()
         assert not Patient.all_objects.filter(id=pid).exists()   # hard delete
 
@@ -430,7 +449,7 @@ class TestRetrieveUpdateDeletePatientAPIView:
         api_client.force_authenticate(user=dentist)
         response = api_client.delete(_patient_url(pid))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
 
         #deleted patient is accessed only via all_objects()
         assert not Patient.objects.filter(id=pid).exists()
@@ -454,7 +473,7 @@ class TestRetrieveUpdateDeletePatientAPIView:
         patient = patient_factory(branch=branch)
         XRay.objects.create(patient=patient, image=png_file)
 
-        api_client.force_authenticate(user=deleter)
+        api_client.force_authenticate(user=receptionist)
         api_client.delete(_patient_url(patient.id))
 
         assert XRay.all_objects.filter(patient=patient).count() == 0
@@ -463,7 +482,8 @@ class TestRetrieveUpdateDeletePatientAPIView:
         self, api_client, patient_factory
     ):
         patient = patient_factory()
-        assert api_client.delete(_patient_url(patient.id)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.delete(_patient_url(patient.id))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -478,7 +498,7 @@ class TestRetrievePatientsOptionsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         for key in ('genderChoices', 'statusChoices', 'bloodTypeChoices', 'branchChoices'):
             assert key in response.data, f"Missing key: {key}"
 
@@ -502,7 +522,8 @@ class TestRetrievePatientsOptionsAPIView:
         assert 'A+' in values and 'O-' in values
 
     def test_unauthenticated_returns_401(self, api_client):
-        assert api_client.get(reverse(self.URL)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(reverse(self.URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -521,8 +542,8 @@ class TestDentalChartAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(_dentalchart_url(patient.id))
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data['data']['patientId'] == str(patient.id)
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
+        assert response.data['data']['patientId'] == patient.id
         assert len(response.data['data']['teeth']) == len(FDI_PERMANENT)
 
     def test_all_default_teeth_are_healthy(self, api_client, admin_user, patient_factory):
@@ -552,7 +573,7 @@ class TestDentalChartAPIView:
         patient = patient_factory(doctor=other_dentist_user)
         api_client.force_authenticate(user=dentist_user)
         response = api_client.get(_dentalchart_url(patient.id))
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     # ── PATCH (partial update – merge) ────────────────────────────────────────
 
@@ -570,7 +591,7 @@ class TestDentalChartAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         patient.patient_dentalchart.refresh_from_db()
         assert patient.patient_dentalchart.teeth['11']['status'] == 'cavity'
         assert patient.patient_dentalchart.teeth['12'] == original_12
@@ -584,7 +605,8 @@ class TestDentalChartAPIView:
         response = api_client.patch(
             _dentalchart_url(patient.id), {'teeth': {}}, format='json'
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_patch_invalid_fdi_tooth_number_returns_400(
         self, api_client, admin_user, patient_factory
@@ -597,7 +619,8 @@ class TestDentalChartAPIView:
             {'teeth': {'99': {'status': 'healthy', 'notes': ''}}},
             format='json',
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
         assert response.data['error']['fields']['teeth']['99'] == 'Invalid FDI tooth number.'
 
     def test_patch_invalid_tooth_status_returns_400(
@@ -611,7 +634,8 @@ class TestDentalChartAPIView:
             {'teeth': {'11': {'status': 'not_a_real_status', 'notes': ''}}},
             format='json',
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     # ── PUT (full update – replace) ───────────────────────────────────────────
 
@@ -630,7 +654,8 @@ class TestDentalChartAPIView:
         response = api_client.put(
             _dentalchart_url(patient.id), full_payload, format='json'
         )
-        assert response.status_code == status.HTTP_200_OK
+
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         patient.patient_dentalchart.refresh_from_db()
         assert all(
             v['status'] == 'filling'
@@ -648,7 +673,8 @@ class TestDentalChartAPIView:
             {'teeth': {'11': {'status': 'healthy', 'notes': ''}}},
             format='json',
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
         assert response.data['error']['fields']['teeth'] == 'Teeth data missing or incomplete.'
 
 
@@ -664,7 +690,7 @@ class TestDentalChartOptionsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert 'toothNumberChoices' in response.data
         assert 'toothStatusChoices'  in response.data
 

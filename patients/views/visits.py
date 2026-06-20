@@ -1,4 +1,5 @@
 from utils.base_views import *
+from django.db.models import Q
 from patients.models import Patient, Visit
 from rest_framework import status, generics
 from rest_framework.response import Response
@@ -23,9 +24,9 @@ class ListCreateVisitsAPIView(ListCreateAPIView):
     serializer_class = PatientVisitSerializer
     permission_classes = [PatientDataPermissions]
     ordering = ['-date', '-createdAt']  #default order fields 
-    ordering_fields = ['date', 'type']   #sort by date and visit type 
-    search_fields = ['type']  #search by visit type
-    filterset_class = VisitsFilter  #filter by date / search by procedure names
+    ordering_fields = ['date', 'type']   #sort by 'date' and visit 'type' 
+    search_fields = []  #placeholder for accurate documentation
+    filterset_class = VisitsFilter  #filter by date / search by visit 'type' and 'procedures'
     filter_backends = [DjangoFilterBackend, SearchFilter, CustomOrderingFilter]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
     lookup_url_kwarg = 'id'
@@ -35,7 +36,6 @@ class ListCreateVisitsAPIView(ListCreateAPIView):
         #re-order data for admins
         if getattr(request.user, 'role', None) == 'admin':
             self.ordering = ['patient__branch__name', 'patient__name', '-date', '-createdAt']
-
         #determine required permission
         #self.required_permission = 'view.visits' if request.method == 'GET' else 'create.visit'
         self.required_permission = get_required_permission('visits', request, self)
@@ -56,13 +56,27 @@ class ListCreateVisitsAPIView(ListCreateAPIView):
         patient_visits = Visit.objects.select_related('patient', 'doctor')\
          .prefetch_related('patient__patient_xrays').filter(patient_id=self.kwargs['id'])
         
+        #filter queryset by role or permission
         if getattr(user, 'role', None) == 'dentist':
-            return patient_visits.filter(doctor=user)
+            patient = get_object_or_404(
+                Patient.objects.select_related('doctor').only('id', 'doctor'),
+                id=self.kwargs['id']
+            )
+            #check doctor's object permission and return visits
+            self.check_object_permissions(self.request, patient)
+            return patient_visits
 
+            # #alternative, permission check
+            # #if current doctor has at least one visit under their name or is the patient's main doctor
+            # if patient_visits.filter(doctor_id=user.id).exists()\
+            #  or Patient.objects.filter(doctor_id=user.id).exists():
+            #     return patient_visits
+            # else:
+            #     return patient_visits.none()
+        
         elif getattr(user, 'role', None) == 'admin' or\
          self.required_permission in getattr(user, 'userPermissions', []):
             return patient_visits
-
         else:
             return patient_visits.none()
 

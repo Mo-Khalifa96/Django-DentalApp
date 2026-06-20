@@ -33,7 +33,7 @@ urlpatterns = [
     #Procedures urls
     path('procedures/', ListCreateProceduresAPIViews.as_view(), name='list_create_procedures'),
     path('procedures/<uuid:id>/', RetrieveUpdateDeleteProceduresAPIViews.as_view(), name='retrieve_update_delete_procedure'),
-    path('procedures/options', RetrieveProcedureOptionsAPIView.as_view(), name='procedures_options'),
+    path('procedures/options/', RetrieveProcedureOptionsAPIView.as_view(), name='procedures_options'),
 
     #Inventory urls
     path('inventory/', ListCreateInventoryAPIViews.as_view(), name='list_create_inventory'),

@@ -502,7 +502,7 @@ def seed_patient_recalls(patients, branches, num_recalls=60):
     print('Seeding patient recalls...')
 
     recall_types = [c[0] for c in PatientRecall.RecallTypeChoices.choices]
-    safe_statuses = [
+    statuses = [
         PatientRecall.RecallStatusChoices.PENDING,
         PatientRecall.RecallStatusChoices.NO_ANSWER,
         PatientRecall.RecallStatusChoices.CONFIRMED,
@@ -518,7 +518,7 @@ def seed_patient_recalls(patients, branches, num_recalls=60):
             patient=patient,
             branch=branch,
             type=random.choice(recall_types),
-            status=random.choice(safe_statuses),
+            status=random.choice(statuses),
             dueDate=_random_future_date(days_ahead=180),
             notes=faker.text(max_nb_chars=150) if random.random() < 0.25 else None,
             #phone intentionally omitted -- save() pulls it from patient
@@ -551,18 +551,17 @@ def seed_labs(branches):
 
 
 def seed_lab_orders(labs, patients, procedures, branches, num_orders=40):
-    '''
-    Create lab orders individually so that LabOrder.save() fires.
-    Avoids status=RECEIVED/DELIVERED to sidestep the .date bug in save().
-    '''
     print('Seeding lab orders...')
 
-    safe_statuses = [
+    statuses = [
         LabOrder.OrderStatusChoices.SENT,
         LabOrder.OrderStatusChoices.IN_PRODUCTION,
+        LabOrder.OrderStatusChoices.RECEIVED,
+        LabOrder.OrderStatusChoices.DELIVERED,
     ]
-    count = 0
 
+    count = 0
+    
     for _ in range(num_orders):
         lab = random.choice(labs)
         patient = random.choice(patients)
@@ -580,7 +579,7 @@ def seed_lab_orders(labs, patients, procedures, branches, num_orders=40):
             instructions=faker.text(max_nb_chars=200) if random.random() < 0.5 else None,
             sentDate=sent_date,
             dueDate=due_date,
-            status=random.choice(safe_statuses),
+            status=random.choice(statuses),
             cost=Decimal(str(round(random.uniform(100, 2000), 2))),
             currency='USD',
         )
@@ -592,10 +591,6 @@ def seed_lab_orders(labs, patients, procedures, branches, num_orders=40):
 
 
 def seed_inventory(branches):
-    '''
-    Create inventory items. lastOrdered is set directly here
-    to work around the Inventory.save() bug (updatedAt.date not called).
-    '''
     print('Seeding inventory...')
 
     items = []
@@ -607,7 +602,7 @@ def seed_inventory(branches):
             supplier=supplier,
             currentStock=current_stock,
             minStock=min_stock,
-            lastOrdered=_random_past_date(years_back=1),  #set directly, bypassing the save() bug
+            lastOrdered=_random_past_date(years_back=1),
             branch=random.choices(branches, weights=[70, 15, 15])[0]
         ))
 

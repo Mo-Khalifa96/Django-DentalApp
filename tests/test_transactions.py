@@ -2,6 +2,7 @@ import uuid
 import pytest
 from datetime import date
 from decimal import Decimal
+from .utils import render_error
 from django.urls import reverse
 from rest_framework import status
 from finances.models import Transaction
@@ -47,7 +48,7 @@ class TestListCreateTransactionsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert str(transaction.id) in [str(t['id']) for t in response.data['data']]
 
     def test_list_response_has_paginated_structure(
@@ -103,10 +104,11 @@ class TestListCreateTransactionsAPIView:
         """receptionist has create.transaction but not view.transactions."""
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.get(reverse(self.LIST_URL))
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_gets_401(self, api_client):
-        assert api_client.get(reverse(self.LIST_URL)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(reverse(self.LIST_URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── CREATE ────────────────────────────────────────────────────────────────
 
@@ -122,7 +124,7 @@ class TestListCreateTransactionsAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Transaction.objects.filter(bill=bill).exists()
 
     def test_create_auto_sets_method_to_cash_when_omitted(
@@ -236,7 +238,7 @@ class TestListCreateTransactionsAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_create_response_is_wrapped(self, api_client, admin_user, bill_factory):
         bill = bill_factory()
@@ -245,7 +247,7 @@ class TestListCreateTransactionsAPIView:
             reverse(self.LIST_URL), _create_payload(bill, bill.visits.first()), format='json'
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -262,7 +264,8 @@ class TestUpdateDeleteTransactionAPIView:
     ):
         transaction = transaction_factory()
         api_client.force_authenticate(user=admin_user)
-        assert api_client.get(_transaction_url(transaction.id)).status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+        response = api_client.get(_transaction_url(transaction.id))
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED or render_error(response)
 
     # ── PATCH (admin only) ────────────────────────────────────────────────────
 
@@ -275,7 +278,7 @@ class TestUpdateDeleteTransactionAPIView:
             _transaction_url(transaction.id), {'amount': '300.00'}, format='json'
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         transaction.refresh_from_db()
         assert transaction.amount == Decimal('300.00')
 
@@ -290,7 +293,7 @@ class TestUpdateDeleteTransactionAPIView:
             _transaction_url(transaction.id), {'amount': '999.00'}, format='json'
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_patch_read_only_fields_are_ignored(
         self, api_client, admin_user, transaction_factory, bill_factory
@@ -317,7 +320,7 @@ class TestUpdateDeleteTransactionAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(_transaction_url(tid))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
         assert not Transaction.objects.filter(id=tid).exists()
         assert not Transaction.all_objects.filter(id=tid).exists()
 
@@ -352,7 +355,7 @@ class TestUpdateDeleteTransactionAPIView:
         api_client.force_authenticate(user=accountant)
         response = api_client.delete(_transaction_url(tid))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
         assert not Transaction.objects.filter(id=tid).exists()
         deleted = Transaction.all_objects.get(id=tid)
         assert deleted.isDeleted is True
@@ -395,7 +398,8 @@ class TestUpdateDeleteTransactionAPIView:
 
     def test_unauthenticated_cannot_delete(self, api_client, transaction_factory):
         transaction = transaction_factory()
-        assert api_client.delete(_transaction_url(transaction.id)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.delete(_transaction_url(transaction.id))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -411,7 +415,7 @@ class TestRetrieveTransactionsOptionsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         for key in ('branchChoices', 'billChoices', 'patientChoices',
                     'patientVisitChoices', 'paymentMethodChoices'):
             assert key in response.data, f"Missing key: {key}"
@@ -447,7 +451,8 @@ class TestRetrieveTransactionsOptionsAPIView:
     def test_invalid_patient_id_returns_400(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL), {'patientId': str(uuid.uuid4())})
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_unauthenticated_returns_401(self, api_client):
-        assert api_client.get(reverse(self.URL)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(reverse(self.URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)

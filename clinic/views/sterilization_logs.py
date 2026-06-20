@@ -20,9 +20,9 @@ from clinic.serializers.sterilization_logs import (SterilizationLogSerializer, C
 class ListCreateSterilizationLogsAPIView(FilterListCreateAPIView):
     permission_classes = [SystemUserPermissions]
     ordering = ['-updatedAt']
-    search_fields = ['operator', 'cycleType']
+    search_fields = []   #placeholder for accurate documentation
     ordering_fields = ['date', 'time', 'sealedAt', 'createdAt', 'updatedAt']
-    filterset_class = SterilizationLogsFilter  #filters by branchId, inst_sets, date, sealedAt, & result
+    filterset_class = SterilizationLogsFilter  #sterilization logs filters
     filter_backends = [DjangoFilterBackend, SearchFilter, CustomOrderingFilter]
 
     def initial(self, request, *args, **kwargs):

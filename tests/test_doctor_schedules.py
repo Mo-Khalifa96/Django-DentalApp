@@ -1,5 +1,6 @@
 import uuid
 import pytest
+from .utils import render_error
 from django.urls import reverse
 from rest_framework import status
 from clinic.models import WorkingDaysLookUp
@@ -96,7 +97,7 @@ class TestListDoctorsSchedulesAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         ids = [str(s['id']) for s in response.data['data']]
         assert str(s1.id) in ids
         assert str(s2.id) in ids
@@ -120,7 +121,7 @@ class TestListDoctorsSchedulesAPIView:
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert str(schedule.id) in [str(s['id']) for s in response.data['data']]
 
     def test_user_without_view_permission_gets_403(
@@ -133,7 +134,7 @@ class TestListDoctorsSchedulesAPIView:
 
         api_client.force_authenticate(user=user)
         response = api_client.get(reverse(self.URL))
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_schedules_of_soft_deleted_doctors_are_excluded(
         self, api_client, admin_user, user_factory, schedule_factory
@@ -150,7 +151,8 @@ class TestListDoctorsSchedulesAPIView:
         assert str(s.id) not in [str(x['id']) for x in response.data['data']]
 
     def test_unauthenticated_gets_401(self, api_client):
-        assert api_client.get(reverse(self.URL)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(reverse(self.URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -169,7 +171,7 @@ class TestCRUDDoctorScheduleAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(_schedule_url(dentist_user.id))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['data']['id'] == str(schedule.id)
 
     def test_retrieve_response_is_wrapped_with_metadata(
@@ -192,19 +194,21 @@ class TestCRUDDoctorScheduleAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(_schedule_url(dentist_user.id))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert len(response.data['data']['exceptions']) == 1
 
     def test_nonexistent_doctor_returns_404(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
-        assert api_client.get(_schedule_url(uuid.uuid4())).status_code == status.HTTP_404_NOT_FOUND
+        response = api_client.get(_schedule_url(uuid.uuid4()))
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     def test_doctor_without_schedule_returns_404(
         self, api_client, admin_user, dentist_user
     ):
         """No DoctorSchedule for this doctor → get_object raises 404."""
         api_client.force_authenticate(user=admin_user)
-        assert api_client.get(_schedule_url(dentist_user.id)).status_code == status.HTTP_404_NOT_FOUND
+        response = api_client.get(_schedule_url(dentist_user.id))
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     def test_receptionist_can_retrieve_schedule(
         self, api_client, receptionist_user, dentist_user, schedule_factory
@@ -212,7 +216,8 @@ class TestCRUDDoctorScheduleAPIView:
         """GET uses SystemUserPermissions; receptionist has view.doctorSchedules."""
         schedule_factory(doctor=dentist_user)
         api_client.force_authenticate(user=receptionist_user)
-        assert api_client.get(_schedule_url(dentist_user.id)).status_code == status.HTTP_200_OK
+        response = api_client.get(_schedule_url(dentist_user.id))
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
 
     # ── CREATE (POST) ─────────────────────────────────────────────────────────
 
@@ -224,7 +229,7 @@ class TestCRUDDoctorScheduleAPIView:
             _schedule_url(dentist_user.id), _schedule_payload(), format='json'
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert DoctorSchedule.objects.filter(doctor=dentist_user).exists()
 
     def test_dentist_can_create_own_schedule(self, api_client, user_factory):
@@ -235,7 +240,7 @@ class TestCRUDDoctorScheduleAPIView:
             _schedule_url(doctor.id), _schedule_payload(), format='json'
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_dentist_cannot_create_schedule_for_other_doctor(
         self, api_client, dentist_user, other_dentist_user
@@ -246,7 +251,7 @@ class TestCRUDDoctorScheduleAPIView:
             _schedule_url(other_dentist_user.id), _schedule_payload(), format='json'
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_receptionist_cannot_create_schedule(
         self, api_client, receptionist_user, dentist_user
@@ -257,7 +262,7 @@ class TestCRUDDoctorScheduleAPIView:
             _schedule_url(dentist_user.id), _schedule_payload(), format='json'
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_creating_duplicate_schedule_returns_400(
         self, api_client, admin_user, dentist_user, schedule_factory
@@ -268,7 +273,7 @@ class TestCRUDDoctorScheduleAPIView:
             _schedule_url(dentist_user.id), _schedule_payload(), format='json'
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_exceptions_bulk_creates_them(
         self, api_client, admin_user, dentist_user
@@ -283,7 +288,7 @@ class TestCRUDDoctorScheduleAPIView:
             _schedule_url(dentist_user.id), payload, format='json'
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         schedule = DoctorSchedule.objects.get(doctor=dentist_user)
         assert schedule.exceptions.filter(date=exc_date, type='vacation').exists()
 
@@ -295,7 +300,7 @@ class TestCRUDDoctorScheduleAPIView:
             _schedule_url(dentist_user.id), _schedule_payload(), format='json'
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -322,7 +327,7 @@ class TestCRUDDoctorScheduleAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_patch_method_not_allowed(
         self, api_client, admin_user, dentist_user, schedule_factory
@@ -334,7 +339,7 @@ class TestCRUDDoctorScheduleAPIView:
             _schedule_url(dentist_user.id), {'startTime': '10:00:00'}, format='json'
         )
 
-        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED or render_error(response)
 
     # ── UPDATE (PUT) ──────────────────────────────────────────────────────────
 
@@ -349,7 +354,7 @@ class TestCRUDDoctorScheduleAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         schedule = DoctorSchedule.objects.get(doctor=dentist_user)
         assert schedule.workingDays == [1, 2, 3]
 
@@ -365,7 +370,7 @@ class TestCRUDDoctorScheduleAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
 
     def test_dentist_cannot_update_other_doctors_schedule(
         self, api_client, dentist_user, other_dentist_user, schedule_factory
@@ -379,7 +384,7 @@ class TestCRUDDoctorScheduleAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_update_exceptions_replaces_all_existing(
         self, api_client, admin_user, dentist_user, schedule_factory, exception_factory
@@ -442,7 +447,7 @@ class TestCRUDDoctorScheduleAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(_schedule_url(dentist_user.id))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
         assert not DoctorSchedule.objects.filter(id=sid).exists()
 
     def test_dentist_can_delete_own_schedule(
@@ -451,7 +456,8 @@ class TestCRUDDoctorScheduleAPIView:
         doctor = user_factory(role='dentist')
         schedule_factory(doctor=doctor)
         api_client.force_authenticate(user=doctor)
-        assert api_client.delete(_schedule_url(doctor.id)).status_code == status.HTTP_204_NO_CONTENT
+        response = api_client.delete(_schedule_url(doctor.id))
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
 
     def test_dentist_cannot_delete_other_doctors_schedule(
         self, api_client, dentist_user, other_dentist_user, schedule_factory
@@ -466,8 +472,11 @@ class TestCRUDDoctorScheduleAPIView:
         self, api_client, dentist_user, schedule_factory
     ):
         schedule_factory(doctor=dentist_user)
-        assert api_client.get(_schedule_url(dentist_user.id)).status_code == status.HTTP_401_UNAUTHORIZED
-        assert api_client.post(_schedule_url(dentist_user.id), {}).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(_schedule_url(dentist_user.id))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
+
+        response = api_client.post(_schedule_url(dentist_user.id), {})
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -493,7 +502,7 @@ class TestScheduleExceptionsAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert DoctorScheduleException.objects.filter(
             schedule__doctor=dentist_user, date=exc_date
         ).exists()
@@ -510,7 +519,7 @@ class TestScheduleExceptionsAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_dentist_cannot_create_exception_for_other_doctor(
         self, api_client, dentist_user, other_dentist_user, schedule_factory
@@ -523,7 +532,7 @@ class TestScheduleExceptionsAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_receptionist_cannot_create_exception(
         self, api_client, receptionist_user, dentist_user, schedule_factory
@@ -537,7 +546,7 @@ class TestScheduleExceptionsAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_create_exception_without_schedule_returns_404(
         self, api_client, admin_user, dentist_user
@@ -550,7 +559,7 @@ class TestScheduleExceptionsAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     def test_create_exception_with_invalid_doctor_returns_404(
         self, api_client, admin_user
@@ -562,7 +571,7 @@ class TestScheduleExceptionsAPIView:
             format='json',
         )
 
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     # ── DELETE ────────────────────────────────────────────────────────────────
 
@@ -576,7 +585,7 @@ class TestScheduleExceptionsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(_exception_delete_url(dentist_user.id, str(exc_date)))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
         assert not DoctorScheduleException.objects.filter(
             schedule__doctor=dentist_user, date=exc_date
         ).exists()
@@ -592,7 +601,7 @@ class TestScheduleExceptionsAPIView:
         api_client.force_authenticate(user=doctor)
         response = api_client.delete(_exception_delete_url(doctor.id, str(exc_date)))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
 
     def test_dentist_cannot_delete_other_doctors_exception(
         self, api_client, dentist_user, other_dentist_user, schedule_factory, exception_factory
@@ -606,7 +615,7 @@ class TestScheduleExceptionsAPIView:
             _exception_delete_url(other_dentist_user.id, str(exc_date))
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_invalid_date_format_returns_400(
         self, api_client, admin_user, dentist_user, schedule_factory
@@ -618,7 +627,7 @@ class TestScheduleExceptionsAPIView:
             _exception_delete_url(dentist_user.id, 'not-a-date')
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_nonexistent_date_returns_404(
         self, api_client, admin_user, dentist_user, schedule_factory
@@ -629,7 +638,7 @@ class TestScheduleExceptionsAPIView:
             _exception_delete_url(dentist_user.id, '2099-12-31')   #o exception on this date
         )
         
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -648,7 +657,7 @@ class TestDoctorSchedulesOptionsAPIView:
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         for key in ('branchChoices', 'doctorChoices', 'weekDaysChoices', 'exceptionTypeChoices'):
             assert key in response.data, f"Missing key: {key}"
 
@@ -704,7 +713,8 @@ class TestDoctorSchedulesOptionsAPIView:
         """BranchToSerializerMixin validates branchId exists."""
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL), {'branchId': str(uuid.uuid4())})
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_unauthenticated_returns_401(self, api_client):
-        assert api_client.get(reverse(self.URL)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(reverse(self.URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
