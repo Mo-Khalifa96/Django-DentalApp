@@ -50,13 +50,13 @@ if settings.DEBUG:
                         return []
                 
                 for filter_name, filter_field in filterset_instance.filters.items():
-                    parameter = self._get_filter_parameter(filter_name, filter_field)
+                    parameter = self._get_filter_parameter(filter_name, filter_field, auto_schema)
                     if parameter:
                         parameters.append(parameter)
             
             return parameters
         
-        def _get_filter_parameter(self, filter_name, filter_field):
+        def _get_filter_parameter(self, filter_name, filter_field, auto_schema):
             '''Convert a django-filter field to an OpenAPI parameter'''
             
             #Handle ChoiceFilter with dynamic choices
@@ -75,7 +75,7 @@ if settings.DEBUG:
                 
                 #Extract choice values
                 enum_values = [str(choice[0]) for choice in choices if choice[0]] if choices else None
-                description = f'<b>Filter by `{filter_name}`</b>'
+                description = f'<br><b>Filter by `{filter_name}`</b>'
                 
                 # if choices and len(choices) <= 6:
                 #     choice_descriptions = [f'* `{choice[0]}` - {choice[1]}' for choice in choices if choice[0]]
@@ -121,35 +121,37 @@ if settings.DEBUG:
                     },
                     'description': lookup_descriptions.get(
                         lookup_expr,
-                        f'Filter by {field_name} using {lookup_expr}.'
+                        f'<br>Filter by {field_name} using {lookup_expr}.'
                     ),
                     'required': getattr(filter_field.field, 'required', False)
                 }
             
-            # #Handle char filters documentation
-            # if isinstance(filter_field, CharFilter):
-            #     lookup_expr = getattr(filter_field, 'lookup_expr', 'exact')
-            #     lookup_descriptions = {
-            #         'icontains': 'Case-insensitive substring match.',
-            #         'contains':  'Case-sensitive substring match.',
-            #         'exact':     'Exact match.',
-            #         'istartswith': 'Case-insensitive prefix match.',
-            #         'startswith':  'Case-sensitive prefix match.',
-            #     }
+            #Handle char filters documentation
+            if isinstance(filter_field, CharFilter):
+                view_name = auto_schema.view.__class__.__name__
+                if view_name not in CHAR_SEARCH_FIELDS.keys():
+                    lookup_expr = getattr(filter_field, 'lookup_expr', 'exact')
+                    lookup_descriptions = {
+                        'icontains': 'Case-insensitive substring match.',
+                        'contains':  'Case-sensitive substring match.',
+                        'exact':     'Exact match.',
+                        'istartswith': 'Case-insensitive prefix match.',
+                        'startswith':  'Case-sensitive prefix match.',
+                    }
 
-            #     description = (
-            #         f'<b>Filter by `{filter_name}`</b> — '
-            #         f'{lookup_descriptions.get(lookup_expr, f"Lookup: {lookup_expr}")}'
-            #     )
-            #     return {
-            #         'name': filter_name,
-            #         'in': 'query',
-            #         'schema': {
-            #             'type': 'string',
-            #         },
-            #         'description': description,
-            #         'required': getattr(filter_field.field, 'required', False)
-            #     }
+                    description = (
+                        f'<br><b>Filter by `{filter_name}`</b> — '
+                        f'{lookup_descriptions.get(lookup_expr, f"Lookup: {lookup_expr}")}'
+                    )
+                    return {
+                        'name': filter_name,
+                        'in': 'query',
+                        'schema': {
+                            'type': 'string',
+                        },
+                        'description': description,
+                        'required': getattr(filter_field.field, 'required', False)
+                    }
 
             #Handle boolean filters documentation
             if isinstance(filter_field, BooleanFilter):
@@ -160,7 +162,7 @@ if settings.DEBUG:
                     'schema': {
                         'type': 'boolean',
                     },
-                    'description': f'<b>Filter by `{filter_name}`</b>',
+                    'description': f'<br><b>Filter by `{filter_name}`</b>',
                     'required': getattr(filter_field.field, 'required', False)
                 }
 
@@ -174,23 +176,28 @@ if settings.DEBUG:
         
         def get_schema_operation_parameters(self, auto_schema, *args, **kwargs):
             '''Override to provide better search parameter description'''
-            if not hasattr(auto_schema.view, 'search_fields'):
-                return []
-            
-            #get fields from 'search_fields' on view
-            search_fields = getattr(auto_schema.view, 'search_fields', [])
-
-            #Handle char filters
             view_name = auto_schema.view.__class__.__name__
-            search_fields += [field for field in CHAR_SEARCH_FIELDS.get(view_name, []) if field not in search_fields]
+            if hasattr(auto_schema.view, 'search_fields'):
+            
+                #get fields from 'search_fields' on view
+                search_fields = getattr(auto_schema.view, 'search_fields', [])
 
-            #exit if no search fields are found
-            if not search_fields:
+                #exit if no search fields are found
+                if not search_fields:
+                    return []
+
+                #clean up field names
+                clean_fields = [field_map.get(field, field) for field in search_fields]
+                clean_fields = [f'<i>{field}</i>' for field in clean_fields]
+            
+            #Handle char filters with search fields
+            elif view_name in CHAR_SEARCH_FIELDS.keys():
+                search_fields = CHAR_SEARCH_FIELDS.get(view_name, [])
+                clean_fields = [f'<i>{field}</i>' for field in search_fields]
+            
+            #else, exit with empty list
+            else:
                 return []
-
-            #clean up field names
-            clean_fields = [field_map.get(field, field) for field in search_fields]
-            clean_fields = [f'<b>{field}</b>' for field in clean_fields]
 
             #convert to one full string
             search_fields_str = ', '.join(clean_fields)
@@ -202,7 +209,7 @@ if settings.DEBUG:
                 'name': filter_backend.search_param,
                 'in': 'query',
                 'schema': {'type': 'string'},
-                'description': f'Search by fields: {search_fields_str}',
+                'description': f'<br><b>Search by fields:</b> {search_fields_str}<br><br>',
                 'required': False
             }]
 
@@ -230,20 +237,20 @@ if settings.DEBUG:
                     'name': 'sortBy',
                     'in': 'query',
                     'schema': {'type': 'string', 'enum': clean_fields},
-                    'description': f'Sort by fields',
+                    'description': f'<br><b>Sort by fields</b>',
                     'required': False
                 },
                 {
                     'name': 'sortOrder',
                     'in': 'query',
                     'schema': {'type': 'string', 'enum': ['asc', 'desc']},
-                    'description': 'Sort direction: asc (default) or desc',
+                    'description': '<br><b>Sort direction</b>',
                     'required': False
                 }
             ]
 
 
-    #Define postprocessing hook 
+    #Define main postprocessing hook
     def response_structure_postprocessing_hook(result, generator, request, public):
         for path, methods in result['paths'].items():
             for method, operation in methods.items():
@@ -298,6 +305,7 @@ if settings.DEBUG:
         return result
 
 
+    #Define helper functions
     def _wrap_paginated_responses_with_metadata(path, result, operation):
         '''Hook to include userPermissions metadata in all paginated list responses'''
 

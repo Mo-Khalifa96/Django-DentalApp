@@ -25,7 +25,6 @@ class ListCreateVisitsAPIView(ListCreateAPIView):
     permission_classes = [PatientDataPermissions]
     ordering = ['-date', '-createdAt']  #default order fields 
     ordering_fields = ['date', 'type']   #sort by 'date' and visit 'type' 
-    search_fields = []  #placeholder for accurate documentation
     filterset_class = VisitsFilter  #filter by date / search by visit 'type' and 'procedures'
     filter_backends = [DjangoFilterBackend, SearchFilter, CustomOrderingFilter]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
