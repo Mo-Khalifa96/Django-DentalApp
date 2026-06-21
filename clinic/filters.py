@@ -11,7 +11,7 @@ from django_filters.rest_framework import (FilterSet, CharFilter, ChoiceFilter, 
 #Dashboard/appointments filter
 class DashboardAppointmentsFilter(FilterSet):   # BaseFilterSet
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
-    doctorId = ModelChoiceFilter(field_name='doctor', queryset=User.objects.all())
+    doctorId = ModelChoiceFilter(field_name='doctor', queryset=User.objects.filter(role__in=['admin', 'dentist', 'assistant']))
     status = ChoiceFilter(choices=Appointment.AppointmentStatusChoices.choices)
 
     class Meta:

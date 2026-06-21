@@ -36,8 +36,8 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
         recalculated_total = quantity * unitPrice
         if total and (round(recalculated_total,2) != round(total,2)\
          or abs(total - recalculated_total) > 0.01):
-            logger.error(f'\nFRONTEND BUG: Total amount miscalculated. '
-             f'Provided: {total}, Actual: {recalculated_total}\n')
+            logger.error(f'FRONTEND BUG: Total amount miscalculated. '
+             f'Provided: {total}, Actual: {recalculated_total}')
         #assign recalculated total anyway
         data['total'] = recalculated_total
 
@@ -138,8 +138,8 @@ class CreateInvoiceSerializer(InvoiceSerializer):
             recalculated_subtotal = Decimal(str(recalculated_subtotal))
             if round(subtotal,2) != round(recalculated_subtotal,2)\
              or abs(subtotal - recalculated_subtotal) > 0.01:
-                logger.error(f'\nFRONTEND BUG: Invoice subtotal provided does not match invoice items subtotal! '
-                             f'Subtotal provided: {subtotal} - Subtotal calculated: {recalculated_subtotal}\n')
+                logger.error(f'FRONTEND BUG: Invoice subtotal provided does not match invoice items subtotal! '
+                             f'Subtotal provided: {subtotal} - Subtotal calculated: {recalculated_subtotal}')
             
             #store recalculated subtotal anyway
             subtotal = recalculated_subtotal
@@ -153,12 +153,12 @@ class CreateInvoiceSerializer(InvoiceSerializer):
         if tax or discount:
             if total and (round(total,2) != round(recalculated_total,2)\
              or abs(total - recalculated_total) > 0.01):
-                logger.error(f'\nFRONTEND BUG: Invoice total amount miscalculated. '
-                             f'Provided: {total}, Actual: {recalculated_total}\n')
+                logger.error(f'FRONTEND BUG: Invoice total amount miscalculated. '
+                             f'Provided: {total}, Actual: {recalculated_total}')
         else:
             if total and round(subtotal,2) != round(total,2):
-                logger.error(f'\nFRONTEND BUG: Invoice total-subtotal mismatch. '
-                             f'Total amount: {total}, Subtotal amount: {subtotal}\n')
+                logger.error(f'FRONTEND BUG: Invoice total-subtotal mismatch. '
+                             f'Total amount: {total}, Subtotal amount: {subtotal}')
                 
         #assign the recalculated total anyway
         total = recalculated_total
@@ -233,8 +233,8 @@ class UpdateInvoiceSerializer(CreateInvoiceSerializer):    #PUT requests only
             recalculated_subtotal = Decimal(str(recalculated_subtotal))
             if round(subtotal,2) != round(recalculated_subtotal,2)\
              or abs(subtotal - recalculated_subtotal) > 0.01:
-                logger.error(f'\nFRONTEND BUG: Invoice subtotal provided does not match invoice items subtotal! '
-                             f'Subtotal provided: {subtotal} - Subtotal calculated: {recalculated_subtotal}\n')
+                logger.error(f'FRONTEND BUG: Invoice subtotal provided does not match invoice items subtotal! '
+                             f'Subtotal provided: {subtotal} - Subtotal calculated: {recalculated_subtotal}')
             
             #store recalculated subtotal anyway
             subtotal = recalculated_subtotal
@@ -248,12 +248,12 @@ class UpdateInvoiceSerializer(CreateInvoiceSerializer):    #PUT requests only
         if tax or discount:
             if total and (round(total,2) != round(recalculated_total,2)\
              or abs(total - recalculated_total) > 0.01):
-                logger.error(f'\nFRONTEND BUG: Invoice total amount miscalculated. '
-                             f'Provided: {total}, Actual: {recalculated_total}\n')
+                logger.error(f'FRONTEND BUG: Invoice total amount miscalculated. '
+                             f'Provided: {total}, Actual: {recalculated_total}')
         else:
             if total and round(subtotal,2) != round(total,2):
-                logger.error(f'\nFRONTEND BUG: Invoice total-subtotal mismatch. '
-                             f'Total amount: {total}, Subtotal amount: {subtotal}\n')
+                logger.error(f'FRONTEND BUG: Invoice total-subtotal mismatch. '
+                             f'Total amount: {total}, Subtotal amount: {subtotal}')
                 
         #assign the recalculated total anyway
         total = recalculated_total

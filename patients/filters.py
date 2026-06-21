@@ -60,8 +60,8 @@ class VisitsFilter(FilterSet):
 #Appointments filter 
 class AppointmentsFilter(BaseFilterSet):
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
+    doctorId = ModelChoiceFilter(field_name='doctor', queryset=User.objects.filter(role__in=['admin', 'dentist', 'assistant']))
     status = ChoiceFilter(choices=Appointment.AppointmentStatusChoices.choices)
-    doctorName = ChoiceFilter(field_name='doctor__name')
     date = DateFilter(field_name='date', lookup_expr='exact')
     startDate = DateFilter(field_name='date', lookup_expr='gte')
     endDate = DateFilter(field_name='date', lookup_expr='lte')
@@ -70,21 +70,21 @@ class AppointmentsFilter(BaseFilterSet):
         model = Appointment
         fields = []
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        #get branch filter 
-        branch_filter = self.get_branch_filter()
-        if branch_filter is None:
-            self.filters['doctorName'].field.choices = []
-            return
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     #get branch filter 
+    #     branch_filter = self.get_branch_filter()
+    #     if branch_filter is None:
+    #         self.filters['doctorName'].field.choices = []
+    #         return
 
-        #filter by branch (if provided)
-        #Get doctor names list
-        doctor_names = User.objects.filter(**branch_filter, role__in=['dentist', 'admin'])\
-            .values_list('name', flat=True).distinct().order_by('name')
+    #     #filter by branch (if provided)
+    #     #Get doctor names list
+    #     doctor_names = User.objects.filter(**branch_filter, role__in=['dentist', 'admin'])\
+    #         .values_list('name', flat=True).distinct().order_by('name')
      
-        #populated filter fields with the obtained choices
-        self.filters['doctorName'].field.choices = [(cat, cat) for cat in doctor_names if cat]        
+    #     #populated filter fields with the obtained choices
+    #     self.filters['doctorName'].field.choices = [(cat, cat) for cat in doctor_names if cat]        
 
 
 #Treatment plans filter 

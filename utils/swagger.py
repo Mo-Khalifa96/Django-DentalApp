@@ -75,7 +75,7 @@ if settings.DEBUG:
                 
                 #Extract choice values
                 enum_values = [str(choice[0]) for choice in choices if choice[0]] if choices else None
-                description = f'<br><b>Filter by `{filter_name}`</b>'
+                description = f'<b>Filter by `{filter_name}`</b>'
                 
                 # if choices and len(choices) <= 6:
                 #     choice_descriptions = [f'* `{choice[0]}` - {choice[1]}' for choice in choices if choice[0]]
@@ -102,13 +102,13 @@ if settings.DEBUG:
                 field_name = getattr(filter_field, 'field_name', filter_name)
 
                 lookup_descriptions = {
-                    'gte': f'<br>Filter by {field_name} on or after this date.',
-                    'lte': f'<br>Filter by {field_name} on or before this date.',
-                    'gt': f'<br>Filter by {field_name} after this date.',
-                    'lt': f'<br>Filter by {field_name} before this date.',
-                    'exact': (f'<br>Filter by exact {field_name} date.' 
+                    'gte': f'Filter by {field_name} on or after this date.',
+                    'lte': f'Filter by {field_name} on or before this date.',
+                    'gt': f'Filter by {field_name} after this date.',
+                    'lt': f'Filter by {field_name} before this date.',
+                    'exact': (f'Filter by exact `{field_name}` date.' 
                                if not field_name.lower().endswith('date')
-                               else '<br>Filter by exact date.'),
+                               else 'Filter by exact date.'),
                 }
 
                 return {
@@ -121,7 +121,7 @@ if settings.DEBUG:
                     },
                     'description': lookup_descriptions.get(
                         lookup_expr,
-                        f'<br>Filter by {field_name} using {lookup_expr}.'
+                        f'Filter by `{field_name}` using <i>{lookup_expr}</i>.'
                     ),
                     'required': getattr(filter_field.field, 'required', False)
                 }
@@ -140,7 +140,7 @@ if settings.DEBUG:
                     }
 
                     description = (
-                        f'<br><b>Filter by `{filter_name}`</b> — '
+                        f'<b>Filter by `{filter_name}`</b> — '
                         f'{lookup_descriptions.get(lookup_expr, f"Lookup: {lookup_expr}")}'
                     )
                     return {
@@ -162,7 +162,7 @@ if settings.DEBUG:
                     'schema': {
                         'type': 'boolean',
                     },
-                    'description': f'<br><b>Filter by `{filter_name}`</b>',
+                    'description': f'<b>Filter by `{filter_name}`</b>',
                     'required': getattr(filter_field.field, 'required', False)
                 }
 
@@ -209,7 +209,7 @@ if settings.DEBUG:
                 'name': filter_backend.search_param,
                 'in': 'query',
                 'schema': {'type': 'string'},
-                'description': f'<br><b>Search by fields:</b> {search_fields_str}<br><br>',
+                'description': f'<b>Search by fields:</b> {search_fields_str}',
                 'required': False
             }]
 
@@ -237,14 +237,14 @@ if settings.DEBUG:
                     'name': 'sortBy',
                     'in': 'query',
                     'schema': {'type': 'string', 'enum': clean_fields},
-                    'description': f'<br><b>Sort by fields</b>',
+                    'description': f'<b>Sort by fields</b>',
                     'required': False
                 },
                 {
                     'name': 'sortOrder',
                     'in': 'query',
                     'schema': {'type': 'string', 'enum': ['asc', 'desc']},
-                    'description': '<br><b>Sort direction</b>',
+                    'description': '<b>Sort direction</b>',
                     'required': False
                 }
             ]

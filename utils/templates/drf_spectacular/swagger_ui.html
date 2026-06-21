@@ -24,10 +24,23 @@
       margin: 0;
     }
 
+    .swagger-ui .parameters-col_name {
+      padding-bottom: 12.5px !important;
+      padding-right: 5px !important;
+    }
+    .swagger-ui .parameters-col_description {
+      padding-bottom: 12.5px !important;
+      padding-left: 5px !important;
+    }
+
+    .swagger-ui .parameters-col_description:not(:has(.parameter__enum)) .renderedMarkdown p {
+      padding-bottom: 5px !important;
+    }
+
     .swagger-ui .renderedMarkdown code {
       color: #3d5fbd !important;
       padding: 1.75px 5px !important;
-  }
+    }
 
     /* Dark mode styles -- only active when .dark-mode is on body */
     body.dark-mode {

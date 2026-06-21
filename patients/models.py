@@ -13,7 +13,7 @@ from patients.validators import (validate_phone_number, validate_country_code,
                              file_validators, validate_toothNumber, FDI_PERMANENT)
 
 
-#Patient manager (allows soft deleting)
+#Patient manager
 class PatientsManager(models.Manager):
     #Overriding get_query to filter out soft-deleted patients's data
     def get_queryset(self):

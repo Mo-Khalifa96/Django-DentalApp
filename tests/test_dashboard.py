@@ -389,12 +389,6 @@ class TestDashboardStatsAPI:
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.get(reverse(self.URL), {'branchId': str(branch.id)})
 
-        print('\n\n'+'='*50)
-        print('status code:', response.status_code)
-        print('='*50)
-        print('response data:', response.data)
-        print('='*50+'\n\n')
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
 
 

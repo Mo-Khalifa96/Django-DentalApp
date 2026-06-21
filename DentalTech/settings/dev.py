@@ -7,6 +7,9 @@ ENVIRONMENT = os.getenv('ENVIRONMENT', 'local')
 if ENVIRONMENT == 'local':
     SITE_PROTOCOL = 'http'
     SITE_DOMAIN = 'localhost:8000'
+    TIME_ZONE = 'Africa/Cairo'
+    DEBUG_PROPAGATE_EXCEPTIONS = True  #propogate full exceptions when in local dev
+
 elif ENVIRONMENT == 'development':
     SITE_PROTOCOL = os.getenv('SITE_PROTOCOL')
     SITE_DOMAIN = os.getenv('SITE_DOMAIN')
@@ -15,7 +18,7 @@ elif ENVIRONMENT == 'development':
 #Development Security Key
 SECRET_KEY = os.environ['DEV_SECRET_KEY']
 
-#DEBUG mode enabled 
+#DEBUG mode enabled
 DEBUG = True
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')

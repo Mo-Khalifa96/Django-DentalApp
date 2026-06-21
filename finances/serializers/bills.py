@@ -130,8 +130,8 @@ class CreateBillSerializer(ValidateBranchMixin, serializers.ModelSerializer):
         if totalAmount and (
          round(totalAmount,2) != round(recalculated_total,2)
          or abs(totalAmount - recalculated_total) > 0.01):
-            logger.error(f'\nFRONTEND BUG: Bill total amount miscalculated. '
-             f'Provided: {totalAmount}, Actual: {recalculated_total}\n')
+            logger.error(f'FRONTEND BUG: Bill total amount miscalculated. '
+             f'Provided: {totalAmount}, Actual: {recalculated_total}')
         #assign recalculated total anyway
         data['totalAmount'] = recalculated_total
 
@@ -223,8 +223,8 @@ class UpdateBillSerializer(serializers.ModelSerializer):
         if 'totalAmount' in data and (
          round(totalAmount,2) != round(recalculated_total,2)
          or abs(totalAmount - recalculated_total) > 0.01):
-            logger.error(f'\nFRONTEND BUG: Bill total amount miscalculated. '
-             f'Provided: {totalAmount}, Actual: {recalculated_total}\n')
+            logger.error(f'FRONTEND BUG: Bill total amount miscalculated. '
+             f'Provided: {totalAmount}, Actual: {recalculated_total}')
         #assign recalculated total anyway
         data['totalAmount'] = recalculated_total
 

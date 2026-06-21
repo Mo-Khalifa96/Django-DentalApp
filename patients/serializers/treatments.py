@@ -60,8 +60,8 @@ class CreateTreatmentPlanSerializer(TreatmentPlanSerializer):
         total_from_prices = Decimal(str(total_from_prices))
         if (round(total_from_prices,2) != round(totalCost,2)
          or abs(total_from_prices - totalCost) > 0.01):
-            logger.error(f'\nFRONTEND BUG: Total cost provided does not match treatment prices total! '
-                         f'Total provided: {totalCost} - Total calculated: {total_from_prices}\n')
+            logger.error(f'FRONTEND BUG: Total cost provided does not match treatment prices total! '
+                         f'Total provided: {totalCost} - Total calculated: {total_from_prices}')
             data['totalCost'] = total_from_prices
 
         # #validate number of sessions
@@ -135,8 +135,8 @@ class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
       
             if (round(totalCost_new,2) != round(totalCost,2)
              or abs(totalCost_new - totalCost) > 0.01):
-                logger.error(f'\nFRONTEND BUG: Total cost provided does not match treatment prices total! '
-                             f'Total provided: {totalCost} - Total calculated: {totalCost_new}\n')
+                logger.error(f'FRONTEND BUG: Total cost provided does not match treatment prices total! '
+                             f'Total provided: {totalCost} - Total calculated: {totalCost_new}')
             data['totalCost'] = totalCost_new
 
         #validate number of sessions

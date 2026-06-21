@@ -19,8 +19,8 @@ class UsersFilter(FilterSet):
 
 #Doctor schedules filter 
 class DoctorSchedulesFilter(FilterSet):
-    doctorId = ModelChoiceFilter(field_name='doctor', queryset=User.objects.all())
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
+    doctorId = ModelChoiceFilter(field_name='doctor', queryset=User.objects.filter(role__in=['admin', 'dentist', 'assistant']))
     exceptionDate = DateFilter(field_name='exceptions__date', lookup_expr='exact')
     exceptionType = ChoiceFilter(field_name='exceptions__type', 
         choices=DoctorScheduleException.ExceptionTypeChoices.choices
