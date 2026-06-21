@@ -102,13 +102,13 @@ if settings.DEBUG:
                 field_name = getattr(filter_field, 'field_name', filter_name)
 
                 lookup_descriptions = {
-                    'gte': f'Filter by {field_name} on or after this date.',
-                    'lte': f'Filter by {field_name} on or before this date.',
-                    'gt': f'Filter by {field_name} after this date.',
-                    'lt': f'Filter by {field_name} before this date.',
-                    'exact': (f'Filter by exact {field_name} date.' 
+                    'gte': f'<br>Filter by {field_name} on or after this date.',
+                    'lte': f'<br>Filter by {field_name} on or before this date.',
+                    'gt': f'<br>Filter by {field_name} after this date.',
+                    'lt': f'<br>Filter by {field_name} before this date.',
+                    'exact': (f'<br>Filter by exact {field_name} date.' 
                                if not field_name.lower().endswith('date')
-                               else 'Filter by exact date.'),
+                               else '<br>Filter by exact date.'),
                 }
 
                 return {
