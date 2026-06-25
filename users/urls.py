@@ -2,12 +2,12 @@ from django.urls import path
 from users.views.auth import (TokenObtainPairView, TokenRefreshView, TokenVerifyView, 
                               TokenBlacklistView,  ChangePasswordAPIView, ResetEmailAPIView, 
                               ResetPasswordAPIView)
-from users.views.users import (RetrieveUserProfileAPIView, ListCreateUserAPIView,
-                              RetrieveUpdateDeleteUserAPIView, RetrieveUsersOptionsAPIView,
-                              SetActiveBranchAPIView, DefaultRolesAPIView, PermissionsAPIView)
 from users.views.doctor_schedules import (ListDoctorsSchedulesAPIView, CRUD_DoctorScheduleAPIView,
                                           CreateScheduleExceptionAPIView, DeleteScheduleExceptionAPIView,
                                           RetrieveDoctorSchedulesOptionsAPIView)
+from users.views.users import (RetrieveUserProfileAPIView, ListCreateUserAPIView,
+                              RetrieveUpdateDeleteUserAPIView, RetrieveUsersOptionsAPIView,
+                              SetActiveBranchAPIView, UserPreferencesAPIView, DefaultRolesAPIView, PermissionsAPIView)
 
 
 #url patterns
@@ -25,6 +25,11 @@ urlpatterns = [
     
     #User profile url
     path('auth/me/', RetrieveUserProfileAPIView.as_view(), name='view_user'),
+
+    #User preferences url
+    path('auth/me/preferences/', UserPreferencesAPIView.as_view(
+            http_method_names=['get', 'patch', 'options']
+        ), name='create_update_user_preferences'),
 
     #User accounts urls
     path('users/', ListCreateUserAPIView.as_view(), name='list_create_users'),

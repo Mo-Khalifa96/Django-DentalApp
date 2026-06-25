@@ -3,6 +3,7 @@ from users.models import User
 from clinic.models import Branch
 from users.filters import UsersFilter
 from users.permissions import AdminOnly
+from utils.validators import validate_uuid
 from rest_framework import status, generics 
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -15,7 +16,7 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
 from users.serializers.users import (CreateUserSerializer, ListUsersSerializer, RetrieveUserSerializer, 
                                      UpdateUserSerializer, SetActiveBranchSerializer, UsersOptionsSerializer,
-                                     DefaultRolesSerializer, PermissionsSerializer)
+                                     UserPreferencesSerializer, DefaultRolesSerializer, PermissionsSerializer)
 
 
 
@@ -23,7 +24,8 @@ from users.serializers.users import (CreateUserSerializer, ListUsersSerializer, 
 #Create new user API view
 @extend_schema(tags=['Users'])
 class ListCreateUserAPIView(ListCreateAPIView):
-    queryset = User.objects.select_related('branch').all()
+    queryset = User.objects.select_related('branch')\
+        .prefetch_related('branches').all()
     permission_classes = [AdminOnly]
     ordering = ['branch__name', 'name', '-createdAt']
     ordering_fields = ['name']
@@ -41,7 +43,8 @@ class ListCreateUserAPIView(ListCreateAPIView):
 #Retrieve user profile API view 
 @extend_schema(tags=['Users'])
 class RetrieveUserProfileAPIView(RetrieveAPIView):  #connects to /auth/me/ only
-    queryset = User.objects.all()
+    queryset = User.objects.select_related('branch')\
+        .prefetch_related('branches').all()
     serializer_class = RetrieveUserSerializer
     permission_classes = [IsAuthenticated]
     
@@ -52,7 +55,8 @@ class RetrieveUserProfileAPIView(RetrieveAPIView):  #connects to /auth/me/ only
 #Retrieve/Update/Delete user API view 
 @extend_schema(tags=['Users'])
 class RetrieveUpdateDeleteUserAPIView(RetrieveUpdateDeleteAPIView):
-    queryset = User.objects.select_related('branch').all()
+    queryset = User.objects.select_related('branch')\
+        .prefetch_related('branches').all()
     lookup_url_kwarg = 'id'
     lookup_field = 'id'
 
@@ -97,11 +101,25 @@ class RetrieveUsersOptionsAPIView(generics.GenericAPIView):
 
 ########################
 
+#User preferences API views 
+@extend_schema(tags=['Users'])
+class UserPreferencesAPIView(RetrieveUpdateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserPreferencesSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_object(self):
+        return self.request.user
+
+
+########################
+
 
 #Set active branch API view 
 @extend_schema(tags=['Users'])
 class SetActiveBranchAPIView(generics.GenericAPIView):
-    queryset = User.objects.all()
+    queryset = User.objects.select_related('branch')\
+        .prefetch_related('branches').all()
     serializer_class = SetActiveBranchSerializer
     permission_classes = [IsAuthenticated]
 
@@ -112,7 +130,7 @@ class SetActiveBranchAPIView(generics.GenericAPIView):
             raise ValidationError({'branchId': _('Branch ID is required.')})
 
         #Get branch ID from request data
-        branchId = request.data.get('branchId')
+        branchId = validate_uuid(request.data.get('branchId'))
         if branchId in (None, ''):
             active_branch = None
         else:
@@ -131,7 +149,8 @@ class SetActiveBranchAPIView(generics.GenericAPIView):
 #Proposed alternative for setting for setting only (cannot set branch to None)
 @extend_schema(tags=['Users'])
 class SetActiveBranchAPIView_SetOnly(generics.GenericAPIView):
-    queryset = User.objects.all()
+    queryset = User.objects.select_related('branch')\
+        .prefetch_related('branches').all()
     serializer_class = SetActiveBranchSerializer
     permission_classes = [IsAuthenticated]
 
@@ -160,10 +179,7 @@ class SetActiveBranchAPIView_SetOnly(generics.GenericAPIView):
 
 
 #Default roles API view
-@extend_schema(
-    tags=['Roles and Permissions'],
-    responses={200: DefaultRolesSerializer(many=True)}
-)
+@extend_schema(tags=['Roles and Permissions'])
 class DefaultRolesAPIView(GenericAPIView):
     queryset = User.objects.all()
     pagination_class = None
@@ -213,10 +229,7 @@ class DefaultRolesAPIView(GenericAPIView):
 
 
 #Permissions API view
-@extend_schema(
-    tags=['Roles and Permissions'],
-    responses={200: PermissionsSerializer(many=True)}
-)
+@extend_schema(tags=['Roles and Permissions'])
 class PermissionsAPIView(GenericAPIView):
     queryset = User.objects.all()
     pagination_class = None

@@ -29,14 +29,14 @@ class ListCreateTransactionsAPIView(FilterListCreateAPIView):
     permission_classes = [PatientDataPermissions]
     ordering = ['branch__name', '-date', 'patientName']
     ordering_fields = ['patientName', 'branchName', 'date', 'amount', 'createdBy']
-    search_fields = ['patientName', 'branchName', 'notes']
+    search_fields = ['patientName', 'branchName', 'note']
     filterset_class = TransactionsFilter
     filter_backends = [DjangoFilterBackend, SearchFilter, CustomOrderingFilter]
 
     def initial(self, request, *args, **kwargs):
         #add `createdBy` and `billDescription` to admin's search fields
         if getattr(request.user, 'role', None) == 'admin':
-            self.search_fields = ['patientName', 'branchName', 'billDescription', 'notes', 'createdBy']
+            self.search_fields = ['patientName', 'branchName', 'billDescription', 'note', 'createdBy']
         #determine required permission
         self.required_permission = get_required_permission('transactions', request, self)
         super().initial(request, *args, **kwargs)

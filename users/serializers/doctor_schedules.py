@@ -75,6 +75,10 @@ class DoctorScheduleSerializer(UserPermissionsMixin, serializers.ModelSerializer
                 ) for exception in exceptions
             ])
         
+        #update user's working days -- assuming it's an admin/dentist
+        schedule.doctor.workingDays = schedule.workingDays
+        schedule.doctor.save(update_fields=['workingDays', 'updatedAt'])
+        
         return schedule  #return created schedule instance
 
     @transaction.atomic
@@ -105,6 +109,13 @@ class DoctorScheduleSerializer(UserPermissionsMixin, serializers.ModelSerializer
             setattr(instance, field, value)  #i.e. instance.field = value
 
         instance.save(update_fields=list(validated_data.keys()))
+
+        #update user's working days -- assuming it's an admin/dentist
+        if validated_data.get('workingDays', []):
+            doctor = instance.doctor
+            doctor.workingDays = instance.workingDays
+            doctor.save(update_fields=['workingDays', 'updatedAt'])
+        
         return instance
 
 

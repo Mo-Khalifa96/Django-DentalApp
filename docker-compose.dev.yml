@@ -12,7 +12,6 @@ services:
       SERVICE: web
       ENVIRONMENT: development
       IS_DOCKERIZED: True
-      # ENABLE_SWAGGER: True
       DJANGO_SETTINGS_MODULE: DentalTech.settings.dev
     ports: []  #nginx handles traffic, no direct port exposure
     volumes:

@@ -71,6 +71,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         ASSISTANT = 'assistant', _('Assistant')
         ACCOUNTANT = 'accountant', _('Accountant')
 
+    class ThemeChoices(models.TextChoices):
+        LIGHT = 'light', _('Light')
+        DARK = 'dark', _('Dark')
+
+    class LanguageChoices(models.TextChoices):
+        EN = 'en', _('English')
+        AR = 'ar', _('Arabic')
+
     #User account fields
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
@@ -85,6 +93,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     #Many-to-Many relationship to branch for allowing multiple branches per user
     branches = models.ManyToManyField('clinic.Branch', related_name='related_users', db_index=True)
+
+    #user preferences fields
+    theme = models.CharField(max_length=10, choices=ThemeChoices.choices, default=ThemeChoices.LIGHT)
+    language = models.CharField(max_length=10, choices=LanguageChoices.choices, default=LanguageChoices.EN)
+    workingDays = ArrayField(models.IntegerField(choices=WorkingDaysLookUp.choices), default=list)
 
     #other fields 
     isActive = models.BooleanField(default=True)
@@ -289,7 +302,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         'dentist': [
             perm for perm in USER_PERMISSIONS 
             if perm not in ('view.financialAnalytics', 'view.waitingRoom', 
-                            'send.whatsappMessage', 'view.settings')
+                            'send.whatsappMessage')
         ], 
 
         #NOTE - view.patientDetail extends to detal-chart detail view
@@ -301,7 +314,7 @@ class User(AbstractBaseUser, PermissionsMixin):
             'update.appointment', 'delete.appointment', 'view.recalls', 'create.recall', 
             'update.recall', 'delete.recall', 'send.whatsappMessage', 'create.bill', 
             'create.transaction', 'create.invoice', 'view.doctorSchedules', 
-            'view.clinicalAnalytics', 'view.preferences'
+            'view.clinicalAnalytics', 'view.settings', 'view.preferences'
         ],
         
         'assistant': [  
@@ -309,7 +322,7 @@ class User(AbstractBaseUser, PermissionsMixin):
             'update.inventory', 'delete.inventory', 'view.labs', 'view.labOrders', 'view.labOrderDetail', 
             'create.labOrder', 'update.labOrder', 'view.sterilizationLogs', 'create.sterilizationLog', 
             'update.sterilizationLog', 'view.doctorSchedules', 'view.clinicalAnalytics', 
-            'view.preferences'
+            'view.settings', 'view.preferences'
         ],
 
         'accountant': [
@@ -317,7 +330,8 @@ class User(AbstractBaseUser, PermissionsMixin):
             'view.transactions', 'create.transaction', 'delete.transaction',
             'view.invoices', 'create.invoice', 'update.invoice', 'delete.invoice',
             'view.labOrders', 'view.labOrderDetail', 'view.doctorSchedules', 
-            'view.clinicalAnalytics', 'view.financialAnalytics', 'view.preferences'
+            'view.clinicalAnalytics', 'view.financialAnalytics', 'view.settings', 
+            'view.preferences'
         ]
     }
 
@@ -343,6 +357,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         #Normalize email before saving 
         if self.email:
             self.email = self.email.strip().lower()
+
+        #Auto-create working days
+        if self._state.adding:
+            self.workingDays = [0, 1, 2, 3, 4, 6]
 
         #Set default permissions based on role if userPermissions is empty
         if self._state.adding and not self.userPermissions and self.role:

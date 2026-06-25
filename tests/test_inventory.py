@@ -81,7 +81,7 @@ class TestListCreateInventoryAPIView:
         b1 = branch_factory()
         b2 = branch_factory()
         dentist_user.branches.set([b1])
-        dentist_user.userPermissions.append('view.inventory')
+        dentist_user.userPermissions = list(dentist_user.userPermissions) + ['view.inventory']
         dentist_user.save(update_fields=['userPermissions'])
 
         item_own   = inventory_factory(branch=b1)

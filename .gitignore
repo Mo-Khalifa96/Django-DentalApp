@@ -4,10 +4,12 @@
 __pycache__/
 .pytest_cache/
 pytest.ini
+.cache
 .vscode/
 .seeded
 /.Markdown/
 **/.DS_Store
+*.toml
 *.pyc
 *.pem
 *.key
@@ -22,6 +24,7 @@ pytest.ini
 /backups/**
 backup_*.sql
 backup_*.sql.gz
+/tests/schemathesis/
 .aws/
 aws-credentials.env
 pip-wheel-metadata/

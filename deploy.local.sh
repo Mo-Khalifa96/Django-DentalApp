@@ -21,7 +21,7 @@ fi
 
 #Local development stack (no SSL/nginx by default)
 echo "Starting local development stack..."
-docker compose -f docker-compose.local.yml --profile local up -d postgres web qcluster smtp4dev tests
+docker compose -f docker-compose.local.yml --profile local up -d postgres web qcluster smtp4dev tests profiler
 
 echo "Local deployment started. Access at http://localhost:8000"
 

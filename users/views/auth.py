@@ -1,4 +1,5 @@
 from utils.base_views import *
+from users.models import User
 from django_q.tasks import async_task
 from users.docs import login_view_schema
 from rest_framework import status, generics 

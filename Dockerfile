@@ -84,8 +84,8 @@ RUN chmod +x /usr/local/bin/permissions.sh
 #Copy full app
 COPY . /app/
 
-#Create backup and logs directories
-RUN mkdir -p /logs    #/backups /logs
+#Create logs and cache directories
+RUN mkdir -p /logs /.cache
 
 #Expose port
 EXPOSE 8000

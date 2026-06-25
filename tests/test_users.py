@@ -1,5 +1,6 @@
 import uuid
 import pytest
+from django.conf import settings
 from .utils import render_error
 from django.urls import reverse
 from rest_framework import status
@@ -261,7 +262,8 @@ class TestRetrieveUpdateDeleteUserAPIView:
         assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     # ── UPDATE – role & permissions ───────────────────────────────────────────
-
+    
+    # @pytest.mark.skipif(settings.ENABLE_SILK, reason='Silk bug when processing array fields.')
     def test_admin_can_update_role_and_permissions(
         self, api_client, admin_user, receptionist_user
     ):
@@ -269,7 +271,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
         payload = {
             'name': 'Updated Receptionist',
             'email': 'updated_receptionist@test.com',
-            'role': 'Dentist',
+            'role': 'dentist',
             'permissions': {
                 'view.patients': True,
                 'view.patientDetail': True,
@@ -280,6 +282,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
                 'create.visit': True,
             },
         }
+
         response = api_client.patch(
             self._url(receptionist_user.id), payload, format='json'
         )
@@ -287,6 +290,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
         assert response.status_code == status.HTTP_200_OK or render_error(response)
 
         receptionist_user.refresh_from_db()
+
         assert receptionist_user.name == 'Updated Receptionist'
         assert receptionist_user.email == 'updated_receptionist@test.com'
         assert receptionist_user.role == 'dentist'
@@ -318,6 +322,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
         assert receptionist_user.role == original_role          # role unchanged
         assert receptionist_user.userPermissions == original_perms  # permissions unchanged
 
+    # @pytest.mark.skipif(settings.ENABLE_SILK, reason='Silk bug when processing array fields.')
     def test_admin_can_add_permission_to_user(
         self, api_client, admin_user, receptionist_user
     ):
@@ -341,7 +346,7 @@ class TestRetrieveUpdateDeleteUserAPIView:
         """Setting a permission to False removes it from the user's permission list."""
         target_perm = 'view.patients'
         if target_perm not in receptionist_user.userPermissions:
-            receptionist_user.userPermissions.append(target_perm)
+            receptionist_user.userPermissions = list(receptionist_user.userPermissions) + [target_perm]
             receptionist_user.save(update_fields=['userPermissions'])
 
         api_client.force_authenticate(user=admin_user)

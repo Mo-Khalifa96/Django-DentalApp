@@ -1,17 +1,18 @@
 from users.models import User
-from clinic.models import Branch
 from urllib.parse import urlparse
 from django.db import transaction
 from rest_framework import serializers
 from utils.mixins import UserPermissionsMixin
 from django.core.exceptions import ValidationError
+from clinic.models import Branch, WorkingDaysLookUp
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 from services.translation.serializers import TranslatedChoiceField
 from django.contrib.auth.password_validation import validate_password
 from utils.swagger_utils import extend_schema_serializer, OpenApiExample
 from users.docs import (permissions_field_schema, retrieve_user_schema, 
-                        update_user_schema, users_options_schema)
+                        update_user_schema, users_options_schema, default_roles_schema, 
+                        permissions_serializer_schema)
 
 
 #USERS SERIALIZERS
@@ -224,6 +225,10 @@ class UpdateUserSerializer(serializers.ModelSerializer):
         newPassword = validated_data.pop('newPassword', None)
         assigned_permissions = validated_data.pop('permissions', None)
         
+        #save user role before and after for later
+        user_role_before = instance.role
+        user_role_after = validated_data.get('role')
+        
         #flag and handle branches
         delete_branches = (self.context.get('request').method == 'PUT' and 
                            'branches' in validated_data and 
@@ -268,6 +273,11 @@ class UpdateUserSerializer(serializers.ModelSerializer):
                 if 'userPermissions' not in update_fields:
                     update_fields.append('userPermissions')
         
+        #handle permission assignment with role changes (and no permissions provided)
+        elif assigned_permissions is None and user_role_after and (user_role_before != user_role_after):
+            instance.userPermissions = User.DEFAULT_ROLE_PERMISSIONS.get(user_role_after)
+            update_fields.append('userPermissions')
+        
         #update user 
         update_fields.append('updatedAt')
         instance.save(update_fields=update_fields)
@@ -293,6 +303,9 @@ class UpdateUserSerializer(serializers.ModelSerializer):
 class UsersOptionsSerializer(serializers.Serializer):
     branchChoices = serializers.SerializerMethodField()
     roleChoices = serializers.SerializerMethodField()
+    weekDaysChoices = serializers.SerializerMethodField()
+    themeChoices = serializers.SerializerMethodField()
+    languageChoices = serializers.SerializerMethodField()
     
     #Get branch choices (with id and name)
     @extend_schema_field(
@@ -315,6 +328,52 @@ class UsersOptionsSerializer(serializers.Serializer):
             {'value': choice.value, 'label': str(choice.label)}
             for choice in User.UserRoles
         ]
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.DictField(child=serializers.CharField())
+        ))
+    def get_weekDaysChoices(self, obj):
+        return [
+            {'value': choice.value, 'label': str(choice.label)}
+             for choice in WorkingDaysLookUp
+        ]
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.DictField(child=serializers.CharField())
+        ))
+    def get_themeChoices(self, obj):
+        return [
+            {'value': choice.value, 'label': str(choice.label)}
+             for choice in User.ThemeChoices
+        ]
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.DictField(child=serializers.CharField())
+        ))
+    def get_languageChoices(self, obj):
+        return [
+            {'value': choice.value, 'label': str(choice.label)}
+             for choice in User.LanguageChoices
+        ]
+
+
+#########################
+
+
+#User preferences serializer
+class UserPreferencesSerializer(serializers.ModelSerializer):
+    theme = TranslatedChoiceField(choices=User.ThemeChoices.choices, required=False, allow_blank=False, allow_null=False)
+    language = TranslatedChoiceField(choices=User.LanguageChoices.choices, required=False, allow_blank=False, allow_null=False)
+    workingDays = serializers.ListField(child=TranslatedChoiceField(choices=WorkingDaysLookUp.choices), 
+                                     required=False, allow_null=False, allow_empty=True)
+    
+    class Meta:
+        model = User 
+        fields = ['id', 'theme', 'language', 'workingDays']
+        read_only_fields = ['id']
 
 
 #########################
@@ -340,7 +399,8 @@ class SetActiveBranchSerializer(serializers.Serializer):
 
 
 #Roles and Permissions Serializers 
-#Roles serializer 
+#Roles serializer
+@default_roles_schema
 class DefaultRolesSerializer(serializers.Serializer):
     role = serializers.CharField()
     label = serializers.CharField()
@@ -349,6 +409,7 @@ class DefaultRolesSerializer(serializers.Serializer):
 
 
 #Permissions serializer
+@permissions_serializer_schema
 class PermissionsSerializer(serializers.Serializer):
     key = serializers.CharField()
     label = serializers.CharField()

@@ -467,7 +467,8 @@ class TestRetrieveUpdateDeletePatientAPIView:
         branch = branch_factory()
         receptionist = user_factory(role='receptionist')
         receptionist.branches.set([branch])
-        receptionist.userPermissions.append('delete.patient')
+        #assign new permission
+        receptionist.userPermissions = list(receptionist.userPermissions) + ['delete.patient']
         receptionist.save(update_fields=['userPermissions'])
 
         patient = patient_factory(branch=branch)

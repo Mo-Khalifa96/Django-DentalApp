@@ -18,7 +18,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, data):
         #Validate user is active or not soft-deleted
-        user = User.all_objects.filter(email__iexact=data.get('email')).first()
+        user = User.all_objects.only('email', 'is_deleted')\
+            .filter(email__iexact=data.get('email')).first()
+        
         if user and user.is_deleted:
             raise AuthenticationFailed(_('Account is inactive. Reset your password to reactivate your account.'))
 
@@ -32,7 +34,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'name': self.user.name,
             'role': self.user.role,
             'specialization': self.user.specialization,
-            'activeBranchId': getattr(self.user.branch, 'id', None),
+            'activeBranchId': getattr(self.user, 'branch_id', None),
             'branchIds': self.user.branches.values_list('id', flat=True) or []
         }
         return validated_data

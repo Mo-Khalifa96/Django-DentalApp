@@ -10,9 +10,23 @@ if ENVIRONMENT == 'local':
     TIME_ZONE = 'Africa/Cairo'
     DEBUG_PROPAGATE_EXCEPTIONS = True  #propogate full exceptions when in local dev
 
+    #Set throttling rate for local development -- higher rates for testing
+    REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
+                    'anon': '1000/hour',
+                    'user': '10000/hour',
+                }
+
+
 elif ENVIRONMENT == 'development':
     SITE_PROTOCOL = os.getenv('SITE_PROTOCOL')
     SITE_DOMAIN = os.getenv('SITE_DOMAIN')
+
+    #Set throttling rate for cloud development
+    REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
+                    'anon': '400/hour',
+                    'user': '1000/hour',
+                }
+
 
 
 #Development Security Key
@@ -21,14 +35,23 @@ SECRET_KEY = os.environ['DEV_SECRET_KEY']
 #DEBUG mode enabled
 DEBUG = True
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
-
-
 #Flag to check if application is dockerized or not 
 IS_DOCKERIZED = os.getenv('IS_DOCKERIZED', 'false').lower() == 'true'
 
 
-#Apps and middleware used only in development 
+#Internal IPS for Debug Toolbar
+INTERNAL_IPS = [
+    '127.0.0.1',   
+]
+
+#Allowed hosts
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
+
+#CORS configuration for development 
+CORS_ALLOW_ALL_ORIGINS = True
+
+
+#Apps and middlewares used only in development 
 INSTALLED_APPS += [
     'debug_toolbar', 
     'drf_spectacular'
@@ -36,11 +59,6 @@ INSTALLED_APPS += [
 
 MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
 
-
-#Internal IPS for Debug Toolbar
-INTERNAL_IPS = [
-    '127.0.0.1',   
-]
 
 #Development database 
 DATABASES = {
@@ -71,13 +89,6 @@ DEFAULT_FROM_EMAIL = 'no-reply@DentalTechTeam.com'
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 
-#Set throttling rate for development
-REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {
-                'anon': '400/hour',
-                'user': '1000/hour',
-            }
-
-
 #Simple JWT configuration
 SIMPLE_JWT = {
             'ACCESS_TOKEN_LIFETIME': timedelta(hours=36),
@@ -87,13 +98,6 @@ SIMPLE_JWT = {
             'UPDATE_LAST_LOGIN': True, 
             'AUTH_HEADER_TYPES': ('Bearer', ), 
         }
-
-
-#CORS configuration for development 
-CORS_ALLOW_ALL_ORIGINS = True
-
-#Disable timezone support in development
-# USE_TZ = False 
 
 
 #SWAGGER'S SETTINGS (used for development only)
@@ -175,6 +179,24 @@ ENABLE_SILK = os.getenv('ENABLE_SILK', 'false').lower() == 'true'
 if ENABLE_SILK:
     #add silk to apps
     INSTALLED_APPS += ['silk']
+    
     #add silk's middleware
     MIDDLEWARE += ['silk.middleware.SilkyMiddleware']
 
+    #silk flags
+    SILKY_ANALYZE_QUERIES = True
+    SILKY_PYTHON_PROFILER = True
+    SILKY_PYTHON_PROFILER_BINARY = True
+
+    #disable parsing for request/response bodies
+    SILKY_MAX_REQUEST_BODY_SIZE = 0 
+    SILKY_MAX_RESPONSE_BODY_SIZE = 0
+
+    #You can also profile your tests with snakeviz
+    # SILKY_ANALYZE_QUERIES = False
+    # SILKY_PYTHON_PROFILER_DIR = '/.cache/profiles'
+    # 
+    # then run: `snakeviz .cache/profiles/some_test_profile.prof`
+
+    #Or, use your swagger schema and test with schemathesis:
+    # schemathesis run http://localhost:8000/swagger/schema/

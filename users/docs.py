@@ -551,10 +551,71 @@ users_options_schema = extend_schema_serializer(
                     {'value': 'assistant', 'label': 'Assistant'},
                     {'value': 'accountant', 'label': 'Accountant'},
                 ],
+                'weekDaysChoices': [
+                    {'value': 0, 'label': 'Sunday'},
+                    {'value': 1, 'label': 'Monday'},
+                    {'value': 2, 'label': 'Tuesday'},
+                    {'value': 3, 'label': 'Wednesday'},
+                    {'value': 4, 'label': 'Thursday'},
+                    {'value': 5, 'label': 'Friday'},
+                    {'value': 6, 'label': 'Saturday'},
+                ],
+                'themeChoices': [
+                    {'value': 'light', 'label': 'Light'},
+                    {'value': 'dark', 'label': 'Dark'}
+                ],
+                'languageChoices': [
+                    {'value': 'en', 'label': 'English'},
+                    {'value': 'ar', 'label': 'Arabic'}
+                ]
             }
         )
     ]
 ) 
+
+
+#Schema for default roles permissions
+default_roles_schema = extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            name='Response',
+            response_only=True,
+            value={
+                'success': True, 
+                'data': [
+                    {
+                        "role": "string",
+                        "label": "string",
+                        "description": "string",
+                        "permissions": [
+                            "string"
+                        ]
+                    }
+                ]
+            }
+        )
+    ]
+)
+
+#Schema for permissions serializer
+permissions_serializer_schema = extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            name='Response',
+            response_only=True,
+            value={
+                'success': True, 
+                'data': [
+                    {
+                        "key": "string",
+                        "label": "string",
+                        "module": "string"
+                    }
+                ]
+            }
+        )
+    ]
+)
 
 
 #Schema for doctor schedules options serializer 

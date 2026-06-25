@@ -337,7 +337,7 @@ class InvoicesOptionsSerializer(serializers.Serializer):
         if branchId:
             filters['branch_id'] = branchId
         if doctorId:
-            filters['doctor_id'] = doctorId
+            filters['patient__doctor_id'] = doctorId
         
         return [
             {'billId': bill_id}

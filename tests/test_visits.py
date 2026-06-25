@@ -111,15 +111,16 @@ class TestListCreateVisitsAPIView:
         """Sanity check: a non-admin/non-dentist with 'view.visits' can list
         visits for a patient in their own branch."""
         b1 = branch_factory()
-        recept = user_factory(role='receptionist')
-        recept.branches.set([b1])
-        recept.userPermissions.append('view.visits')
-        recept.save(update_fields=['userPermissions'])
+        recept_user = user_factory(role='receptionist')
+        recept_user.branches.set([b1])
+
+        recept_user.userPermissions = list(recept_user.userPermissions) + ['view.visits']
+        recept_user.save(update_fields=['userPermissions'])
 
         patient = patient_factory(branch=b1)
         visit   = visit_factory(patient=patient, doctor=None)
 
-        api_client.force_authenticate(user=recept)
+        api_client.force_authenticate(user=recept_user)
         response = api_client.get(_list_url(patient.id))
 
         assert response.status_code == status.HTTP_200_OK or render_error(response)
@@ -136,15 +137,16 @@ class TestListCreateVisitsAPIView:
         """
         b1 = branch_factory()
         b2 = branch_factory()
-        recept = user_factory(role='receptionist')
-        recept.branches.set([b1])
-        recept.userPermissions.append('view.visits')
-        recept.save(update_fields=['userPermissions'])
+        recept_user = user_factory(role='receptionist')
+        recept_user.branches.set([b1])
+        
+        recept_user.userPermissions = list(recept_user.userPermissions) + ['view.visits']
+        recept_user.save(update_fields=['userPermissions'])
 
         patient_b2 = patient_factory(branch=b2)
         visit_b2   = visit_factory(patient=patient_b2, doctor=None)
 
-        api_client.force_authenticate(user=recept)
+        api_client.force_authenticate(user=recept_user)
         response = api_client.get(_list_url(patient_b2.id))
 
         assert response.status_code == status.HTTP_200_OK or render_error(response)
@@ -423,11 +425,12 @@ class TestListCreateVisitsAPIView:
         requester is neither admin nor dentist → visit.doctor stays None.
         """
         patient = patient_factory(doctor=None)
-        recept  = user_factory(role='receptionist')
-        recept.userPermissions.append('create.visit')
-        recept.save(update_fields=['userPermissions'])
+        recept_user  = user_factory(role='receptionist')
 
-        api_client.force_authenticate(user=recept)
+        recept_user.userPermissions = list(recept_user.userPermissions) + ['create.visit']
+        recept_user.save(update_fields=['userPermissions'])
+
+        api_client.force_authenticate(user=recept_user)
         response = api_client.post(
             _list_url(patient.id), _create_payload(), format='json'
         )
@@ -445,11 +448,12 @@ class TestListCreateVisitsAPIView:
         even though the requester themselves isn't admin/dentist.
         """
         patient = patient_factory(doctor=dentist_user)
-        recept  = user_factory(role='receptionist')
-        recept.userPermissions.append('create.visit')
-        recept.save(update_fields=['userPermissions'])
+        recept_user  = user_factory(role='receptionist')
 
-        api_client.force_authenticate(user=recept)
+        recept_user.userPermissions = list(recept_user.userPermissions) + ['create.visit']
+        recept_user.save(update_fields=['userPermissions'])
+
+        api_client.force_authenticate(user=recept_user)
         response = api_client.post(
             _list_url(patient.id), _create_payload(), format='json'
         )

@@ -8,6 +8,6 @@ def validate_uuid(id, version=4):
     if id:
         try:
             uuid.UUID(id, version=version)
-        except ValueError:
+        except (ValueError, AttributeError):
             raise ValidationError({'branchId': 'UUID is invalid.'})
     return id

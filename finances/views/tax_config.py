@@ -2,6 +2,7 @@ from utils.base_views import *
 from clinic.models import Branch
 from users.permissions import AdminOnly
 from django.http.response import Http404
+from utils.validators import validate_uuid
 from finances.models import ClinicalTaxConfig
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
@@ -24,7 +25,7 @@ class ClinicTaxConfigAPIView(CreateAPIView, RetrieveUpdateAPIView):
 
     def get_object(self):
         user = self.request.user
-        branchId = self.request.query_params.get('branchId')
+        branchId = validate_uuid(self.request.query_params.get('branchId'))
         if not branchId:
             if user.branches.count() == 1:
                 branchId = user.branches.first().id
