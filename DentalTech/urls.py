@@ -26,15 +26,16 @@ if settings.DEBUG:
     #Development paths 
     urlpatterns += [
         path('__debug__/', include(debug_toolbar.urls)),  
+        path('silk/', include('silk.urls', namespace='silk')),
         path('swagger/schema/', SpectacularAPIView.as_view(), name='schema'),
         path('swagger/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
         path('swagger/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     ]
 
-if settings.ENABLE_SILK:
-    urlpatterns += [
-        path('silk/', include('silk.urls', namespace='silk')),
-    ]
+# if settings.ENABLE_SILK:
+#     urlpatterns += [
+#         path('silk/', include('silk.urls', namespace='silk')),
+#     ]
 
 
 #Serve media files during development

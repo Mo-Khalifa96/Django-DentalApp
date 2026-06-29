@@ -10,8 +10,9 @@ if settings.DEBUG:
     from users.utils import category_patterns
 
     field_map = {'patient__name': 'patientName', 'doctor__name': 'doctorName', 
-                'procedure__name': 'procedureName', 'lab__name': 'labName',
-                'branch__name': 'branchName', 'treatment_items__procedureName': 'procedureName',
+                'procedure__name': 'procedureName', 'branch__name': 'branchName',
+                'patient_insurance__providerName': 'insurance', 'lab__name': 'labName',
+                'treatment_items__procedureName': 'procedureName',
                 'invoice_items__description': 'itemDescription'}
     
     CHAR_SEARCH_FIELDS = {
@@ -308,12 +309,7 @@ if settings.DEBUG:
     #Define helper functions
     def _wrap_paginated_responses_with_metadata(path, result, operation):
         '''Hook to include userPermissions metadata in all paginated list responses'''
-
-        perm_category = _get_category_from_path(path)
-        perm_category = 'sidebar' if not perm_category else perm_category
-        user_permissions = list(User.USER_PERMISSIONS_DICT['sidebar']) + list(User.USER_PERMISSIONS_DICT[perm_category])
-        user_permissions = list(dict.fromkeys(user_permissions))
-        properties = {item: {'type': 'boolean'} for item in user_permissions}
+        properties = _get_permissions_properties(path)
 
         for status_code, response in operation['responses'].items():
             if 200 <= int(status_code) < 300 and 'content' in response:
@@ -368,12 +364,7 @@ if settings.DEBUG:
         '''Hook to include userPermissions metadata in custom paginated response.
             Used for dashboard/appointments-today/ and /treatment-plans/ pagination.'''
 
-        perm_category = _get_category_from_path(path)
-        perm_category = 'sidebar' if not perm_category else perm_category
-        user_permissions = list(User.USER_PERMISSIONS_DICT['sidebar']) + list(User.USER_PERMISSIONS_DICT[perm_category])
-        user_permissions = list(dict.fromkeys(user_permissions))
-        properties = {item: {'type': 'boolean'} for item in user_permissions}
-
+        properties = _get_permissions_properties(path)
 
         for status_code, response in operation['responses'].items():
             if 200 <= int(status_code) < 300 and 'content' in response:
@@ -446,13 +437,13 @@ if settings.DEBUG:
                                                 'view.bills': {'type': 'boolean'},
                                                 'view.transactions': {'type': 'boolean'},
                                                 'view.invoices': {'type': 'boolean'},
+                                                'view.insuranceProviders': {'type': 'boolean'},
                                                 'view.doctorSchedules': {'type': 'boolean'},
                                                 'view.sterilizationLogs': {'type': 'boolean'},
                                                 'view.recalls': {'type': 'boolean'},
                                                 'view.clinicalAnalytics': {'type': 'boolean'},
                                                 'view.financialAnalytics': {'type': 'boolean'},
-                                                'view.settings': {'type': 'boolean'},
-                                                'view.preferences': {'type': 'boolean'}
+                                                'view.settings': {'type': 'boolean'}
                                             },
                                         },
                                     }
@@ -747,3 +738,23 @@ if settings.DEBUG:
             if pattern in path:
                 return category
         return None
+
+    def _get_permissions_properties(path):
+        perm_category = _get_category_from_path(path)
+        perm_category = 'sidebar' if not perm_category else perm_category
+        if perm_category == 'patients':
+            category_perms_lookup = set(User.USER_PERMISSIONS_DICT['patients'] + User.USER_PERMISSIONS_DICT['patient-insurance'])
+            available_permissions = [
+                perm for perm in User.USER_PERMISSIONS_DICT['sidebar']
+                 if perm not in category_perms_lookup
+            ] + list(User.USER_PERMISSIONS_DICT['patients'] +\
+                 User.USER_PERMISSIONS_DICT['patient-insurance'])
+        else:
+            category_perms_lookup = set(User.USER_PERMISSIONS_DICT[perm_category])
+            available_permissions = [
+                perm for perm in User.USER_PERMISSIONS_DICT['sidebar']
+                 if perm not in category_perms_lookup
+            ] + list(User.USER_PERMISSIONS_DICT[perm_category])
+
+        user_permissions = list(dict.fromkeys(available_permissions))
+        return {item: {'type': 'boolean'} for item in user_permissions}

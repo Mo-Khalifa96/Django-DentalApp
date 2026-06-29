@@ -53,11 +53,15 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 #Apps and middlewares used only in development 
 INSTALLED_APPS += [
+    'silk',
     'debug_toolbar', 
     'drf_spectacular'
 ]
 
-MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
+MIDDLEWARE += [
+    'silk.middleware.SilkyMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware'
+]
 
 
 #Development database 
@@ -98,6 +102,17 @@ SIMPLE_JWT = {
             'UPDATE_LAST_LOGIN': True, 
             'AUTH_HEADER_TYPES': ('Bearer', ), 
         }
+
+
+#Check whether to use silk
+# ENABLE_SILK = os.getenv('ENABLE_SILK', 'false').lower() == 'true'
+#Silk settings
+SILKY_ANALYZE_QUERIES = True
+SILKY_PYTHON_PROFILER = True
+SILKY_PYTHON_PROFILER_BINARY = True
+#disable parsing for request/response bodies
+SILKY_MAX_REQUEST_BODY_SIZE = 0 
+SILKY_MAX_RESPONSE_BODY_SIZE = 0
 
 
 #SWAGGER'S SETTINGS (used for development only)
@@ -158,6 +173,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Patient Recall', 'description': 'Patient recall endpoints'},
         {'name': 'Payments and Billing', 'description': 'Payment and billing management'},
         {'name': 'Invoices', 'description': 'Invoices management'},
+        {'name': 'Insurance', 'description': 'Insurance providers and patient coverage management'},
         {'name': 'Procedures', 'description': 'Procedures endpoints'},
         {'name': 'Inventory', 'description': 'Inventory management'},
         {'name': 'Labs', 'description': 'Laboratory management'},
@@ -172,31 +188,3 @@ SPECTACULAR_SETTINGS = {
     ],
 }
 
-
-
-#Check whether to use silk
-ENABLE_SILK = os.getenv('ENABLE_SILK', 'false').lower() == 'true'
-if ENABLE_SILK:
-    #add silk to apps
-    INSTALLED_APPS += ['silk']
-    
-    #add silk's middleware
-    MIDDLEWARE += ['silk.middleware.SilkyMiddleware']
-
-    #silk flags
-    SILKY_ANALYZE_QUERIES = True
-    SILKY_PYTHON_PROFILER = True
-    SILKY_PYTHON_PROFILER_BINARY = True
-
-    #disable parsing for request/response bodies
-    SILKY_MAX_REQUEST_BODY_SIZE = 0 
-    SILKY_MAX_RESPONSE_BODY_SIZE = 0
-
-    #You can also profile your tests with snakeviz
-    # SILKY_ANALYZE_QUERIES = False
-    # SILKY_PYTHON_PROFILER_DIR = '/.cache/profiles'
-    # 
-    # then run: `snakeviz .cache/profiles/some_test_profile.prof`
-
-    #Or, use your swagger schema and test with schemathesis:
-    # schemathesis run http://localhost:8000/swagger/schema/

@@ -53,7 +53,7 @@ class UserManager(BaseUserManager):
 
         #If request user is admin delete permenantly
         if request_user == 'admin':
-            user.delete()  #TODO - not sure it's a good idea
+            user.delete()
         else:
             user.set_unusable_password() 
             user.is_deleted = True
@@ -83,7 +83,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=255, db_index=True)
-    role = models.CharField(max_length=15, choices=UserRoles.choices)
+    role = models.CharField(max_length=15, choices=UserRoles.choices, db_index=True)
     specialization = models.CharField(max_length=255, blank=True, null=True)
     avatar = models.ImageField(upload_to='user_avatars/', blank=True, null=True, validators=[validate_image_size])
     userPermissions = ArrayField(models.CharField(max_length=100), default=list, blank=True)
@@ -181,6 +181,12 @@ class User(AbstractBaseUser, PermissionsMixin):
             'delete.treatment'
         ),
 
+        #Patients insurance permissions
+        'patient-insurance': (
+            'view.patientInsurance',
+            'update.patientInsurance',
+        ),
+
         #Procedures permission
         'procedures': (
             'view.procedures',
@@ -237,6 +243,14 @@ class User(AbstractBaseUser, PermissionsMixin):
             'delete.invoice' #admin/accountant/doctor(if patient) -- admin views them
         ),
 
+        #Insurance permissions
+        'insurance-providers': (
+            'view.insuranceProviders',
+            'create.insuranceProvider',
+            'update.insuranceProvider',
+            'delete.insuranceProvider'
+        ),
+
         #Sterilization logs permissions 
         'sterilization-logs': (
             'view.sterilizationLogs',
@@ -261,7 +275,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
         'settings': (
             'view.settings',
-            'view.preferences',
+            # 'view.preferences',
         ),
 
         #Default sidebar permissions 
@@ -277,13 +291,14 @@ class User(AbstractBaseUser, PermissionsMixin):
             'view.bills',
             'view.transactions',
             'view.invoices',
+            'view.insuranceProviders',
             'view.doctorSchedules',
             'view.sterilizationLogs',
             'view.recalls',
             'view.clinicalAnalytics',
             'view.financialAnalytics',
             'view.settings',
-            'view.preferences',
+            # 'view.preferences'
         )
 
     }
@@ -310,11 +325,11 @@ class User(AbstractBaseUser, PermissionsMixin):
 
         'receptionist': [
             'view.calender', 'view.waitingRoom', 'view.patients', 'create.patient', 'update.patient', 
-            'view.appointments', 'view.appointmentDetail', 'create.appointment', 
-            'update.appointment', 'delete.appointment', 'view.recalls', 'create.recall', 
-            'update.recall', 'delete.recall', 'send.whatsappMessage', 'create.bill', 
-            'create.transaction', 'create.invoice', 'view.doctorSchedules', 
-            'view.clinicalAnalytics', 'view.settings', 'view.preferences'
+            'view.appointments', 'view.appointmentDetail', 'create.appointment', 'update.appointment', 
+            'delete.appointment', 'view.recalls', 'create.recall', 'update.recall', 'delete.recall', 
+            'send.whatsappMessage', 'view.insuranceProviders', 'create.bill', 'create.transaction', 
+            'create.invoice', 'view.patientInsurance', 'update.patientInsurance', 'view.doctorSchedules', 
+            'view.clinicalAnalytics', 'view.settings'
         ],
         
         'assistant': [  
@@ -322,7 +337,7 @@ class User(AbstractBaseUser, PermissionsMixin):
             'update.inventory', 'delete.inventory', 'view.labs', 'view.labOrders', 'view.labOrderDetail', 
             'create.labOrder', 'update.labOrder', 'view.sterilizationLogs', 'create.sterilizationLog', 
             'update.sterilizationLog', 'view.doctorSchedules', 'view.clinicalAnalytics', 
-            'view.settings', 'view.preferences'
+            'view.settings'
         ],
 
         'accountant': [
@@ -330,11 +345,11 @@ class User(AbstractBaseUser, PermissionsMixin):
             'view.transactions', 'create.transaction', 'delete.transaction',
             'view.invoices', 'create.invoice', 'update.invoice', 'delete.invoice',
             'view.labOrders', 'view.labOrderDetail', 'view.doctorSchedules', 
-            'view.clinicalAnalytics', 'view.financialAnalytics', 'view.settings', 
-            'view.preferences'
+            'view.insuranceProviders', 'create.insuranceProvider', 'view.patientInsurance', 
+            'update.patientInsurance', 'view.clinicalAnalytics', 'view.financialAnalytics', 
+            'view.settings'
         ]
     }
-
 
     #Has reverse relations to four core models
     #Accessible via:
@@ -347,7 +362,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Meta:
         db_table = 'Users'
         verbose_name_plural = 'Users'
-        ordering = ['name']
+        ordering = ['branch__name', 'name']
 
     def __str__(self):
         return self.name
@@ -407,11 +422,22 @@ class User(AbstractBaseUser, PermissionsMixin):
        
         if not perm_category:
             perm_category = 'sidebar'
-        category_perms_lookup = set(self.USER_PERMISSIONS_DICT[perm_category])
-        available_permissions = [
-            perm for perm in self.USER_PERMISSIONS_DICT['sidebar']
-             if perm not in category_perms_lookup
-         ] + list(self.USER_PERMISSIONS_DICT[perm_category])
+
+        if perm_category == 'patients':
+            category_perms_lookup = set(self.USER_PERMISSIONS_DICT['patients'] + self.USER_PERMISSIONS_DICT['patient-insurance'])
+            available_permissions = [
+                perm for perm in self.USER_PERMISSIONS_DICT['sidebar']
+                 if perm not in category_perms_lookup
+            ] + list(self.USER_PERMISSIONS_DICT['patients'] +\
+                 self.USER_PERMISSIONS_DICT['patient-insurance'])
+
+        else:
+            category_perms_lookup = set(self.USER_PERMISSIONS_DICT[perm_category])
+            available_permissions = [
+                perm for perm in self.USER_PERMISSIONS_DICT['sidebar']
+                if perm not in category_perms_lookup
+            ] + list(self.USER_PERMISSIONS_DICT[perm_category])
+
         available_permissions = list(dict.fromkeys(available_permissions))
         return {permission: permission in self.userPermissions 
                 for permission in available_permissions

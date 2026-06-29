@@ -42,7 +42,7 @@ class BranchManager(models.Manager):
 #BRANCH MODEL
 class Branch(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=255, db_index=True)
+    name = models.CharField(max_length=255, unique=True, db_index=True)
     address = models.CharField(max_length=500, blank=True, null=True)
     phone = models.CharField(max_length=50, validators=[validate_phone_number])
     workingDays = ArrayField(models.IntegerField(choices=WorkingDaysLookUp.choices), default=list)
@@ -50,7 +50,7 @@ class Branch(models.Model):
     closeTime = models.TimeField()
     isMain = models.BooleanField(default=False)
     rooms = ArrayField(models.CharField(max_length=50), default=list, blank=True, null=True)
-    color = models.CharField(max_length=50, blank=True, null=True)
+    color = models.CharField(max_length=10, blank=True, null=True)
     createdAt = models.DateField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
     is_deleted = models.BooleanField(default=False)   #Soft delete field

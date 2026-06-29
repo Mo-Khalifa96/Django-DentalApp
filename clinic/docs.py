@@ -37,13 +37,13 @@ dashboard_stats_schema = extend_schema_serializer(
                         'view.bills': True,
                         'view.transactions': True,
                         'view.invoices': True,
+                        'view.insuranceProviders': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': True,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': True,
-                        'view.settings': True,
-                        'view.preferences': True
+                        'view.settings': True
                     }
                 }
             }
@@ -54,39 +54,6 @@ dashboard_stats_schema = extend_schema_serializer(
                 'Returns statistics for the dashboard without financial analytics fields for users without the financial analytics permission.\n'
                 'Without date parameters, defaults to current-day / current-week / current-month windows.\n'
                 'Providing `dateRange` overrides the relevant aggregations to the specified range.\n\n'
-            ),
-            response_only=True,
-            value={
-                'success': True, 
-                'data': {},
-                'metadata': {
-                    'userPermissions': {
-                        'view.calender': True,
-                        'view.waitingRoom': True,
-                        'view.patients': True,
-                        'view.appointments': True,
-                        'view.procedures': False,
-                        'view.inventory': True,
-                        'view.labs': True,
-                        'view.labOrders': True,
-                        'view.bills': False,
-                        'view.transactions': False,
-                        'view.invoices': False,
-                        'view.doctorSchedules': True,
-                        'view.sterilizationLogs': True,
-                        'view.recalls': False,
-                        'view.clinicalAnalytics': True,
-                        'view.financialAnalytics': False,
-                        'view.settings': True,
-                        'view.preferences': True
-                    }
-                }
-            }
-        ),
-        OpenApiExample(
-            name='Response (200 OK) -- no analytics',
-            description=(
-                'Returns nothing for users without neither clinical nor financial analytics permission.\n'
             ),
             response_only=True,
             value={
@@ -110,13 +77,51 @@ dashboard_stats_schema = extend_schema_serializer(
                         'view.bills': False,
                         'view.transactions': False,
                         'view.invoices': False,
+                        'view.insuranceProviders': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': False,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': False,
-                        'view.settings': True,
-                        'view.preferences': True
+                        'view.settings': True
+                    }
+                }
+            }
+        ),
+        OpenApiExample(
+            name='Response (200 OK) -- no analytics',
+            description=(
+                'Returns nothing for users without neither clinical nor financial analytics permission.\n'
+            ),
+            response_only=True,
+            value={
+                'success': True, 
+                'data': {
+                    'patientsTotal': None,
+                    'patientsNew': None,
+                    'appointmentsCount': None,
+                    'appointmentsCompleted': None,
+                },
+                'metadata': {
+                    'userPermissions': {
+                        'view.calender': True,
+                        'view.waitingRoom': True,
+                        'view.patients': True,
+                        'view.appointments': True,
+                        'view.procedures': False,
+                        'view.inventory': True,
+                        'view.labs': True,
+                        'view.labOrders': True,
+                        'view.bills': False,
+                        'view.transactions': False,
+                        'view.invoices': False,
+                        'view.insuranceProviders': True,
+                        'view.doctorSchedules': True,
+                        'view.sterilizationLogs': True,
+                        'view.recalls': False,
+                        'view.clinicalAnalytics': True,
+                        'view.financialAnalytics': False,
+                        'view.settings': True
                     }
                 }
             }

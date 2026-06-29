@@ -10,7 +10,6 @@ backups/
 /backups/**
 backup_*.sql
 backup_*.sql.gz
-/tests/reports/
 *.sqlite3
 *.pem
 *.key
@@ -26,6 +25,5 @@ __pycache__/
 .DS_Store
 **/.DS_Store
 /.Markdown/
-/tests/schemathesis/
 aws-credentials.env
 pip-wheel-metadata/

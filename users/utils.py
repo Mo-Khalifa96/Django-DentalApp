@@ -8,9 +8,11 @@ category_patterns = {
     r'/patients/': 'patients',
     r'/appointments/': 'appointments',
     r'/procedures/': 'procedures',
+    r'/insurance/coverage/': 'patient-insurance',
     r'/bills/': 'bills',
     r'/transactions/': 'transactions',
     r'invoices/': 'invoices',
+    r'/insurance/providers/': 'insurance-providers',
     r'/inventory/': 'inventory',
     r'/lab-orders/': 'lab-orders',
     r'/labs/': 'labs',
@@ -87,6 +89,11 @@ def _build_permissions_lookup(permissions_dict):
         #   'delete': 'delete.treatment'
         # },
         #
+        # 'patient-insurance': {
+        #   'view': 'view.patientInsurance',
+        #   'update': 'update.patientInsurance'
+        # },
+        #
         # 'procedures': {
         #   'view': 'view.procedures',
         #   'create': 'create.procedure',
@@ -135,6 +142,13 @@ def _build_permissions_lookup(permissions_dict):
         #   'delete': 'delete.invoice'
         # },
         #
+        # 'insurance-providers': {
+        #   'view': 'view.insuranceProviders',
+        #   'create': 'create.insuranceProvider',
+        #   'update': 'update.insuranceProvider',
+        #   'delete': 'delete.insuranceProvider'
+        # },
+        #
         # 'sterilization-logs': {
         #   'view': 'view.sterilizationLogs',
         #   'create': 'create.sterilizationLog',
@@ -154,9 +168,8 @@ def _build_permissions_lookup(permissions_dict):
         # },
         #
         # 'settings': {
-        #   'view': 'view.settings',
-        #   'view': 'view.preferences'
-        # },
+        #   'view': 'view.settings'
+        # }
         #}
 
 #Get user permissions lookup dictionary 

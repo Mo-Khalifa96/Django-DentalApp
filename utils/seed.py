@@ -20,12 +20,12 @@ django.setup()
 from django.db.models import F
 from django.http import Http404
 from django.db import transaction
-from django.utils import timezone
 from patients.validators import FDI_PERMANENT
 from users.models import User, DoctorSchedule, DoctorScheduleException
-from finances.models import ClinicalTaxConfig, Bill, Transaction, Invoice, InvoiceItem
 from clinic.models import Branch, Procedure, Inventory, Lab, LabOrder, WaitingRoom, SterilizationLog
-from patients.models import Patient, Visit, Appointment, TreatmentPlan, TreatmentPlanItem, PatientRecall
+from finances.models import InsuranceProvider, ClinicalTaxConfig, Bill, Transaction, Invoice, InvoiceItem
+from patients.models import Patient, Visit, Appointment, TreatmentPlan, TreatmentPlanItem, PatientRecall, PatientCoverage
+
 
 #Instantiate faker
 faker = Faker()
@@ -42,9 +42,77 @@ COMMON_ALLERGIES = [
     'Codeine', 'Sulfa drugs', 'Lidocaine', 'Epinephrine', 'Nickel'
 ]
 
-INSURANCE_PROVIDERS = [
-    'Bupa Arabia', 'AXA Cooperative', 'Tawuniya', 'Medgulf',
-    'National Health Insurance', 'MetLife', 'Allianz', None, None, None  #some uninsured
+INSURANCE_PROVIDERS_DATA = [
+    {
+        'name': 'MetLife Egypt',
+        'fullName': 'MetLife Egypt Insurance',
+        'region': 'Egypt',
+        'tier': 'corporate',
+        'contact': '19556',
+        'coveragePercent': 80,
+        'annualMax': Decimal('5000.00'),
+        'deductible': Decimal('300.00'),
+        'currency': 'EGP',
+        'responseDays': 5,
+        'color': '#1D4ED8',
+        'notes': 'Corporate group policies only. Pre-auth required for crowns, implants, endo.',
+    },
+    {
+        'name': 'AXA Egypt',
+        'fullName': 'AXA Egypt Insurance',
+        'region': 'Egypt',
+        'tier': 'corporate',
+        'contact': '19111',
+        'coveragePercent': 75,
+        'annualMax': Decimal('4000.00'),
+        'deductible': Decimal('200.00'),
+        'currency': 'EGP',
+        'responseDays': 7,
+        'color': '#DC2626',
+        'notes': None,
+    },
+    {
+        'name': 'GAIH',
+        'fullName': 'General Authority for Insurance and Health',
+        'region': 'Egypt',
+        'tier': 'government',
+        'contact': '16770',
+        'coveragePercent': 90,
+        'annualMax': Decimal('3000.00'),
+        'deductible': Decimal('0.00'),
+        'currency': 'EGP',
+        'responseDays': 10,
+        'color': '#15803D',
+        'notes': 'Government employees only.',
+    },
+    {
+        'name': 'Allianz Egypt',
+        'fullName': 'Allianz Egypt Insurance',
+        'region': 'Egypt',
+        'tier': 'universal',
+        'contact': '19700',
+        'coveragePercent': 70,
+        'annualMax': Decimal('2000.00'),
+        'deductible': Decimal('500.00'),
+        'currency': 'EGP',
+        'responseDays': 5,
+        'color': '#1E40AF',
+        'notes': None,
+    },
+    {
+        'name': 'Takaful & Karama',
+        'fullName': 'Takaful and Karama Insurance',
+        'region': 'Egypt',
+        'tier': 'universal',
+        'contact': '16060',
+        'coveragePercent': 60,
+        'annualMax': Decimal('1000.00'),
+        'deductible': Decimal('100.00'),
+        'currency': 'EGP',
+        'responseDays': 14,
+        'color': '#7C3AED',
+        'notes': None,
+    },
 ]
 
 FDI_TEETH_LIST = list(FDI_PERMANENT)
@@ -305,19 +373,30 @@ def seed_procedures(branches):
     return list(Procedure.objects.all())
 
 
-def seed_patients(doctors, num_patients=80):
-    '''
-    Create patients individually (not bulk_create) so that Patient.save()
-    fires and auto-creates each patient's DentalChart.
-    '''
+def seed_insurance_providers(branches):
+    print('Seeding insurance providers...')
+
+    providers = []
+    for data in INSURANCE_PROVIDERS_DATA:
+        branch = random.choices(branches, weights=[70, 15, 15])[0]
+        providers.append(
+            InsuranceProvider(**data, branch=branch)
+        )
+    InsuranceProvider.objects.bulk_create(providers, ignore_conflicts=True)
+    result = list(InsuranceProvider.objects.all())
+    print(f'  Created {len(result)} insurance providers.')
+    return result
+
+
+def seed_patients(doctors, insurance_providers, num_patients=80):
     print('Seeding patients...')
 
     patients = []
     for _ in range(num_patients):
         country_code = random.choice(COUNTRY_CODES)
         has_allergies = random.random() < 0.3
-        insurance = random.choice(INSURANCE_PROVIDERS)
-        doctor = random.choice(doctors) if random.random() < 0.8 else None
+        doctor = random.choice(doctors) if random.random() < 0.8 else None        
+        provider = random.choice(insurance_providers) if random.random() < 0.5 else None
 
         patient = Patient(
             doctor=doctor,
@@ -332,16 +411,34 @@ def seed_patients(doctors, num_patients=80):
             address=faker.address()[:200] if random.random() < 0.5 else None,
             bloodType=random.choice(BLOOD_TYPES) if random.random() < 0.5 else None,
             allergies=random.sample(COMMON_ALLERGIES, k=random.randint(1, 3)) if has_allergies else [],
-            insurance=insurance,
-            insuranceId=faker.bothify('INS-####-????').upper() if insurance else None,
+            # insurance=insurance,
+            # insuranceId=faker.bothify('INS-####-????').upper() if insurance else None,
             status=random.choices(['active', 'inactive'], weights=[85, 15])[0],
             notes=faker.text(max_nb_chars=150) if random.random() < 0.2 else None,
         )
-        #save() triggers DentalChart creation + phone normalization
-        patient.save()
+        #save() triggers DentalChart creation + insurance coverage creation
+        patient.save(provider=provider)
+
+        #if has insurance, populate coverage details
+        if provider:
+            coverage = patient.patient_insurance
+            coverage.memberId = faker.bothify(f'{provider.name[:2].upper()}-EG-####-#####').upper()
+            coverage.annualMax = provider.annualMax
+            coverage.deductibleMet = random.random() < 0.4
+            coverage.effectiveFrom = date(date.today().year, 1, 1)
+            coverage.effectiveTo = date(date.today().year, 12, 31)
+            coverage.eligibilityChecked = _random_past_date(years_back=1)
+            coverage.eligibilityStatus = random.choices(
+                ['active', 'expired', 'none'],
+                weights=[70, 20, 10]
+            )[0]
+            coverage.currency = 'EGP'
+            coverage.save()
+
+
         patients.append(patient)
 
-    print(f'  Created {len(patients)} patients (+ dental charts auto-created).')
+    print(f'  Created {len(patients)} patients (+ dental charts + coverages auto-created).')
     return list(Patient.objects.all())
 
 
@@ -940,7 +1037,7 @@ def seed_sterilization_logs(branches, users, num_logs=50):
 
 @transaction.atomic
 def run_seed(num_users=10, num_patients=80, num_visits=150,
-             num_appointments=120, num_plans=60, num_recalls=60, 
+             num_appointments=120, num_plans=60, num_recalls=60,
              num_lab_orders=40, num_bills=70, num_invoices=100, num_transactions=100,
              num_waiting_room=10, num_schedule_exceptions=30, num_sterilization_logs=50):
 
@@ -964,6 +1061,7 @@ def run_seed(num_users=10, num_patients=80, num_visits=150,
     Transaction.all_objects.all().delete()
     Bill.all_objects.all().delete()
     ClinicalTaxConfig.all_objects.all().delete()
+    InsuranceProvider.objects.all().delete()
     SterilizationLog.objects.all().delete()
     WaitingRoom.all_objects.all().delete()
     Branch.objects.all().delete()
@@ -977,7 +1075,8 @@ def run_seed(num_users=10, num_patients=80, num_visits=150,
     seed_doctor_schedules(doctors)
     seed_schedule_exceptions(doctors, num_schedule_exceptions)
     procedures = seed_procedures(branches)
-    patients = seed_patients(doctors, num_patients)
+    insurance_providers = seed_insurance_providers(branches)
+    patients = seed_patients(doctors, insurance_providers, num_patients)
     visits = seed_visits(patients, doctors, num_visits)
     appointments = seed_appointments(patients, doctors, procedures, num_appointments)
     treatments = seed_treatment_plans(patients, doctors, procedures, num_plans)
@@ -1006,6 +1105,8 @@ def run_seed(num_users=10, num_patients=80, num_visits=150,
     print(f'  Appointments:        {Appointment.objects.count()}')
     print(f'  Treatment Plans:     {TreatmentPlan.objects.count()}')
     print(f'  Patient Recalls:     {PatientRecall.objects.count()}')
+    print(f'  Insurance Providers: {InsuranceProvider.objects.count()}')
+    print(f'  Patient Coverage:    {PatientCoverage.objects.count()}')
     print(f'  Waiting Room:        {WaitingRoom.objects.count()}')
     print(f'  Procedures:          {Procedure.objects.count()}')
     print(f'  Inventory Items:     {Inventory.objects.count()}')

@@ -61,9 +61,8 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 #Install only runtime system deps (no gcc, no build-essential)
 RUN apt-get update && apt-get install -y \
   libpq5 \
-  libpq-dev \
-  libjpeg-dev \
-  zlib1g-dev \
+  zlib1g \
+  libjpeg62-turbo \
   postgresql-client \
   ca-certificates \
   netcat-openbsd \

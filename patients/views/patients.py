@@ -1,11 +1,12 @@
 from utils.base_views import *
-from patients.models import Patient, Visit
+from patients.models import Patient
 from rest_framework import status, generics
 from rest_framework.response import Response
 from patients.filters import PatientsFilter
 from users.utils import get_required_permission
 from utils.filters import CustomOrderingFilter
 from rest_framework.filters import SearchFilter
+from utils.mixins import BranchToSerializerMixin
 from patients.docs import get_dentalchart_schema
 from users.permissions import PatientDataPermissions
 from rest_framework.permissions import IsAuthenticated
@@ -25,8 +26,8 @@ class ListCreatePatientsAPIView(FilterListCreateAPIView):
     permission_classes = [PatientDataPermissions]
     ordering = ['branch__name', 'name']  #default order of fields
     ordering_fields = ['name', 'lastVisit', 'nextAppointment', 'createdAt']  #sorting fields
-    search_fields = ['name', 'phone', 'email']  #search fields
-    filterset_class = PatientsFilter  #filters by status, insurance, and branch
+    search_fields = ['name', 'phone', 'email', 'patient_insurance__providerName']  #search fields
+    filterset_class = PatientsFilter  #filters by status, branch, and insurance provider
     filter_backends = [DjangoFilterBackend, SearchFilter, CustomOrderingFilter]
 
     def initial(self, request, *args, **kwargs):
@@ -37,10 +38,13 @@ class ListCreatePatientsAPIView(FilterListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         if self.request.method == 'POST':
-            return Patient.objects.prefetch_related('patient_dentalchart').all()
+            return Patient.objects.prefetch_related(
+                'patient_dentalchart', 'patient_insurance'
+            ).all()
         
         #Fetch patients data 
-        patients = Patient.objects.select_related('branch', 'doctor').all()
+        patients = Patient.objects.prefetch_related('patient_insurance')\
+                    .select_related('branch', 'doctor').all()
 
         #Filter queryset for list view by role
         if getattr(user, 'role', None) == 'admin':
@@ -61,12 +65,19 @@ class ListCreatePatientsAPIView(FilterListCreateAPIView):
         else:
             return CreatePatientSerializer
 
+    def perform_create(self, serializer):
+        #handle patient insurance coverage from insurance provider (if passed)
+        insurance_providerId = serializer.validated_data.pop('insuranceProviderId', None)
 
+        #pass insurance provider to save() method
+        serializer.save(provider=insurance_providerId)
+        
 
 #Retrieve/update/delete patient API view
 @extend_schema(tags=['Patients'])
 class RetrieveUpdateDeletePatientAPIView(RetrieveUpdateDeleteAPIView):
-    queryset = Patient.objects.all()
+    queryset = Patient.objects.prefetch_related('patient_insurance')\
+                .select_related('branch', 'doctor').all()
     permission_classes = [PatientDataPermissions]
     lookup_url_kwarg = 'id'
     lookup_field = 'id'
@@ -96,7 +107,7 @@ class RetrieveUpdateDeletePatientAPIView(RetrieveUpdateDeleteAPIView):
         OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
     ]
 )
-class RetrievePatientsOptionsAPIView(generics.GenericAPIView):
+class RetrievePatientsOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIView):
     serializer_class = PatientsOptionsSerializer
     permission_classes = [IsAuthenticated]
 

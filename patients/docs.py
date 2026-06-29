@@ -239,8 +239,7 @@ create_patient_schema = extend_schema_serializer(
                 "nationalId": "525400222211111",
                 "bloodType": "A+",
                 "allergies": ['Latex', 'Pencillin'], 
-                "insurance": '', 
-                "insuranceId": '', 
+                "insuranceProviderId": 'eae37601-3ab9-22f1-079b-ebca1ce8b221',  
                 "notes": '',
                 "branchId": 'ebe27408-2fb9-42b2-977a-fbaa1bf0a396'
             }
@@ -263,8 +262,8 @@ create_patient_schema = extend_schema_serializer(
                     "nationalId": "525400222211111",
                     "bloodType": "A+",
                     "allergies": ['Latex', 'Pencillin'], 
-                    "insurance": '', 
-                    "insuranceId": '', 
+                    "insurance": 'MetLife Egypt', 
+                    "insuranceProviderId": 'eae37601-3ab9-22f1-079b-ebca1ce8b221', 
                     "notes": "",
                     "branchId": 'ebe27408-2fb9-42b2-977a-fbaa1bf0a396',
                     "createdAt": "2026-04-24T23:33:54.610Z",
@@ -303,11 +302,10 @@ update_patient_schema = extend_schema_serializer(
                 'nationalId': '525400222211100',
                 'bloodType': 'A+', 
                 'allergies': ['Latex'], 
-                'insurance': '', 
-                'insuranceId': '', 
+                "insuranceProviderId": '1e22bd5e-6a01-122d-8c90-04c8665fbb23', 
                 'notes': ''
             }
-        ), 
+        ),
         OpenApiExample(
             name='Success Response (200 OK)', 
             response_only=True,
@@ -322,8 +320,8 @@ update_patient_schema = extend_schema_serializer(
                     "nationalId": "525400222211100",
                     'bloodType': 'A+', 
                     'allergies': ['Latex'], 
-                    'insurance': '', 
-                    'insuranceId': '', 
+                    "insurance": 'MetLife Egypt',
+                    "insuranceProviderId": '1e22bd5e-6a01-122d-8c90-04c8665fbb23', 
                     'notes': '',
                     "updatedAt": "2026-04-24T17:32:03.201Z"
                 }
@@ -333,14 +331,14 @@ update_patient_schema = extend_schema_serializer(
             name='Error Response (400 Bad Request)',
             response_only=True,
             value={
-                    "success": False,
-                    "error": {
-                        "code": "VALIDATION_ERROR",
-                        "message": "Validation failed",
-                        "fields": {
-                            "phone": "Phone number is invalid."
-                        }
+                "success": False,
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Validation failed",
+                    "fields": {
+                        "phone": "Phone number is invalid."
                     }
+                }
             }
         ),
     ]
@@ -351,11 +349,16 @@ patients_options_schema = extend_schema_serializer(
     examples=[
         OpenApiExample(
             name='Response',
+            description='Pass `branchId` to obtain insurance providers by associated branch (applicable if branching exists).',
             response_only=True,
             value={
                 'branchChoices': [
                     {'branchId': '9ca1d622-94af-4ea5-b87a-bf9f6611d6ab', 'name': 'Main Branch'},
                     {'branchId': '8ef5c0eb-ab95-4d13-a1b4-04f634534587', 'name': 'Heliopolis Branch'},
+                ],
+                'insuranceProviderChoices': [
+                    {'providerId': 'eae37601-3ab9-22f1-079b-ebca1ce8b221', 'name': 'MetLife Egypt'},
+                    {'providerId': '1e22bd5e-6a01-122d-8c90-04c8665fbb23', 'name': 'Allianz Egypt'},
                 ],
                 'genderChoices': [
                     {'value': 'male', 'label': 'Male'},
@@ -378,7 +381,6 @@ patients_options_schema = extend_schema_serializer(
             }
         )
     ]
-
 ) 
 
 #Schema for patients options serializer 
@@ -579,6 +581,36 @@ treatmentplans_options_schema = extend_schema_serializer(
 ) 
 
 
+#Schema for patient insurance options serializer
+patient_insurance_options_schema = extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            name='Response',
+            response_only=True,
+            value={
+                'branchChoices': [
+                    {'branchId': '9ca1d622-94af-4ea5-b87a-bf9f6611d6ab', 'name': 'Main Branch'},
+                    {'branchId': '8ef5c0eb-ab95-4d13-a1b4-04f634534587', 'name': 'Heliopolis Branch'},
+                ],
+                'patientChoices': [
+                    {'patientId': '41f1c0fd-3b69-4289-9a8a-83eb205702c3', 'name': 'Ahmed Khaled'},
+                    {'patientId': 'ea0b1f0f-df7e-4a0a-9bb6-67ecfa1ecef4', 'name': 'Khaled Ahmed'},
+                ],
+                'insuranceProviderChoices': [
+                    {'providerId': 'eae37601-3ab9-22f1-079b-ebca1ce8b221', 'name': 'MetLife Egypt'},
+                    {'providerId': '1e22bd5e-6a01-122d-8c90-04c8665fbb23', 'name': 'Allianz Egypt'},
+                ],
+                'eligibilityStatusChoices': [
+                    {'value': 'active', 'label': 'Active'},
+                    {'value': 'expired', 'label': 'Expired'},
+                    {'value': 'none', 'label': 'None'},
+                ],
+            }
+        )
+    ]
+) 
+
+
 #Schema for patient recalls options serializer
 patient_recalls_options_schema = extend_schema_serializer(
     examples=[
@@ -617,4 +649,3 @@ patient_recalls_options_schema = extend_schema_serializer(
         )
     ]
 )
-

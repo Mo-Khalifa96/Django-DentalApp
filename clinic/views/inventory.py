@@ -30,10 +30,15 @@ class ListCreateInventoryAPIViews(FilterListCreateAPIView):
         super().initial(request, *args, **kwargs)
 
     def get_queryset(self):
-        user = self.request.user
+        #fetch inventory queryset
         inventory = Inventory.objects.select_related('branch').all()
         
-        #return full query to admin
+        #return on post
+        if self.request.method == 'POST':
+            return inventory
+
+        #return full queryset to admin
+        user = self.request.user
         if getattr(user, 'role', None) == 'admin':
             return inventory
         

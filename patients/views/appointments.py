@@ -1,8 +1,10 @@
 from utils.base_views import * 
+from users.models import User
 from django.conf import settings
 from django.db import transaction
 from django_q.models import Schedule
 from patients.models import Appointment
+from utils.validators import validate_uuid
 from rest_framework import status, generics
 from rest_framework.response import Response
 from users.utils import get_required_permission
@@ -12,6 +14,7 @@ from utils.filters import CustomOrderingFilter
 from utils.mixins import BranchToSerializerMixin
 from users.permissions import PatientDataPermissions
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
 from services.whatsapp.tasks import schedule_appointment_reminder
@@ -139,6 +142,7 @@ class RetrieveUpdateCancelAppointmentAPIView(RetrieveUpdateDeleteAPIView):
     tags=['Appointments'],
     parameters=[
         OpenApiParameter('branchId', OpenApiTypes.UUID, OpenApiParameter.QUERY, required=False),
+        OpenApiParameter('doctorId', OpenApiTypes.UUID, OpenApiParameter.QUERY, required=False),
         OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
     ]
 )
@@ -146,5 +150,17 @@ class RetrieveAppointmentOptionsAPIView(BranchToSerializerMixin, generics.Generi
     serializer_class = AppointmentOptionsSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()  #get branchId and add doctorId
+        doctorId = validate_uuid(self.request.query_params.get('doctorId'))
+
+        if doctorId:
+            if not User.objects.filter(id=doctorId, role__in=['dentist', 'admin']).exists():
+                raise ValidationError({'doctorId': _("User not found or not registered as a doctor.")})
+            
+        #add doctor to serializer context
+        context['doctorId'] = doctorId
+        return context
+
     def get(self, request, *args, **kwargs):
-        return Response(self.get_serializer(instance={}).data, status=status.HTTP_200_OK)  #context=self.get_serializer_context()
+        return Response(self.get_serializer(instance={}).data, status=status.HTTP_200_OK)

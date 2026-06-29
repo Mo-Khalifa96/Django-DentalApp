@@ -525,7 +525,7 @@ msgstr "معرف الفرع مطلوب."
 
 #: utils/exceptions.py:16
 msgid "This appointment conflicts with an existing one."
-msgstr "يتعارض هذا الموعد مع موعد آخر موجود."
+msgstr "يتعارض هذا الموعد مع موعد اخر موجود."
 
 #: utils/exceptions.py:23
 msgid "Patient's phone number is invalid or not registered on WhatsApp."
@@ -546,3 +546,7 @@ msgstr "نشط"
 msgctxt "treatment_status"
 msgid "active"
 msgstr "قيد التنفيذ"
+
+msgctxt "insurance_status"
+msgid "active"
+msgstr "فعال"

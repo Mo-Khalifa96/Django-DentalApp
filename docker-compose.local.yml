@@ -12,7 +12,6 @@ services:
       SERVICE: web
       ENVIRONMENT: local  #used only in settings/**.py to decide protocol & domain
       IS_DOCKERIZED: True
-      ENABLE_SILK: True
       DJANGO_SETTINGS_MODULE: DentalTech.settings.dev
     ports:
       - "8000:8000"  #direct port exposure, no nginx needed
@@ -156,7 +155,6 @@ services:
     environment:
       - ENVIRONMENT=local
       - IS_DOCKERIZED=True
-      - ENABLE_SILK=True
       - TESTMON_DATAFILE=/app/.cache/.testmondata
       - DJANGO_SETTINGS_MODULE=DentalTech.settings.dev 
       - PYTHONWARNINGS=ignore::SyntaxWarning
@@ -189,7 +187,6 @@ services:
     environment:
       - ENVIRONMENT=local
       - IS_DOCKERIZED=True
-      - ENABLE_SILK=True
       - DJANGO_SETTINGS_MODULE=DentalTech.settings.dev 
       - PYTHONWARNINGS=ignore::SyntaxWarning
     ports:

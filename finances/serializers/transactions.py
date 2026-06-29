@@ -102,7 +102,10 @@ class TransactionsOptionsSerializer(serializers.Serializer):
     ))
     def get_billChoices(self, obj):
         branchId = self.context.get('branchId')
-        doctorId = self.context.get('doctorId') 
+        doctorId = self.context.get('doctorId')
+
+        if (not branchId and Branch.objects.exists()) and not doctorId:
+            return [] 
         
         filters = {}
         if branchId:
@@ -124,8 +127,8 @@ class TransactionsOptionsSerializer(serializers.Serializer):
         branchId = self.context.get('branchId')
         doctorId = self.context.get('doctorId') 
         
-        # if (not branchId and Branch.objects.exists()) and not doctorId:
-        #     return []
+        if (not branchId and Branch.objects.exists()) and not doctorId:
+            return []
         
         filters = {}
         if branchId:
@@ -145,8 +148,10 @@ class TransactionsOptionsSerializer(serializers.Serializer):
     ))
     def get_patientVisitChoices(self, obj):
         patientId = self.context.get('patientId')
+        if not patientId:
+            return []
+        
         patient_filter = {'patient_id': patientId} if patientId else {}
-
         return [
             {'visitId': visit_id} 
             for visit_id in Visit.objects.filter(**patient_filter)\

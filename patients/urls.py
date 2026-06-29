@@ -9,6 +9,8 @@ from patients.views.treatments import (ListCreateTreatmentPlansAPIView, Retrieve
 from patients.views.patients import (ListCreatePatientsAPIView, RetrieveUpdateDeletePatientAPIView,
                                      RetrieveUpdateDentalChartAPIView, RetrievePatientsOptionsAPIView, 
                                      RetrieveDentalChartOptionsAPIView)
+from patients.views.patient_insurance import (ListPatientCoveragePlansAPIView, CreateRetrieveUpdatePatientCoverageAPIView,
+                                              RetrievePatientCoverageOptionsAPIView)
 
 #Url patterns
 urlpatterns = [
@@ -38,6 +40,11 @@ urlpatterns = [
             ), name='retrieve_update_delete_treatment'),
     path('treatment-plans/<uuid:id>/', LookupTreatmentPlanAPIView.as_view(), name='lookup_single_treatmentplan'),
     path('treatment-plans/options/', RetrieveTreatmentPlansOptionsAPIView.as_view(), name='treatment_plans_options'),
+
+    #Patient insurance coverage urls
+    path('insurance/coverage/', ListPatientCoveragePlansAPIView.as_view(), name='list_patient_coverages'),
+    path('insurance/coverage/<uuid:patientId>/', CreateRetrieveUpdatePatientCoverageAPIView.as_view(), name='create_retrieve_update_coverage'),
+    path('insurance/coverage/options/', RetrievePatientCoverageOptionsAPIView.as_view(), name='patient_coverage_options'),
 
     #Patient recalls urls 
     path('recalls/', ListCreatePatientRecallsAPIView.as_view(), name='list_create_patient_recalls'),

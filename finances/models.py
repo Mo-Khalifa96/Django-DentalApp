@@ -8,7 +8,7 @@ from patients.validators import validate_phone_number
 from django.utils.translation import gettext_lazy as _
 
 
-#Clinic Tax Configs Manager -- deprecated 
+#Clinic Tax Configs Manager
 class ClinicTaxConfigManager(models.Manager):
     #Overriding get_query to filter out soft-deleted branches
     def get_queryset(self): 
@@ -301,7 +301,7 @@ class Invoice(models.Model):
     
     #invoice state fields
     invoiceNumber = models.CharField(max_length=250, null=True, blank=True)
-    status = models.CharField(max_length=10, choices=InvoiceStatusChoices.choices)
+    status = models.CharField(max_length=10, choices=InvoiceStatusChoices.choices, db_index=True)
     issuedAt = models.DateTimeField(blank=True, null=True)
     submittedAt = models.DateTimeField(blank=True, null=True)
 
@@ -397,3 +397,54 @@ class InvoiceItem(models.Model):
         db_table = 'InvoiceItems'
         verbose_name_plural = 'InvoiceItems'
 
+
+
+#Insurance Provider Manager
+class InsuranceProviderManager(models.Manager):
+    #Overriding get_query to filter out soft-deleted branches
+    def get_queryset(self): 
+        return super().get_queryset().filter(
+             models.Q(branch__isnull=True) | models.Q(branch__is_deleted=False)
+            )
+
+#INSURANCE PROVIDER MODEL 
+class InsuranceProvider(models.Model):
+    class InuranceTierChoices(models.TextChoices):
+        GOVERNMENT = 'government', _('Government')
+        UNIVERSAL = 'universal', _('Universal')
+        CORPORATE = 'corporate', _('Corporate')
+        DIRECT = 'direct', _('Direct')
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=200, unique=True)
+    fullName = models.CharField(max_length=300, blank=True, null=True)
+    region = models.CharField(max_length=120, blank=True, null=True)
+    tier = models.CharField(max_length=25, choices=InuranceTierChoices.choices)
+    contact = models.CharField(max_length=150)
+    coveragePercent = models.IntegerField(validators=[MinValueValidator(0)])
+    annualMax = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], blank=True, null=True)
+    deductible = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], blank=True, null=True)
+    currency = models.CharField(max_length=5, blank=True, null=True)
+    responseDays = models.PositiveIntegerField(blank=True, null=True)
+    color = models.CharField(max_length=10, blank=True, null=True)  #hex
+    notes = models.TextField(blank=True, null=True)
+    
+    #Many-to-One relationships to Branch (i.e., many providers, one branch)
+    branch = models.ForeignKey('clinic.Branch', related_name='branch_providers', 
+                  on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
+
+
+    #Objects after filtering by manager
+    objects = InsuranceProviderManager()
+    
+    #to access all objects
+    all_objects = models.Manager()
+
+
+    class Meta: 
+        db_table = 'InsuranceProviders'
+        verbose_name_plural = 'InsuranceProviders'
+        ordering = ['branch__name', 'name']
+
+    def __str__(self):
+        return self.name

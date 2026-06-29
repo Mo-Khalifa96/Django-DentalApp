@@ -2,6 +2,7 @@ from clinic.models import Branch
 from django.db import transaction
 from rest_framework import serializers
 from patients.validators import FDI_PERMANENT
+from finances.models import InsuranceProvider
 from patients.models import Patient, DentalChart
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
@@ -17,13 +18,15 @@ from patients.docs import (create_patient_schema, update_patient_schema, patient
 class CreatePatientSerializer(ValidateBranchMixin, serializers.ModelSerializer):
     gender = TranslatedChoiceField(choices=Patient.GenderChoices.choices)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
-
+    insurance = serializers.CharField(source='patient_insurance.providerName', default=None, read_only=True)
+    insuranceProviderId = serializers.PrimaryKeyRelatedField(queryset=InsuranceProvider.objects.all(),
+                                        required=False, default=None, allow_null=True, write_only=True)
     class Meta:
         model = Patient
         fields = ['id', 'name', 'age', 'gender', 'countryCode', 'phone', 'email', 'address', 'nationalId',
-                  'bloodType', 'allergies', 'insurance', 'insuranceId', 'notes', 'status', 'branchId', 
-                  'createdAt', 'updatedAt']
-        read_only_fields = ['id', 'status', 'createdAt', 'updatedAt']
+                  'bloodType', 'allergies', 'insurance', 'insuranceProviderId', 'notes', 'status', 
+                  'branchId', 'createdAt', 'updatedAt']
+        read_only_fields = ['id', 'status', 'insurance', 'createdAt', 'updatedAt']
     
     def validate_countryCode(self, countryCode):
         if not countryCode:
@@ -49,6 +52,8 @@ class CreatePatientSerializer(ValidateBranchMixin, serializers.ModelSerializer):
 class ListPatientSerializer(serializers.ModelSerializer): 
     gender = TranslatedChoiceField(choices=Patient.GenderChoices.choices)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
+    insurance = serializers.CharField(source='patient_insurance.providerName', read_only=True)
+    insuranceId = serializers.CharField(source='patient_insurance.memberId', read_only=True)
 
     class Meta:
         model = Patient
@@ -61,7 +66,9 @@ class ListPatientSerializer(serializers.ModelSerializer):
 class RetrievePatientSerializer(UserPermissionsMixin, serializers.ModelSerializer): 
     gender = TranslatedChoiceField(choices=Patient.GenderChoices.choices)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
-    phone = serializers.SerializerMethodField()  
+    insurance = serializers.CharField(source='patient_insurance.providerName', read_only=True)
+    insuranceId = serializers.CharField(source='patient_insurance.memberId', read_only=True)
+    phone = serializers.SerializerMethodField()
 
     class Meta:
         model = Patient
@@ -78,17 +85,26 @@ class RetrievePatientSerializer(UserPermissionsMixin, serializers.ModelSerialize
 @update_patient_schema
 class UpdatePatientSerializer(serializers.ModelSerializer):
     status = TranslatedChoiceField(choices=Patient.StatusChoices.choices, required=False)
+    insurance = serializers.CharField(source='patient_insurance.providerName', read_only=True)
+    insuranceProviderId = serializers.PrimaryKeyRelatedField(queryset=InsuranceProvider.objects.all(), 
+                                                             allow_null=True, write_only=True)
 
     class Meta:
         model = Patient
         fields = ['id', 'name', 'countryCode', 'phone', 'address', 'nationalId', 'bloodType', 
-                  'allergies', 'insurance', 'insuranceId', 'notes', 'status', 'updatedAt']
-        read_only_fields = ['id', 'name', 'updatedAt']
+                  'allergies', 'insurance', 'insuranceProviderId', 'notes', 'status', 'updatedAt']
+        read_only_fields = ['id', 'name', 'insurance', 'updatedAt']
         extra_kwargs = {field: {'required': False} for field in 
             ('name', 'countryCode', 'phone', 'address', 'nationalId', 'bloodType', 'allergies', 'insurance',
-            'insuranceId', 'notes', 'status')
+            'insuranceProviderId', 'notes', 'status')
             }
-        
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        is_put_request = request and request.method == 'PUT'
+        self.fields['insuranceProviderId'].required = True if is_put_request else False
+
     def validate(self, data):
         code, phone = data.get('countryCode'), data.get('phone')
         if (phone and not code) or (code and not phone):
@@ -106,11 +122,37 @@ class UpdatePatientSerializer(serializers.ModelSerializer):
                 data['phone'] = phone 
         return data
 
+    @transaction.atomic
+    def update(self, instance, validated_data): 
+        _MISSING = object()
+
+        #handle patient's insurance coverage upon provider update
+        insurance_provider = validated_data.pop('insuranceProviderId', _MISSING)
+        if insurance_provider is not _MISSING and\
+         insurance_provider != instance.patient_insurance.provider:
+            #get patient inurance coverage instance
+            coverage = instance.patient_insurance
+
+            #assign new provider
+            coverage.provider = insurance_provider
+
+            #set old fields to None
+            for field in ('memberId', 'annualMax', 'deductibleMet', 'usedYTD', 'currency',
+                        'effectiveFrom', 'effectiveTo', 'eligibilityChecked', 'eligibilityStatus'):
+                setattr(coverage, field, None)
+            
+            #save patient coverage changes
+            coverage.save()
+
+        #call parent update() method
+        return super().update(instance, validated_data)
+
 
 #Serializer for providing procedure options
 @patients_options_schema 
 class PatientsOptionsSerializer(serializers.Serializer):
     branchChoices = serializers.SerializerMethodField()
+    insuranceProviderChoices = serializers.SerializerMethodField()
     genderChoices = serializers.SerializerMethodField()
     statusChoices = serializers.SerializerMethodField()
     bloodTypeChoices = serializers.SerializerMethodField()
@@ -125,6 +167,23 @@ class PatientsOptionsSerializer(serializers.Serializer):
                     for branch_id,name in Branch.objects\
                     .values_list('id', 'name').order_by('name')
                 ]
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.DictField(child=serializers.CharField(allow_blank=True, allow_null=True))
+        ))
+    def get_insuranceProviderChoices(self, obj):
+        branchId = self.context.get('branchId')
+        if not branchId and Branch.objects.exists():
+            return []
+        
+        filters = {'branch_id': branchId} if branchId else {}
+        return [
+                {'providerId': branch_id, 'name': name} 
+                    for branch_id,name in InsuranceProvider.objects.filter(**filters)\
+                    .values_list('id', 'name').order_by('name')
+                ]
+
 
     @extend_schema_field(
         serializers.ListField(

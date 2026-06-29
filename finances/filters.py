@@ -2,7 +2,7 @@ from django.db.models import F,Q
 from clinic.models import Branch
 from patients.models import Patient
 from utils.filters import BaseFilterSet
-from finances.models import Bill, Transaction, Invoice
+from finances.models import Bill, Transaction, Invoice, InsuranceProvider
 from django_filters.rest_framework import (FilterSet, CharFilter, ChoiceFilter, ModelChoiceFilter, 
                                            BooleanFilter, DateFilter)
 
@@ -82,3 +82,12 @@ class InvoicesFilter(FilterSet):
         model = Invoice
         fields = []
 
+
+#Insurance providers filter
+class InsuranceProvidersFilter(FilterSet):
+    branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
+    tier = ChoiceFilter(choices=InsuranceProvider.InuranceTierChoices.choices)
+
+    class Meta:
+        model = InsuranceProvider
+        fields = []

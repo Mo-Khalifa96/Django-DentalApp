@@ -155,7 +155,6 @@ class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
         updated_items = validated_data.pop('treatment_items', None)
         
         #delete and update items
-        curr_totalCost = None
         if updated_items is not None:  #or, use <<if 'treatment_items' in validated_data:>> if you want to allow deletion
             #delete existing items and recreate 
             instance.treatment_items.all().delete()

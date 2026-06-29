@@ -68,23 +68,22 @@ class Patient(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     #Many-to-One relationship to the User model (i.e., many patients, one doctor)
-    doctor = models.ForeignKey('users.User', related_name='doctor_patients', on_delete=models.SET_NULL, null=True, blank=True, db_index=True)
+    doctor = models.ForeignKey('users.User', related_name='doctor_patients', on_delete=models.SET_NULL, null=True, blank=True, db_index=False)
     #Many-to-One relationship to the Branch model (i.e., many patients, one branch)
-    branch = models.ForeignKey('clinic.Branch', related_name='branch_patients', blank=True,
-                                null=True, on_delete=models.SET_NULL, db_index=True)
+    branch = models.ForeignKey('clinic.Branch', related_name='branch_patients', blank=True, null=True, on_delete=models.SET_NULL, db_index=False)
     #Patient fields 
-    name = models.CharField(max_length=255, db_index=True)
+    name = models.CharField(max_length=255)
     age = models.IntegerField(blank=False, null=False)
     gender = models.CharField(max_length=50, choices=GenderChoices.choices)
     countryCode = models.CharField(max_length=6, validators=[validate_country_code])
-    phone = models.CharField(max_length=50, validators=[validate_phone_number], db_index=True)
+    phone = models.CharField(max_length=50, validators=[validate_phone_number])
     email = models.EmailField(unique=False, blank=True, null=True)
     nationalId = models.CharField(max_length=120, blank=True, null=True)
     address = models.CharField(max_length=300, blank=True, null=True)
     bloodType = models.CharField(max_length=5, choices=bloodTypeChoices, blank=True, null=True)
     allergies = ArrayField(models.CharField(max_length=255), default=list, blank=True, null=True)
-    insurance = models.CharField(max_length=255, blank=True, null=True)
-    insuranceId = models.CharField(max_length=120, blank=True, null=True)
+    # insurance = models.CharField(max_length=255, blank=True, null=True) #TODO - insurance name; handle appropriately given the new model below!
+    # insuranceId = models.CharField(max_length=120, blank=True, null=True)  #TODO - handle appropriately given the new model below!
     lastVisit = models.DateField(blank=True, null=True)
     nextAppointment = models.DateField(blank=True, null=True)
     status = models.CharField(max_length=50, choices=StatusChoices.choices, blank=True, null=True)
@@ -116,12 +115,19 @@ class Patient(models.Model):
         db_table = 'Patients'
         verbose_name_plural = 'Patients'
         ordering = ['branch__name', 'name']
-    
+        indexes = [
+            models.Index(fields=['doctor'], name='patient_doctor_indx', condition=Q(is_deleted=False)),
+            models.Index(fields=['branch'], name='patient_branch_indx', condition=Q(is_deleted=False)),
+            models.Index(fields=['name'], name='patient_name_indx', condition=Q(is_deleted=False)),
+            models.Index(fields=['phone'], name='patient_phone_indx', condition=Q(is_deleted=False)),
+            models.Index(fields=['branch', 'name'], name='patient_name_branch_indx', condition=Q(is_deleted=False))
+        ]
+
     def __str__(self):
         return self.name 
     
     @transaction.atomic 
-    def save(self, *args, **kwargs):
+    def save(self, provider=None, *args, **kwargs):
         #assign flag for new patients
         is_new = self._state.adding
         if is_new and not self.status:
@@ -149,6 +155,10 @@ class Patient(models.Model):
             DentalChart.objects.create(patient=self,
                 teeth={tooth:{'status': 'healthy', 'notes': ''}
                         for tooth in FDI_PERMANENT})
+            
+            #create empty insurance coverage record
+            provider = provider or None
+            PatientCoverage.objects.create(patient=self, provider=provider)
     
 
 #Dental Chart manager
@@ -231,6 +241,9 @@ class Visit(models.Model):
         db_table = 'Visits'
         verbose_name_plural = 'Visits'
         ordering = ['-createdAt', 'patient__name']
+        indexes = [
+            models.Index(fields=['patient', 'date']),
+        ]
 
     def __str__(self):
         return f'[{self.date}] {self.type} -- {self.patient.name}'
@@ -301,7 +314,7 @@ class Appointment(models.Model):
     branch = models.ForeignKey('clinic.Branch', related_name='branch_appointments', blank=True,
                                 null=True, on_delete=models.SET_NULL, db_index=True)
     #Other appointment fields
-    date = models.DateField()
+    date = models.DateField(db_index=True)
     startTime = models.TimeField()
     endTime = models.TimeField(blank=True, null=True)
     type = models.CharField(max_length=500, choices=Visit.VisitTypeChoices.choices)
@@ -327,7 +340,8 @@ class Appointment(models.Model):
         verbose_name_plural = 'Appointments'
         ordering = ['branch__name', '-createdAt', 'patient__name']
         indexes = [  #optimizes fields that are often queried together
-            models.Index(fields=['doctor', 'date', 'status'])
+            models.Index(fields=['branch', 'date']),
+            models.Index(fields=['doctor', 'date', 'status']), 
         ]
 
     def __str__(self):
@@ -449,7 +463,7 @@ class TreatmentPlan(models.Model):
         verbose_name_plural = 'TreatmentPlans'
         ordering = ['-createdAt', 'patient__name']
 
-
+    @transaction.atomic
     def save(self, *args, **kwargs):
         #if creating treatment plan but not a doctor, assign doctor
         if self._state.adding:
@@ -470,7 +484,7 @@ class TreatmentPlanItem(models.Model):
         COMPLETED = 'completed', _('completed')
         
     #Many-to-One relationship to the TreatmentPlan model (i.e., many items, one treatmentPlan)
-    treatmentPlan = models.ForeignKey(TreatmentPlan, related_name='treatment_items', on_delete=models.CASCADE)
+    treatmentPlan = models.ForeignKey(TreatmentPlan, related_name='treatment_items', on_delete=models.CASCADE, db_index=True)
     #Many-to-One relationship to the Procedure model (i.e., many items can reference the same procedure)
     procedure = models.ForeignKey('clinic.Procedure', related_name='treatment_items', on_delete=models.SET_NULL, null=True)
     toothNumber = models.CharField(max_length=3, blank=True, null=True, validators=[validate_toothNumber])
@@ -486,6 +500,7 @@ class TreatmentPlanItem(models.Model):
         db_table = 'TreatmentPlanItems'
         verbose_name_plural = 'TreatmentPlanItems'
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
         if self._state.adding and not self.status:
             self.status = self.ItemStatusChoices.PENDING
@@ -516,7 +531,7 @@ class PatientRecall(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     #Many-to-One relationship to the Patient model (i.e., many recalls, one patient)
-    patient = models.ForeignKey(Patient, related_name='patient_recalls', on_delete=models.CASCADE)
+    patient = models.ForeignKey(Patient, related_name='patient_recalls', on_delete=models.CASCADE, db_index=True)
     #Many-to-One relationship to the Branch model (i.e., many recalls, one branch)
     branch = models.ForeignKey('clinic.Branch', related_name='branch_patient_recalls', on_delete=models.CASCADE, blank=True, null=True, db_index=True)
     #other fields
@@ -539,6 +554,10 @@ class PatientRecall(models.Model):
         db_table = 'PatientRecalls'
         verbose_name_plural = 'PatientRecalls'
         ordering = ['branch__name', 'patient__name']
+        indexes = [
+            models.Index(fields=['patient', 'branch']),
+            models.Index(fields=['patient', 'branch', 'status']),
+        ]
     
     def __str__(self):
         return f'{self.type} for patient {self.patient.name}'
@@ -559,3 +578,72 @@ class PatientRecall(models.Model):
         super().save(*args, **kwargs)
 
 
+#Patient Coverage Manager
+class PatientCoverageManager(models.Manager):
+    #Overriding get_query to filter out soft-deleted patients
+    def get_queryset(self): 
+        return super().get_queryset().filter(patient__is_deleted=False) 
+
+#PATIENT COVERAGE MODEL (insurance coverage)
+class PatientCoverage(models.Model):
+    class EligibilityStatusChoices(models.TextChoices):
+        ACTIVE = 'active', _context('insurance_status', 'Active')
+        EXPIRED = 'expired', _('Expired')
+        NONE = 'none', _('None')
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    #One-to-One relationship to the Patient model (i.e. one patient, one insurance)
+    patient = models.OneToOneField(Patient, related_name='patient_insurance', on_delete=models.CASCADE, db_index=True)
+    #Many-to-One relationships to InsuranceProvider (i.e., coverages, one provider)
+    provider = models.ForeignKey('finances.InsuranceProvider', related_name='provider_coverages', 
+                  on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
+    providerName = models.CharField(max_length=300, blank=True, null=True)
+
+    memberId = models.CharField(max_length=100, blank=True, null=True)
+    annualMax = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], blank=True, null=True)
+    usedYTD = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], blank=True, null=True)
+    deductibleMet = models.BooleanField(blank=True, null=True)
+    currency = models.CharField(max_length=5, blank=True, null=True)
+    
+    effectiveFrom = models.DateField(null=True, blank=True)
+    effectiveTo = models.DateField(null=True, blank=True)  
+    
+    eligibilityStatus = models.CharField(max_length=25, choices=EligibilityStatusChoices.choices, blank=True, null=True)
+    eligibilityChecked = models.DateField(null=True, blank=True)
+    
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    #TODO -- weekly task to see if today is past effectiveTo date (and effectiveTo is not null): 
+    # set status to `expired` and deductibleMet to `False`and update eligibilityCheck date
+
+    #Objects after filtering by manager
+    objects = PatientCoverageManager()
+    
+    #to access all objects
+    all_objects = models.Manager()
+
+    class Meta: 
+        db_table = 'PatientCoverage'
+        verbose_name_plural = 'PatientCoverage'
+        ordering = ['eligibilityStatus', 'patient__branch__name', 'patient__name']
+        indexes = [
+            models.Index(fields=['patient', 'provider'])
+        ]
+
+    def __str__(self):
+        return f'[{self.effectiveFrom} - {self.effectiveTo}] {self.patient.name} -- {self.providerName} insurance'
+
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        #handle annualMax
+        if self.provider:
+            self.providerName = self.provider.name
+            if not self.annualMax and self.provider.annualMax:
+                self.annualMax = self.provider.annualMax
+
+        #handle status
+        if not self.eligibilityStatus:
+            self.eligibilityStatus = self.EligibilityStatusChoices.NONE
+        
+        #save changes 
+        super().save(*args, **kwargs)

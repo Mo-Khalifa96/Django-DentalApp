@@ -6,8 +6,10 @@ from finances.views.transactions import (ListCreateTransactionsAPIView, UpdateDe
                                          RetrieveTransactionsOptionsAPIView)
 from finances.views.bills import (ListCreateBillsAPIView, RetrieveUpdateDeleteBillAPIView, 
                                   AutogenerateInvoiceAPIView, RetrieveBillsOptionsAPIView)
+from finances.views.insurance_providers import (ListCreateInsuranceProvidersAPIView, RetrieveUpdateDeleteInsuranceProviderAPIView,
+                                                RetrieveInsuranceProvidersOptionsAPIView)
 
-
+#finances urls
 urlpatterns = [
     #Clinical tax config urls
     path('invoices/tax-config/', ClinicTaxConfigAPIView.as_view(
@@ -31,4 +33,9 @@ urlpatterns = [
     path('invoices/', ListCreateInvoicesAPIView.as_view(), name='list_create_invoices'),
     path('invoices/<uuid:id>/', RetrieveUpdateDeleteInvoiceAPIView.as_view(), name='retrieve_update_delete_invoice'),
     path('invoices/options/', RetrieveInvoicesOptionsAPIView.as_view(), name='invoices_options'),
+
+    #Insurance providers urls
+    path('insurance/providers/', ListCreateInsuranceProvidersAPIView.as_view(), name='list_create_providers'),
+    path('insurance/providers/<uuid:providerId>/', RetrieveUpdateDeleteInsuranceProviderAPIView.as_view(), name='retrieve_update_delete_provider'),
+    path('insurance/providers/options/', RetrieveInsuranceProvidersOptionsAPIView.as_view(), name='providers_options'),
 ]

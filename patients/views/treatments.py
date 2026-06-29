@@ -34,10 +34,6 @@ class ListCreateTreatmentPlansAPIView(ListCreateAPIView):
     lookup_field = 'id'
 
     def initial(self, request, *args, **kwargs):
-        #re-order data for admins
-        if getattr(request.user, 'role', None) == 'admin':
-            self.ordering = ['patient__branch__name', 'patient__name', '-createdAt']
-        
         #determine required permission
         #self.required_permission = 'view.treatments' if request.method == 'GET' else 'create.treatments'
         self.required_permission = get_required_permission('treatment-plans', request, self)
@@ -45,12 +41,12 @@ class ListCreateTreatmentPlansAPIView(ListCreateAPIView):
 
     def get_queryset(self):
         try:
-            patient = Patient.objects.prefetch_related('patient_treatmentplans').get(id=self.kwargs['id'])
+            patient = Patient.objects.only('id').get(id=self.kwargs['id'])
         except (Patient.DoesNotExist, Http404):
             raise NotFound(_('The requested patient was not found or does not exist.'))
-        return patient.patient_treatmentplans\
-            .prefetch_related('treatment_items', 
-             'treatment_items__procedure').all()
+        return patient.patient_treatmentplans.prefetch_related(
+                'treatment_items', 'treatment_items__procedure'
+            ).all()
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

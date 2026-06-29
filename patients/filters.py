@@ -1,9 +1,10 @@
 from users.models import User
 from clinic.models import Branch
 from utils.filters import BaseFilterSet
+from finances.models import InsuranceProvider
 from django.db.models import Q, Func, Value, CharField
-from patients.models import Patient, Visit, Appointment, TreatmentPlan, PatientRecall
-from django_filters.rest_framework import (CharFilter, FilterSet, ChoiceFilter, ModelChoiceFilter, DateFilter)
+from patients.models import Patient, Visit, Appointment, TreatmentPlan, PatientCoverage, PatientRecall
+from django_filters.rest_framework import (FilterSet, CharFilter, ChoiceFilter, ModelChoiceFilter, DateFilter, BooleanFilter)
 
 
 #FILTERSETS 
@@ -11,27 +12,31 @@ from django_filters.rest_framework import (CharFilter, FilterSet, ChoiceFilter, 
 class PatientsFilter(BaseFilterSet):
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
     status = ChoiceFilter(choices=[('active', 'active'), ('inactive', 'inactive')])
-    insurance = ChoiceFilter(choices=[])
+    insuranceProvider = ChoiceFilter(field_name='patient_insurance__provider__name',
+     choices=[
+        (name,name) for name in InsuranceProvider.objects.values_list('name', flat=True).order_by('name')
+     ])
+    # # insuranceProviderId = ModelChoiceFilter(field_name='patient_insurance__provider__name',
+    # #                                         queryset=InsuranceProvider.objects.all())
 
     class Meta:
         model = Patient
         fields = []
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        #get branch filter 
-        branch_filter = self.get_branch_filter()
-        if branch_filter is None:
-            self.filters['insurance'].field.choices = []
-            return
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     #get branch filter 
+    #     branch_filter = self.get_branch_filter()
+    #     if branch_filter is None:
+    #         self.filters['insuranceProvider'].field.choices = []
+    #         return
         
-        #filter by branch (if provided)
-        insurance_providers = Patient.objects.filter(**branch_filter)\
-                .values_list('insurance', flat=True)\
-                .distinct().order_by('insurance')
+    #     #filter by branch (if provided)
+    #     insurance_providers = InsuranceProvider.objects.filter(**branch_filter)\
+    #             .values_list('name', flat=True).order_by('name')
         
-        #populate field choices with available insurance providers
-        self.filters['insurance'].field.choices = [(provider, provider) for provider in insurance_providers]
+    #     #populate field choices with available insurance providers
+    #     self.filters['insuranceProvider'].field.choices = [(provider, provider) for provider in insurance_providers]
 
 
 #Visits filter 
@@ -93,6 +98,18 @@ class TreatmentPlansFilter(FilterSet):
 
     class Meta:
         model = TreatmentPlan
+        fields = []
+
+
+#Patient coverage filter 
+class PatientCoverageFilter(FilterSet):
+    eligibilityStatus = ChoiceFilter(choices=PatientCoverage.EligibilityStatusChoices.choices)
+    deductibleMet = BooleanFilter()
+    effectiveFrom = DateFilter(lookup_expr='gte')
+    effectiveTo = DateFilter(lookup_expr='lte')
+
+    class Meta:
+        model = PatientCoverage
         fields = []
 
 

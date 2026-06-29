@@ -345,6 +345,16 @@ class PermissionsAPIView(GenericAPIView):
                 'module': 'Treatment Plans'
             },
             {
+                'key': 'view.patientInsurance',
+                'label': 'View patient insurance coverage',
+                'module': 'Patient Insurance',
+            },
+            {
+                'key': 'update.patientInsurance',
+                'label': 'Update patient insurance coverage',
+                'module': 'Patient Insurance',
+            },
+            {
                 'key': 'view.procedures',
                 'label': 'View procedures list',
                 'module': 'Procedures'
@@ -485,6 +495,26 @@ class PermissionsAPIView(GenericAPIView):
                 'module': 'Invoices'
             },
             {
+                'key': 'view.insuranceProviders',
+                'label': 'View insurance providers list',
+                'module': 'Insurance Providers'
+            },
+            {
+                'key': 'create.insuranceProvider',
+                'label': 'Create new insurance provider',
+                'module': 'Insurance Providers'
+            },
+            {
+                'key': 'update.insuranceProvider',
+                'label': 'Update insurance provider details',
+                'module': 'Insurance Providers'
+            },
+            {
+                'key': 'delete.insuranceProvider',
+                'label': 'Delete insurance provider',
+                'module': 'Insurance Providers'
+            },
+            {
                 'key': 'view.sterilizationLogs',
                 'label': 'View sterilization logs list',
                 'module': 'Sterilization Logs'
@@ -531,14 +561,9 @@ class PermissionsAPIView(GenericAPIView):
             },
             {
                 'key': 'view.settings',
-                'label': 'View system settings',
+                'label': 'View account settings',
                 'module': 'Settings'
-            },
-            {
-                'key': 'view.preferences',
-                'label': 'View personal preferences',
-                'module': 'Settings'
-            },
+            }
         ]
 
         #Serializer data to return response 

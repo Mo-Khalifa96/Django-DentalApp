@@ -1,14 +1,18 @@
 from utils.base_views import *
+from users.models import User
 from clinic.models import Lab, LabOrder
+from utils.validators import validate_uuid
 from rest_framework import status, generics
 from rest_framework.response import Response
 from users.utils import get_required_permission
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 from users.permissions import SystemUserPermissions
 from rest_framework.filters import SearchFilter
 from utils.filters import CustomOrderingFilter
 from utils.mixins import BranchToSerializerMixin
 from clinic.filters import LabsFilter, LabOrdersFilter
+from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
 from clinic.serializers.labs import (LabSerializer, UpdateLabSerializer, LabOrderSerializer,
@@ -129,12 +133,25 @@ class UpdateDeleteLabOrderAPIView(RetrieveUpdateDeleteAPIView):
     tags=['Lab Orders'],
     parameters=[
         OpenApiParameter('branchId', OpenApiTypes.UUID, OpenApiParameter.QUERY, required=False),
+        OpenApiParameter('doctorId', OpenApiTypes.UUID, OpenApiParameter.QUERY, required=False),
         OpenApiParameter('lang', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
     ]
 )
 class RetrieveLabOrdersOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIView):
     serializer_class = LabOrdersOptionsSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()  #get branchId and add doctorId
+        doctorId = validate_uuid(self.request.query_params.get('doctorId'))
+
+        if doctorId:
+            if not User.objects.filter(id=doctorId, role__in=['dentist', 'admin']).exists():
+                raise ValidationError({'doctorId': _("User not found or not registered as a doctor.")})
+            
+        #add doctor to serializer context
+        context['doctorId'] = doctorId
+        return context
 
     def get(self, request, *args, **kwargs):
         return Response(self.get_serializer(instance={}).data, status=status.HTTP_200_OK)

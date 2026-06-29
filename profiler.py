@@ -10,8 +10,8 @@ django.setup()
 if django.conf.settings.DEBUG:
     from users.models import User
     from finances.models import Bill, Invoice
+    from clinic.models import Branch, Inventory, Procedure, Lab
     from patients.models import Patient, Appointment, TreatmentPlan
-    from clinic.models import Branch, Inventory, Procedure, Lab, LabOrder, SterilizationLog
     from locust import HttpUser, task, between
 
 
@@ -46,7 +46,7 @@ if django.conf.settings.DEBUG:
             self.invoice_id = Invoice.objects.only('id').order_by('?').first().id
 
 
-        @task(5)
+        @task
         def hit_endpoints(self):
             endpoints = [
                 #auth endpoints
@@ -101,8 +101,9 @@ if django.conf.settings.DEBUG:
                 '/api/permissions/',
             ]
 
-            for url in endpoints:
-                self.client.get(url)
+            for _ in range(5):
+                for url in endpoints:
+                    self.client.get(url)
                 
             self.environment.runner.quit() #stop profiler after one full pass
 

@@ -30,10 +30,15 @@ class ListCreateProceduresAPIViews(FilterListCreateAPIView):
         super().initial(request, *args, **kwargs)
 
     def get_queryset(self):
-        user = self.request.user
+        #fetch procedures queryset
         procedures = Procedure.objects.select_related('branch').all()
 
-        #return full query to admin
+        #return on post
+        if self.request.method == 'POST':
+            return procedures
+
+        #return full queryset to admin
+        user = self.request.user
         if getattr(user, 'role', None) == 'admin':
             return procedures
         
@@ -59,7 +64,7 @@ class RetrieveUpdateDeleteProceduresAPIViews(RetrieveUpdateDeleteAPIView):
         return ProcedureSerializer
         
 
-#View for retrieving procedure category choices
+#API View for serving choice options for procedures
 @extend_schema(
     tags=['Procedures'],
     parameters=[

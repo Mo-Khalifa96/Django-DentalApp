@@ -122,13 +122,20 @@ class LabOrdersOptionsSerializer(serializers.Serializer):
     ))
     def get_patientChoices(self, obj):
         branchId = self.context.get('branchId')
-        if not branchId and Branch.objects.exists():
+        doctorId = self.context.get('doctorId') 
+        
+        if (not branchId and Branch.objects.exists()) and not doctorId:
             return []
         
-        filters = {'branch_id': branchId} if branchId else {}
+        filters = {}
+        if branchId:
+            filters['branch_id'] = branchId
+        if doctorId:
+            filters['doctor_id'] = doctorId
+        
         return [
-            {'patientId': patient_id, 'name': name} 
-             for patient_id,name in Patient.objects.filter(**filters)\
+            {'patientId': patient_id, 'name': name}
+             for patient_id, name in Patient.objects.filter(**filters)\
               .values_list('id', 'name').order_by('name')
         ]
 
