@@ -431,7 +431,7 @@ class InsuranceProvider(models.Model):
     
     #Many-to-One relationships to Branch (i.e., many providers, one branch)
     branch = models.ForeignKey('clinic.Branch', related_name='branch_providers', 
-                  on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
+                  on_delete=models.CASCADE, blank=True, null=True, db_index=True)
 
 
     #Objects after filtering by manager

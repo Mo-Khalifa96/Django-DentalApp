@@ -52,7 +52,7 @@ class WhatsAppWebhookAPIView(View):
                                 providerMessageId=provider_id
                             ).update(
                                 status=new_status,
-                                lastWebhookAt=timezone.now(),
+                                lastWebhookAt=timezone.localtime(timezone.now()),
                             )
                             if updated:
                                 logger.info(f'Message {provider_id} status updated to {new_status}.')
@@ -103,7 +103,7 @@ class TwilioWhatsAppWebhookAPIView(View):
                 mapped_status = status_map.get(status, status)
                 Message.objects.filter(providerMessageId=message_sid).update(
                     status=mapped_status,
-                    lastWebhookAt=timezone.now(),
+                    lastWebhookAt=timezone.localtime(timezone.now()),
                 )
                 print(f'\n\nTwilio message {message_sid} status: {mapped_status}\n\n')
         except Exception as exc:

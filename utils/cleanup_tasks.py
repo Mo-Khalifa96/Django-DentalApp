@@ -7,12 +7,13 @@ from services.models import Message
 from django_q.models import Schedule
 from dateutil.relativedelta import relativedelta
 from finances.models import Bill, Transaction, Invoice
-from clinic.models import Branch, WaitingRoom, SterilizationLog
 from patients.models import Patient, Appointment, PatientRecall
+from clinic.models import Branch, WaitingRoom, SterilizationLog
 
 
 #Initiate logger 
 logger = logging.getLogger('django-q')
+
 
 #YEARLY TASKS 
 def cleanup_deleted_payments():
@@ -21,7 +22,7 @@ def cleanup_deleted_payments():
     try:
         with transaction.atomic():
             #Calculate the cutoff date (10 years ago)
-            ten_years_ago = timezone.now() - relativedelta(years=10)
+            ten_years_ago = timezone.localtime(timezone.now()) - relativedelta(years=10)
 
             #Delete obsolete payments data
             deleted_bills = Bill.all_objects.filter(isDeleted=True, updatedAt__lte=ten_years_ago).delete()
@@ -46,7 +47,7 @@ def cleanup_soft_deleted_data():
     try:
         with transaction.atomic():
             #Calculate the cutoff date (12 months ago)
-            one_year_ago = timezone.now() - relativedelta(months=12)
+            one_year_ago = timezone.localtime(timezone.now()) - relativedelta(months=12)
             
             #Delete obsolete data
             deleted_users = User.all_objects.filter(is_deleted=True, updatedAt__lte=one_year_ago).delete()
@@ -70,7 +71,7 @@ def cleanup_sterilization_logs():
     try:
         with transaction.atomic():
             #Calculate the cutoff date (12 months ago)
-            one_year_ago = timezone.now() - relativedelta(months=12)
+            one_year_ago = timezone.localtime(timezone.now()) - relativedelta(months=12)
             
             #Delete sterilization logs older than a year
             deleted_sterilization_logs = SterilizationLog.all_objects.filter(updatedAt__lte=one_year_ago).delete()
@@ -90,7 +91,7 @@ def cleanup_patient_recalls():
     try:
         with transaction.atomic():
             #Calculate the cutoff date (12 months ago)
-            one_year_ago = timezone.now() - relativedelta(months=12)
+            one_year_ago = timezone.localtime(timezone.now()) - relativedelta(months=12)
             
             #Delete patient recall data if not pending/no_answer and older than 1 year
             deleted_recalls = PatientRecall.all_objects.filter(
@@ -112,15 +113,15 @@ def cleanup_patient_recalls():
 #WEEKLY TASKS
 #Define task to cleanup cancelled appointments
 def cleanup_cancelled_appointments():
-    '''Weekly task to delete cancelled appointments that's been cancelled for more than a month.'''
+    '''Weekly task to delete cancelled appointments that's been cancelled for more than 6 months.'''
 
     try:
         with transaction.atomic():
-            #Calculate the cutoff date (1 months ago)
-            one_months_ago = timezone.now() - relativedelta(months=1)
+            #Calculate the cutoff date (6 months ago)
+            six_months_ago = timezone.localtime(timezone.now()) - relativedelta(months=6)
             
             #Delete cancelled appointments older than 1 months
-            deleted_appointments = Appointment.all_objects.filter(status='cancelled', updatedAt__lte=one_months_ago).delete()
+            deleted_appointments = Appointment.all_objects.filter(status='cancelled', updatedAt__lte=six_months_ago).delete()
             
             #Log task results
             logger.info(f"Cancelled appointments deleted successfully. Deleted {deleted_appointments[0]} appointments.")
@@ -129,6 +130,7 @@ def cleanup_cancelled_appointments():
         logger.error(f"Error cleaning up appointments: {str(exc)}")
         raise  #raise the exception for Django-Q2's retry mechanism
 
+
 #Define task to cleanup waiting room
 def cleanup_waiting_room():
     '''Weekly task to delete waiting room entries for past appointments.'''
@@ -136,7 +138,7 @@ def cleanup_waiting_room():
     try:
         with transaction.atomic():
             #Calculate the cutoff date (1 months ago)
-            one_months_ago = timezone.now() - relativedelta(months=1)
+            one_months_ago = timezone.localtime(timezone.now()) - relativedelta(months=1)
             
             #Delete waiting room entries older than 1 months
             deleted_entries = WaitingRoom.all_objects.filter(arrivedAt__lte=one_months_ago).delete()
@@ -171,7 +173,7 @@ def cleanup_past_schedules():
     '''Weekly task to delete old schedules whose scheduled run is past today.'''
     try:
         deleted_schedules = Schedule.objects.filter(
-            schedule_type=Schedule.ONCE, next_run__lt=timezone.now(),
+            schedule_type=Schedule.ONCE, next_run__lt=timezone.localtime(timezone.now()),
         ).delete()
         
         #Log task results

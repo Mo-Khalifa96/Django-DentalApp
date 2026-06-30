@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-14 16:17+0300\n"
+"POT-Creation-Date: 2026-06-29 20:54+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,103 +19,103 @@ msgstr ""
 "Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 "
 "&& n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;\n"
 
-#: clinic/models.py:15
+#: clinic/models.py:14
 msgid "Sunday"
 msgstr "الأحد"
 
-#: clinic/models.py:16
+#: clinic/models.py:15
 msgid "Monday"
 msgstr "الاثنين"
 
-#: clinic/models.py:17
+#: clinic/models.py:16
 msgid "Tuesday"
 msgstr "الثلاثاء"
 
-#: clinic/models.py:18
+#: clinic/models.py:17
 msgid "Wednesday"
 msgstr "الأربعاء"
 
-#: clinic/models.py:19
+#: clinic/models.py:18
 msgid "Thursday"
 msgstr "الخميس"
 
-#: clinic/models.py:20
+#: clinic/models.py:19
 msgid "Friday"
 msgstr "الجمعة"
 
-#: clinic/models.py:21
+#: clinic/models.py:20
 msgid "Saturday"
 msgstr "السبت"
 
-#: clinic/models.py:105
+#: clinic/models.py:104
 msgid "Waiting"
 msgstr "قيد الانتظار"
 
-#: clinic/models.py:106
+#: clinic/models.py:105
 msgid "In chair"
 msgstr "قيد العلاج"
 
-#: clinic/models.py:107
+#: clinic/models.py:106
 msgid "Done"
 msgstr "مكتمل"
 
-#: clinic/models.py:173 patients/models.py:201
+#: clinic/models.py:172 patients/models.py:209
 msgid "Routine Checkup"
 msgstr "فحص روتيني"
 
-#: clinic/models.py:174
+#: clinic/models.py:173
 msgid "Cosmetic"
 msgstr "تجميلي"
 
-#: clinic/models.py:175
+#: clinic/models.py:174
 msgid "Diagnostic"
 msgstr "تشخيصي"
 
-#: clinic/models.py:176
+#: clinic/models.py:175
 msgid "Endodontic"
 msgstr "علاج جذور"
 
-#: clinic/models.py:177
+#: clinic/models.py:176
 msgid "Implant"
 msgstr "زراعة أسنان"
 
-#: clinic/models.py:178
+#: clinic/models.py:177
 msgid "Preventive"
 msgstr "وقائي"
 
-#: clinic/models.py:179
+#: clinic/models.py:178
 msgid "Prosthetic"
 msgstr "تركيبات"
 
-#: clinic/models.py:180
+#: clinic/models.py:179
 msgid "Restorative"
 msgstr "ترميمي"
 
-#: clinic/models.py:181
+#: clinic/models.py:180
 msgid "Surgical"
 msgstr "جراحي"
 
-#: clinic/models.py:317
+#: clinic/models.py:315
 msgid "Sent"
 msgstr "تم الإرسال"
 
-#: clinic/models.py:318
+#: clinic/models.py:316
 msgid "In production"
 msgstr "قيد التصنيع"
 
-#: clinic/models.py:319
+#: clinic/models.py:317
 msgid "Delivered"
 msgstr "تم التسليم"
 
-#: clinic/models.py:320
+#: clinic/models.py:318
 msgid "Received"
 msgstr "تم الاستلام"
 
-#: clinic/models.py:413
+#: clinic/models.py:411
 msgid "Passed"
 msgstr "ناجح"
 
-#: clinic/models.py:414
+#: clinic/models.py:412
 msgid "Failed"
 msgstr "فاشل"
 
@@ -127,45 +127,67 @@ msgstr "تم رفض الوصول. ليس لديك صلاحية للوصول إل
 msgid "At least one instrument set is required."
 msgstr "يجب تحديد مجموعة أدوات واحدة على الأقل."
 
-#: clinic/serializers/waiting_room.py:57
+#: clinic/serializers/waiting_room.py:59
 msgid "Doctor not found or does not exist."
 msgstr "الطبيب غير موجود."
 
-#: finances/models.py:203
+#: clinic/views/labs.py:150 finances/views/bills.py:161
+#: finances/views/invoices.py:130 finances/views/transactions.py:138
+#: patients/views/appointments.py:159 patients/views/patient_insurance.py:113
+msgid "User not found or not registered as a doctor."
+msgstr "المستخدم غير موجود أو غير مسجل كطبيب."
+
+#: finances/models.py:200
 msgid "Cash"
 msgstr "كاش"
 
-#: finances/models.py:204
+#: finances/models.py:201
 msgid "Card"
 msgstr "بطاقة"
 
-#: finances/models.py:205
+#: finances/models.py:202
 msgid "Bank transfer"
 msgstr "تحويل بنكي"
 
-#: finances/models.py:206
+#: finances/models.py:203
 msgid "Insurance"
 msgstr "تأمين"
 
-#: finances/models.py:207
+#: finances/models.py:204
 msgid "Mobile wallet"
 msgstr "محفظة إلكترونية"
 
-#: finances/models.py:286
+#: finances/models.py:283
 msgid "Issued"
 msgstr "تم الإصدار"
 
-#: finances/models.py:287
+#: finances/models.py:284
 msgid "Submitted"
 msgstr "تم التقديم"
 
-#: finances/models.py:288
+#: finances/models.py:285
 msgid "Accepted"
 msgstr "مقبول"
 
-#: finances/models.py:289
+#: finances/models.py:286
 msgid "Rejected"
 msgstr "مرفوض"
+
+#: finances/models.py:413
+msgid "Government"
+msgstr ""
+
+#: finances/models.py:414
+msgid "Universal"
+msgstr ""
+
+#: finances/models.py:415
+msgid "Corporate"
+msgstr ""
+
+#: finances/models.py:416
+msgid "Direct"
+msgstr ""
 
 #: finances/serializers/bills.py:21
 msgid "unpaid"
@@ -195,12 +217,12 @@ msgid "One or more visits do not belong to this patient."
 msgstr "واحدة أو أكثر من الزيارات لا تخص هذا المريض."
 
 #: finances/serializers/bills.py:126 finances/serializers/bills.py:219
-#: finances/serializers/invoices.py:152
+#: finances/serializers/invoices.py:150
 msgid "Discount cannot exceed subtotal amount."
 msgstr "لا يمكن أن تتجاوز قيمة الخصم المبلغ الفرعي."
 
-#: finances/serializers/invoices.py:134 patients/serializers/appointments.py:97
-#: patients/serializers/appointments.py:168 utils/mixins.py:55
+#: finances/serializers/invoices.py:132 patients/serializers/appointments.py:98
+#: patients/serializers/appointments.py:172 utils/mixins.py:56
 msgid ""
 "Clinic branch must be provided when at least one branch is registered. "
 "Please provide a branch ID or contact the admin to assign a branch to your "
@@ -209,149 +231,171 @@ msgstr ""
 "يجب تحديد فرع العيادة عند وجود فرع واحد على الأقل. يرجى اختيار الفرع أو "
 "التواصل مع المسؤول لتعيين فرع لحسابك."
 
-#: finances/views/bills.py:161 finances/views/transactions.py:137
+#: finances/views/bills.py:157 finances/views/transactions.py:134
 msgid "Patient was not found or does not exist."
 msgstr "المريض غير موجود."
 
-#: finances/views/bills.py:165 finances/views/invoices.py:134
-#: finances/views/transactions.py:141
-msgid "User not found or not registered as a doctor."
-msgstr "المستخدم غير موجود أو غير مسجل كطبيب."
-
-#: finances/views/tax_config.py:39
+#: finances/views/tax_config.py:41
 msgid "The requested tax configuration was not found or does not exist."
 msgstr "إعدادات الضريبة المطلوبة غير موجودة."
 
-#: finances/views/tax_config.py:41
+#: finances/views/tax_config.py:43
 msgid ""
 "Clinic branch must be provided to determine the associated tax configuration."
 msgstr "يجب تحديد فرع العيادة لتحديد إعدادات الضريبة المرتبطة به."
 
-#: patients/models.py:52
+#: patients/models.py:49
 msgid "Male"
 msgstr "ذكر"
 
-#: patients/models.py:53
+#: patients/models.py:50
 msgid "Female"
 msgstr "أنثى"
 
-#: patients/models.py:57
+#: patients/models.py:54
 msgid "inactive"
 msgstr "غير نشط"
 
-#: patients/models.py:202
+#: patients/models.py:210
 msgid "Follow up"
 msgstr "متابعة"
 
-#: patients/models.py:203
+#: patients/models.py:211
 msgid "Emergency"
 msgstr "طارئ"
 
-#: patients/models.py:290 patients/models.py:471
+#: patients/models.py:301 patients/models.py:482
 msgid "pending"
 msgstr "قيد الانتظار"
 
-#: patients/models.py:291
+#: patients/models.py:302
 msgid "confirmed"
 msgstr "مؤكد"
 
-#: patients/models.py:292 patients/models.py:416 patients/models.py:473
+#: patients/models.py:303 patients/models.py:428 patients/models.py:484
 msgid "completed"
 msgstr "مكتمل"
 
-#: patients/models.py:293 patients/models.py:417
+#: patients/models.py:304 patients/models.py:429
 msgid "cancelled"
 msgstr "ملغي"
 
-#: patients/models.py:420
+#: patients/models.py:432
 msgid "Full payment"
 msgstr "دفع كامل"
 
-#: patients/models.py:421
+#: patients/models.py:433
 msgid "3 months"
 msgstr "٣ أشهر"
 
-#: patients/models.py:422
+#: patients/models.py:434
 msgid "6 months"
 msgstr "٦ أشهر"
 
-#: patients/models.py:423
+#: patients/models.py:435
 msgid "12 months"
 msgstr "١٢ شهر"
 
-#: patients/models.py:472
+#: patients/models.py:483
 msgid "in progress"
 msgstr "قيد التنفيذ"
 
-#: patients/models.py:508
+#: patients/models.py:520
 msgid "Checkup"
 msgstr "فحص"
 
-#: patients/models.py:509
+#: patients/models.py:521
 msgid "Post-procedure"
 msgstr "بعد الإجراء"
 
-#: patients/models.py:510
+#: patients/models.py:522
 msgid "Treatment"
 msgstr "علاج"
 
-#: patients/models.py:511
+#: patients/models.py:523
 msgid "Custom"
 msgstr "حسب الطلب"
 
-#: patients/models.py:514
+#: patients/models.py:526
 msgid "Pending"
 msgstr "قيد الانتظار"
 
-#: patients/models.py:515
+#: patients/models.py:527
 msgid "Contacted"
 msgstr "تم التواصل"
 
-#: patients/models.py:516
+#: patients/models.py:528
 msgid "Confirmed"
 msgstr "تم التأكيد"
 
-#: patients/models.py:517
+#: patients/models.py:529
 msgid "No answer"
 msgstr "لا يوجد رد"
 
-#: patients/models.py:518
+#: patients/models.py:530
 msgid "Declined"
 msgstr "تم الرفض"
 
-#: patients/serializers/appointments.py:71
+#: patients/models.py:591
+msgid "Expired"
+msgstr "منتهي"
+
+#: patients/models.py:592
+msgid "None"
+msgstr "لا يوجد"
+
+#: patients/serializers/appointments.py:72
 msgid "New patient details required if creating a new patient."
-msgstr "يجب إدخال بيانات المريض عند إنشاء مريض جديد."
+msgstr "يجب إدخال بيانات المريض في حال إنشاء مريض جديد."
 
-#: patients/serializers/appointments.py:73
+#: patients/serializers/appointments.py:74
 msgid "Cannot assign an existing patient if choosing to create a new one."
-msgstr "لا يمكن اختيار مريض موجود عند إنشاء مريض جديد."
+msgstr "لا يمكن اختيار مريض موجود في حال إنشاء مريض جديد."
 
-#: patients/serializers/appointments.py:79
+#: patients/serializers/appointments.py:80
 msgid "Existing patient ID or new patient details are required."
 msgstr "يجب إدخال رقم مريض موجود أو بيانات مريض جديد."
 
-#: patients/serializers/patients.py:35
+#: patients/serializers/patient_insurance.py:69
+#: patients/serializers/patient_insurance.py:191
+#, fuzzy
+#| msgid "New patient details required if creating a new patient."
+msgid "New insurance provider details required if creating a new provider"
+msgstr "يجب إدخال بيانات متكفل تأمين في حال إنشاء متكفل جديد."
+
+#: patients/serializers/patient_insurance.py:71
+#: patients/serializers/patient_insurance.py:193
+#, fuzzy
+#| msgid "Cannot assign an existing patient if choosing to create a new one."
+msgid ""
+"Cannot assign an existing insurance provider if choosing to create a new one."
+msgstr "لا يمكن اختيار متكفل تأمين موجود في حال إنشاء متكفل جديد."
+
+#: patients/serializers/patient_insurance.py:89
+msgid "An insurance provider is required to create a new insurance plan."
+msgstr "يجب إدخال بيانات متكفل تأمين لانشاء تغطية تأمينية جديدة للمريض"
+
+#: patients/serializers/patients.py:33
 msgid "Country code is required."
 msgstr "رمز الدولة مطلوب."
 
-#: patients/serializers/patients.py:37
+#: patients/serializers/patients.py:36
 msgid "Country code entered is invalid. Please enter a valid number."
 msgstr "رمز الدولة المدخل غير صالح. يرجى إدخال رمز صحيح."
 
-#: patients/serializers/patients.py:104
+#: patients/serializers/patients.py:111
 msgid "Both country code and phone are required to update."
 msgstr "يجب إدخال رمز الدولة ورقم الهاتف معًا للتحديث."
 
-#: patients/serializers/patients.py:193
+#: patients/serializers/patients.py:244
 msgid "Invalid data format."
-msgstr "تنسيق البيانات غير صالح."
+msgstr "البيانات غير صالحة."
 
-#: patients/serializers/patients.py:195
+#: patients/serializers/patients.py:246
 msgid "Teeth data missing or incomplete."
 msgstr "بيانات الأسنان مفقودة أو غير مكتملة."
 
-#: patients/serializers/patients.py:197
+#: patients/serializers/patients.py:248
 msgid "Teeth data required for update."
 msgstr "بيانات الأسنان مطلوبة لإجراء التحديث."
 
@@ -374,92 +418,126 @@ msgstr "رقم السن غير صالح."
 msgid "Invalid tooth number. Does not comply with FDI notation."
 msgstr "رقم السن غير صالح ولا يتوافق مع نظام ترقيم FDI."
 
+#: patients/views/appointments.py:137
+msgid "Appointment cancelled successfully."
+msgstr ""
+
 #: patients/views/patient_recalls.py:114
 msgid "User not found or not registered as 'dentist'."
 msgstr "المستخدم غير موجود أو غير مسجل كطبيب أسنان."
 
-#: patients/views/treatments.py:49
+#: patients/views/treatments.py:46
 msgid "The requested patient was not found or does not exist."
 msgstr "المريض المطلوب غير موجود."
 
-#: patients/views/treatments.py:91
+#: patients/views/treatments.py:88
 msgid "The requested treatment plan was not found or does not exist."
 msgstr "خطة العلاج المطلوبة غير موجودة."
+
+#: services/models.py:18
+msgid "reminder"
+msgstr ""
+
+#: services/models.py:19
+msgid "recall"
+msgstr ""
+
+#: services/models.py:20
+#, fuzzy
+#| msgid "Custom"
+msgid "custom"
+msgstr "حسب الطلب"
 
 #: services/whatsapp/exceptions.py:10
 msgid "WhatsApp API error."
 msgstr "خطأ في واجهة برمجة تطبيقات واتساب."
 
-#: users/models.py:69
+#: users/models.py:68
 msgid "Admin"
 msgstr "مدير"
 
-#: users/models.py:70
+#: users/models.py:69
 msgid "Dentist"
 msgstr "طبيب أسنان"
 
-#: users/models.py:71
+#: users/models.py:70
 msgid "Receptionist"
 msgstr "موظف استقبال"
 
-#: users/models.py:72
+#: users/models.py:71
 msgid "Assistant"
 msgstr "مساعد"
 
-#: users/models.py:73
+#: users/models.py:72
 msgid "Accountant"
 msgstr "محاسب"
 
-#: users/models.py:450
+#: users/models.py:75
+msgid "Light"
+msgstr ""
+
+#: users/models.py:76
+msgid "Dark"
+msgstr ""
+
+#: users/models.py:79
+msgid "English"
+msgstr ""
+
+#: users/models.py:80
+msgid "Arabic"
+msgstr ""
+
+#: users/models.py:494
 msgid "Off"
 msgstr "إجازة"
 
-#: users/models.py:451
+#: users/models.py:495
 msgid "Vacation"
 msgstr "إجازة سنوية"
 
-#: users/models.py:452
+#: users/models.py:496
 msgid "Conference"
 msgstr "مؤتمر"
 
-#: users/serializers/auth.py:22
+#: users/serializers/auth.py:25
 msgid "Account is inactive. Reset your password to reactivate your account."
 msgstr "الحساب غير نشط. يرجى إعادة تعيين كلمة المرور لإعادة تفعيل الحساب."
 
-#: users/serializers/auth.py:59
+#: users/serializers/auth.py:62
 msgid "Current password is required."
 msgstr "كلمة المرور الحالية مطلوبة."
 
-#: users/serializers/auth.py:61 users/serializers/users.py:194
+#: users/serializers/auth.py:64 users/serializers/users.py:203
 msgid "Current password is incorrect."
 msgstr "كلمة المرور الحالية غير صحيحة."
 
-#: users/serializers/auth.py:63 users/serializers/auth.py:114
+#: users/serializers/auth.py:66 users/serializers/auth.py:117
 msgid "New password is required."
 msgstr "كلمة المرور الجديدة مطلوبة."
 
-#: users/serializers/auth.py:65 users/serializers/users.py:198
+#: users/serializers/auth.py:68 users/serializers/users.py:207
 msgid "New password must be different from the old one."
 msgstr "يجب أن تكون كلمة المرور الجديدة مختلفة عن الحالية."
 
-#: users/serializers/auth.py:67 users/serializers/auth.py:116
+#: users/serializers/auth.py:70 users/serializers/auth.py:119
 msgid "Password confirmation is required."
 msgstr "تأكيد كلمة المرور مطلوب."
 
-#: users/serializers/auth.py:69 users/serializers/auth.py:118
-#: users/serializers/users.py:57 users/serializers/users.py:200
+#: users/serializers/auth.py:72 users/serializers/auth.py:121
+#: users/serializers/users.py:57 users/serializers/users.py:209
 msgid "Passwords do not match."
 msgstr "كلمتا المرور غير متطابقتين."
 
-#: users/serializers/auth.py:90
+#: users/serializers/auth.py:93
 msgid "Email is incorrect or does not exist."
 msgstr "البريد الإلكتروني غير صحيح أو غير موجود."
 
-#: users/serializers/auth.py:128
+#: users/serializers/auth.py:131
 msgid "Invalid reset link."
 msgstr "رابط إعادة التعيين غير صالح."
 
-#: users/serializers/auth.py:131
+#: users/serializers/auth.py:134
 msgid "Invalid or expired reset token."
 msgstr "رمز إعادة التعيين غير صالح أو منتهي الصلاحية."
 
@@ -475,11 +553,11 @@ msgstr ""
 msgid "Both password fields are required."
 msgstr "حقلا كلمة المرور مطلوبان."
 
-#: users/serializers/users.py:196
+#: users/serializers/users.py:205
 msgid "Password confirmation is required to change password."
 msgstr "تأكيد كلمة المرور مطلوب لتغييرها."
 
-#: users/serializers/users.py:207
+#: users/serializers/users.py:216
 msgid "You must pass current password before changing it."
 msgstr "يجب إدخال كلمة المرور الحالية قبل تغييرها."
 
@@ -511,42 +589,41 @@ msgstr "يوجد جدول مواعيد مسجل لهذا الطبيب بالفع
 msgid "Invalid date format. Expected YYYY-MM-DD."
 msgstr "تنسيق التاريخ غير صالح. الصيغة المطلوبة هي YYYY-MM-DD."
 
-#: users/views/users.py:113
-msgid "Branch ID is required to activate user branch."
-msgstr "معرف الفرع مطلوب لتفعيل فرع المستخدم."
-
-#: users/views/users.py:120 users/views/users.py:151
-msgid "Permission denied. You do not belong to this branch."
-msgstr "تم رفض الوصول. أنت لا تنتمي إلى هذا الفرع."
-
-#: users/views/users.py:140
+#: users/views/users.py:130
 msgid "Branch ID is required."
 msgstr "معرف الفرع مطلوب."
 
-#: utils/exceptions.py:16
+#: users/views/users.py:142 users/views/users.py:170
+msgid "Permission denied. You do not belong to this branch."
+msgstr "تم رفض الوصول. أنت لا تنتمي إلى هذا الفرع."
+
+#: users/views/users.py:163
+msgid "Branch ID is required to activate user branch."
+msgstr "معرف الفرع مطلوب لتفعيل فرع المستخدم."
+
+#: utils/exceptions.py:22
 msgid "This appointment conflicts with an existing one."
 msgstr "يتعارض هذا الموعد مع موعد اخر موجود."
 
-#: utils/exceptions.py:23
+#: utils/exceptions.py:29
 msgid "Patient's phone number is invalid or not registered on WhatsApp."
 msgstr "رقم هاتف المريض غير صالح أو غير مسجل على واتساب."
 
-#: utils/mixins.py:107
+#: utils/mixins.py:108
 msgid "Branch was not found or does not exist."
 msgstr "الفرع غير موجود."
 
-#: utils/validators.py:19
-msgid "This field cannot be empty."
-msgstr "لا يمكن ترك هذا الحقل فارغًا."
+#~ msgid "This field cannot be empty."
+#~ msgstr "لا يمكن ترك هذا الحقل فارغًا."
 
-msgctxt "patient_status"
-msgid "active"
-msgstr "نشط"
+#~ msgctxt "patient_status"
+#~ msgid "active"
+#~ msgstr "نشط"
 
-msgctxt "treatment_status"
-msgid "active"
-msgstr "قيد التنفيذ"
+#~ msgctxt "treatment_status"
+#~ msgid "active"
+#~ msgstr "قيد التنفيذ"
 
-msgctxt "insurance_status"
-msgid "active"
-msgstr "فعال"
+#~ msgctxt "insurance_status"
+#~ msgid "active"
+#~ msgstr "فعال"

@@ -12,10 +12,8 @@ from django_filters.rest_framework import (FilterSet, CharFilter, ChoiceFilter, 
 class PatientsFilter(BaseFilterSet):
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
     status = ChoiceFilter(choices=[('active', 'active'), ('inactive', 'inactive')])
-    insuranceProvider = ChoiceFilter(field_name='patient_insurance__provider__name',
-     choices=[
-        (name,name) for name in InsuranceProvider.objects.values_list('name', flat=True).order_by('name')
-     ])
+    insuranceProvider = ModelChoiceFilter(field_name='patient_insurance__provider',
+                         to_field_name='name', queryset=InsuranceProvider.objects.all())
     # # insuranceProviderId = ModelChoiceFilter(field_name='patient_insurance__provider__name',
     # #                                         queryset=InsuranceProvider.objects.all())
 

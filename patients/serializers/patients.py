@@ -47,6 +47,13 @@ class CreatePatientSerializer(ValidateBranchMixin, serializers.ModelSerializer):
                 data['phone'] = phone 
         return data
 
+    @transaction.atomic
+    def create(self, validated_data):
+        provider = validated_data.pop('insuranceProviderId', None)
+        patient = Patient.objects.create(**validated_data)
+        patient.save(provider=provider)
+        return patient
+
 
 #Serializer for patient listing 
 class ListPatientSerializer(serializers.ModelSerializer): 

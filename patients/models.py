@@ -613,9 +613,6 @@ class PatientCoverage(models.Model):
     
     updatedAt = models.DateTimeField(auto_now=True)
 
-    #TODO -- weekly task to see if today is past effectiveTo date (and effectiveTo is not null): 
-    # set status to `expired` and deductibleMet to `False`and update eligibilityCheck date
-
     #Objects after filtering by manager
     objects = PatientCoverageManager()
     

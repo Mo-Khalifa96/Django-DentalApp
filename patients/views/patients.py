@@ -64,13 +64,6 @@ class ListCreatePatientsAPIView(FilterListCreateAPIView):
             return ListPatientSerializer
         else:
             return CreatePatientSerializer
-
-    def perform_create(self, serializer):
-        #handle patient insurance coverage from insurance provider (if passed)
-        insurance_providerId = serializer.validated_data.pop('insuranceProviderId', None)
-
-        #pass insurance provider to save() method
-        serializer.save(provider=insurance_providerId)
         
 
 #Retrieve/update/delete patient API view
