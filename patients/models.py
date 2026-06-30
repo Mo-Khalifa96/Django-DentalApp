@@ -82,8 +82,6 @@ class Patient(models.Model):
     address = models.CharField(max_length=300, blank=True, null=True)
     bloodType = models.CharField(max_length=5, choices=bloodTypeChoices, blank=True, null=True)
     allergies = ArrayField(models.CharField(max_length=255), default=list, blank=True, null=True)
-    # insurance = models.CharField(max_length=255, blank=True, null=True) #TODO - insurance name; handle appropriately given the new model below!
-    # insuranceId = models.CharField(max_length=120, blank=True, null=True)  #TODO - handle appropriately given the new model below!
     lastVisit = models.DateField(blank=True, null=True)
     nextAppointment = models.DateField(blank=True, null=True)
     status = models.CharField(max_length=50, choices=StatusChoices.choices, blank=True, null=True)

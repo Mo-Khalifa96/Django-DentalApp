@@ -20,6 +20,7 @@ from patients.serializers.patient_insurance import (ListPatientCoverageSerialize
 
 
 #PATIENT COVERAGE API VIEWS
+#List patient coverage plans API view
 @extend_schema(tags=['Insurance'])
 class ListPatientCoveragePlansAPIView(FilterListAPIView):
     serializer_class = ListPatientCoverageSerializer

@@ -66,7 +66,7 @@ class CreatePatientCoverageSerializer(serializers.ModelSerializer):
 
         if is_new_provider:
             if not new_provider_details:
-                raise serializers.ValidationError({'newProviderDetails': _('New insurance provider details required if creating a new provider')}) #TODO - handle translation from template
+                raise serializers.ValidationError({'newProviderDetails': _('New insurance provider details required if creating a new provider')})
             if provider:
                 raise serializers.ValidationError({'providerId': _('Cannot assign an existing insurance provider if choosing to create a new one.')})
         else:

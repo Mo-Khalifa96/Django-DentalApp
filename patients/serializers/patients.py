@@ -92,9 +92,9 @@ class RetrievePatientSerializer(UserPermissionsMixin, serializers.ModelSerialize
 @update_patient_schema
 class UpdatePatientSerializer(serializers.ModelSerializer):
     status = TranslatedChoiceField(choices=Patient.StatusChoices.choices, required=False)
-    insurance = serializers.CharField(source='patient_insurance.providerName', read_only=True)
+    insurance = serializers.CharField(source='patient_insurance.providerName', default=None, read_only=True)
     insuranceProviderId = serializers.PrimaryKeyRelatedField(queryset=InsuranceProvider.objects.all(), 
-                                                             allow_null=True, write_only=True)
+                                                        required=False, allow_null=True, write_only=True)
 
     class Meta:
         model = Patient
@@ -102,15 +102,15 @@ class UpdatePatientSerializer(serializers.ModelSerializer):
                   'allergies', 'insurance', 'insuranceProviderId', 'notes', 'status', 'updatedAt']
         read_only_fields = ['id', 'name', 'insurance', 'updatedAt']
         extra_kwargs = {field: {'required': False} for field in 
-            ('name', 'countryCode', 'phone', 'address', 'nationalId', 'bloodType', 'allergies', 'insurance',
+            ('name', 'countryCode', 'phone', 'address', 'nationalId', 'bloodType', 'allergies',
             'insuranceProviderId', 'notes', 'status')
             }
     
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        request = self.context.get('request')
-        is_put_request = request and request.method == 'PUT'
-        self.fields['insuranceProviderId'].required = True if is_put_request else False
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     request = self.context.get('request')
+    #     is_put_request = request and request.method == 'PUT'
+    #     self.fields['insuranceProviderId'].required = True if is_put_request else False
 
     def validate(self, data):
         code, phone = data.get('countryCode'), data.get('phone')
@@ -130,7 +130,8 @@ class UpdatePatientSerializer(serializers.ModelSerializer):
         return data
 
     @transaction.atomic
-    def update(self, instance, validated_data): 
+    def update(self, instance, validated_data):
+        #create object to flag missing provider
         _MISSING = object()
 
         #handle patient's insurance coverage upon provider update

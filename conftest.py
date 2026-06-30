@@ -362,3 +362,23 @@ def transaction_factory(bill_factory):
         return Transaction.objects.create(**defaults)
 
     return _create
+
+@pytest.fixture
+def insurance_provider_factory(branch_factory):
+    from finances.models import InsuranceProvider
+    
+    counter = itertools.count(1)
+
+    def _create(**overrides):
+        idx = next(counter)
+        defaults = {
+            'name':            f'Insurance Provider {idx}',
+            'tier':            'direct',
+            'contact':         f'contact{idx}@provider.com',
+            'coveragePercent': 80,
+            'currency':        '$',
+        }
+        defaults.update(overrides)
+        return InsuranceProvider.objects.create(**defaults)
+
+    return _create

@@ -48,7 +48,7 @@ def update_patient_insurance_usedYTD_task():
             coverages_to_update = PatientCoverage.objects.filter(provider__isnull=False).all()
 
             #update selected coverages
-            coverages_to_update.update(usedYTD=Decimal('0'), updatedAt=today)
+            coverages_to_update.update(usedYTD=Decimal('0'), deductibleMet=False, updatedAt=today)
             
     except Exception as exc:
         logger.error(f"Error updating patient insurance usedYTD: {str(exc)}")

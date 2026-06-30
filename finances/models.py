@@ -2,10 +2,10 @@ import uuid
 from decimal import Decimal
 from django.utils import timezone
 from django.db import models, transaction
-from django.core.validators import MinValueValidator
 from django.contrib.postgres.fields import ArrayField
 from patients.validators import validate_phone_number
 from django.utils.translation import gettext_lazy as _
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 #Clinic Tax Configs Manager
@@ -416,12 +416,12 @@ class InsuranceProvider(models.Model):
         DIRECT = 'direct', _('Direct')
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=200, unique=True)
+    name = models.CharField(max_length=200)
     fullName = models.CharField(max_length=300, blank=True, null=True)
     region = models.CharField(max_length=120, blank=True, null=True)
     tier = models.CharField(max_length=25, choices=InuranceTierChoices.choices)
-    contact = models.CharField(max_length=150)
-    coveragePercent = models.IntegerField(validators=[MinValueValidator(0)])
+    contact = models.CharField(max_length=150, blank=True, null=True)
+    coveragePercent = models.IntegerField(validators=[MinValueValidator(0), MaxValueValidator(100)])
     annualMax = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], blank=True, null=True)
     deductible = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], blank=True, null=True)
     currency = models.CharField(max_length=5, blank=True, null=True)
@@ -444,6 +444,7 @@ class InsuranceProvider(models.Model):
     class Meta: 
         db_table = 'InsuranceProviders'
         verbose_name_plural = 'InsuranceProviders'
+        unique_together = ['name', 'branch']
         ordering = ['branch__name', 'name']
 
     def __str__(self):

@@ -1,4 +1,3 @@
-from decimal import Decimal
 from clinic.models import Branch
 from rest_framework import serializers
 from finances.models import InsuranceProvider
@@ -20,6 +19,7 @@ class InsuranceProviderSerializer(ValidateBranchMixin, serializers.ModelSerializ
         fields = ['id', 'name', 'fullName', 'tier', 'contact', 'coveragePercent',
             'annualMax', 'deductible', 'currency', 'responseDays', 'color', 'branchId', 'notes']
         read_only_fields = ['id']
+        extra_kwargs = {'contact': {'required': True, 'allow_null': False, 'allow_blank': False}}
 
 
 #Retrieve/update/delete insurance provider serializer
@@ -31,6 +31,8 @@ class RetrieveUpdateDeleteInsuranceProviderSerializer(UserPermissionsMixin, Insu
         fields = ['id', 'name', 'fullName', 'tier', 'contact', 'coveragePercent',
             'annualMax', 'deductible', 'currency', 'responseDays', 'color', 'branchId', 'notes']
         read_only_fields = ['id', 'branchId']
+        extra_kwargs = {'contact': {'allow_null': False, 'allow_blank': False}}
+
 
 
 #Insurance providers options serializer
