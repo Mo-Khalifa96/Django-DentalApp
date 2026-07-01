@@ -66,7 +66,7 @@ class CreatePatientCoverageSerializer(serializers.ModelSerializer):
 
         if is_new_provider:
             if not new_provider_details:
-                raise serializers.ValidationError({'newProviderDetails': _('New insurance provider details required if creating a new provider')})
+                raise serializers.ValidationError({'newProviderDetails': _("Insurance provider's details are required if creating a new provider.")})
             if provider:
                 raise serializers.ValidationError({'providerId': _('Cannot assign an existing insurance provider if choosing to create a new one.')})
         else:
@@ -188,7 +188,7 @@ class RetrieveUpdatePatientCoverageSerializer(UserPermissionsMixin, serializers.
 
         if is_new_provider:
             if not new_provider_details:
-                raise serializers.ValidationError({'newProviderDetails': _('New insurance provider details required if creating a new provider')})
+                raise serializers.ValidationError({'newProviderDetails': _("Insurance provider's details are required if creating a new provider.")})
             if current_provider:
                 raise serializers.ValidationError({'providerId': _('Cannot assign an existing insurance provider if choosing to create a new one.')})
         else:

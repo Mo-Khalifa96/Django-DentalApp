@@ -69,7 +69,7 @@ class CreateAppointmentSerializer(AppointmentSerializer):
         #Validate patient-related data
         if is_new:
             if not new_patient_details:
-                raise serializers.ValidationError({'newPatientDetails': _('New patient details required if creating a new patient.')})            
+                raise serializers.ValidationError({'newPatientDetails': _('Patient details are required if creating a new patient.')})            
             if patient:
                 raise serializers.ValidationError({'patientId': _('Cannot assign an existing patient if choosing to create a new one.')})
         else:
