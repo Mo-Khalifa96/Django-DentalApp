@@ -178,7 +178,6 @@ class TestListCreateProceduresAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Procedure.objects.filter(name='Test Procedure').exists()
 
@@ -187,7 +186,6 @@ class TestListCreateProceduresAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -198,7 +196,6 @@ class TestListCreateProceduresAPIView:
             _create_payload(branchId=str(branch.id)),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         proc = Procedure.objects.get(name='Test Procedure')
         assert proc.branch == branch
@@ -223,7 +220,6 @@ class TestListCreateProceduresAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         proc = Procedure.objects.get(name='Test Procedure')
         assert proc.branch == branch
@@ -236,7 +232,6 @@ class TestListCreateProceduresAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_invalid_category_returns_400(self, api_client, admin_user):
@@ -246,7 +241,6 @@ class TestListCreateProceduresAPIView:
             _create_payload(category='not_a_real_category'),
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_negative_price_returns_400(self, api_client, admin_user):
@@ -257,7 +251,6 @@ class TestListCreateProceduresAPIView:
             _create_payload(price='-10.00'),
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_negative_duration_returns_400(self, api_client, admin_user):
@@ -268,7 +261,6 @@ class TestListCreateProceduresAPIView:
             _create_payload(duration=-15),
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_zero_duration_is_allowed(self, api_client, admin_user):
@@ -279,7 +271,6 @@ class TestListCreateProceduresAPIView:
             _create_payload(duration=0),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_create_with_missing_required_fields_returns_400(self, api_client, admin_user):
@@ -293,7 +284,6 @@ class TestListCreateProceduresAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_receptionist_cannot_create_procedure(self, api_client, receptionist_user):
@@ -301,14 +291,12 @@ class TestListCreateProceduresAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_create_procedure(self, api_client):
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
@@ -405,7 +393,6 @@ class TestRetrieveUpdateDeleteProcedureAPIView:
             },
             format='json',
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         proc.refresh_from_db()
         assert proc.name == 'Deep Scaling'
@@ -437,7 +424,6 @@ class TestRetrieveUpdateDeleteProcedureAPIView:
         response = api_client.patch(
             _detail_url(proc.id), {'price': '175.00'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         proc.refresh_from_db()
         assert str(proc.price) == '175.00'
@@ -462,7 +448,6 @@ class TestRetrieveUpdateDeleteProcedureAPIView:
         response = api_client.patch(
             _detail_url(proc.id), {'price': '-50.00'}, format='json'
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_update_with_invalid_category_returns_400(
@@ -473,7 +458,6 @@ class TestRetrieveUpdateDeleteProcedureAPIView:
         response = api_client.patch(
             _detail_url(proc.id), {'category': 'bogus'}, format='json'
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_update_response_is_wrapped(
@@ -484,7 +468,6 @@ class TestRetrieveUpdateDeleteProcedureAPIView:
         response = api_client.patch(
             _detail_url(proc.id), {'name': 'Renamed'}, format='json'
         )
-
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -500,7 +483,6 @@ class TestRetrieveUpdateDeleteProcedureAPIView:
         response = api_client.patch(
             _detail_url(proc.id), {'name': 'Hijacked'}, format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_receptionist_cannot_update_procedure(
@@ -511,7 +493,6 @@ class TestRetrieveUpdateDeleteProcedureAPIView:
         response = api_client.patch(
             _detail_url(proc.id), {'name': 'Hijacked'}, format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_update_procedure(self, api_client, procedure_factory):
@@ -519,7 +500,6 @@ class TestRetrieveUpdateDeleteProcedureAPIView:
         response = api_client.patch(
             _detail_url(proc.id), {'name': 'Hijacked'}, format='json'
         )
-
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── DELETE ────────────────────────────────────────────────────────────────

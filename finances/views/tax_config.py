@@ -25,7 +25,7 @@ class ClinicTaxConfigAPIView(CreateAPIView, RetrieveUpdateAPIView):
 
     def get_object(self):
         user = self.request.user
-        branchId = validate_uuid(self.request.query_params.get('branchId'))
+        branchId = validate_uuid(self.request.query_params.get('branchId'), 'branchId')
         if not branchId:
             if user.branches.count() == 1:
                 branchId = user.branches.first().id

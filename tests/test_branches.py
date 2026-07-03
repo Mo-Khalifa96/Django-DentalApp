@@ -121,7 +121,6 @@ class TestListCreateBranchesAPIView:
         response = api_client.post(
             reverse(self.URL), _branch_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Branch.objects.filter(name='New Branch').exists()
 
@@ -130,7 +129,6 @@ class TestListCreateBranchesAPIView:
         response = api_client.post(
             reverse(self.URL), _branch_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
@@ -143,7 +141,6 @@ class TestListCreateBranchesAPIView:
         response = api_client.post(
             reverse(self.URL), _branch_payload(), format='json'
         )
-
         data = response.data['data']
         assert 'rooms' in data
         assert 'isMain' in data
@@ -165,7 +162,6 @@ class TestListCreateBranchesAPIView:
             _branch_payload(name='Second Branch'),
             format='json',
         )
-
         second = Branch.objects.get(name='Second Branch')
         assert second.isMain is False
 
@@ -179,7 +175,6 @@ class TestListCreateBranchesAPIView:
             _branch_payload(name='Explicit Main', isMain=True),
             format='json',
         )
-
         created = Branch.objects.get(name='Explicit Main')
         assert created.isMain is True
 
@@ -214,7 +209,6 @@ class TestListCreateBranchesAPIView:
         response = api_client.post(
             reverse(self.URL), _branch_payload(workingDays=[]), format='json'
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_invalid_working_day_value_returns_400(
@@ -225,7 +219,6 @@ class TestListCreateBranchesAPIView:
         response = api_client.post(
             reverse(self.URL), _branch_payload(workingDays=[0, 7, 99]), format='json'
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_invalid_phone_returns_400(self, api_client, admin_user):
@@ -233,7 +226,6 @@ class TestListCreateBranchesAPIView:
         response = api_client.post(
             reverse(self.URL), _branch_payload(phone='not-a-phone'), format='json'
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_missing_required_fields_returns_400(
@@ -248,14 +240,12 @@ class TestListCreateBranchesAPIView:
         response = api_client.post(
             reverse(self.URL), _branch_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_create_branch(self, api_client):
         response = api_client.post(
             reverse(self.URL), _branch_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
@@ -327,7 +317,6 @@ class TestRetrieveUpdateDeleteBranchAPIView:
         response = api_client.patch(
             self._url(branch.id), {'name': 'Renamed Branch'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         branch.refresh_from_db()
         assert branch.name == 'Renamed Branch'
@@ -338,7 +327,6 @@ class TestRetrieveUpdateDeleteBranchAPIView:
         response = api_client.patch(
             self._url(branch.id), {'workingDays': new_days}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         branch.refresh_from_db()
         assert branch.workingDays == new_days
@@ -348,7 +336,6 @@ class TestRetrieveUpdateDeleteBranchAPIView:
         api_client.patch(
             self._url(branch.id), {'workingDays': [2, 2, 4, 4, 6]}, format='json'
         )
-
         branch.refresh_from_db()
         assert branch.workingDays == sorted({2, 4, 6})
 
@@ -359,7 +346,6 @@ class TestRetrieveUpdateDeleteBranchAPIView:
         response = api_client.patch(
             self._url(branch.id), {'workingDays': []}, format='json'
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_admin_can_update_rooms(self, api_client, admin_user, branch):
@@ -368,7 +354,6 @@ class TestRetrieveUpdateDeleteBranchAPIView:
         response = api_client.patch(
             self._url(branch.id), {'rooms': new_rooms}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         branch.refresh_from_db()
         assert branch.rooms == new_rooms
@@ -378,7 +363,6 @@ class TestRetrieveUpdateDeleteBranchAPIView:
         response = api_client.patch(
             self._url(branch.id), {'isMain': True}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         branch.refresh_from_db()
         assert branch.isMain is True
@@ -390,7 +374,6 @@ class TestRetrieveUpdateDeleteBranchAPIView:
             {'address': '123 Nile Street, Cairo'},
             format='json',
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         branch.refresh_from_db()
         assert branch.address == '123 Nile Street, Cairo'
@@ -400,7 +383,6 @@ class TestRetrieveUpdateDeleteBranchAPIView:
         response = api_client.patch(
             self._url(branch.id), {'name': 'Updated'}, format='json'
         )
-
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -411,14 +393,12 @@ class TestRetrieveUpdateDeleteBranchAPIView:
         response = api_client.patch(
             self._url(branch.id), {'name': 'Hijacked'}, format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_patch_branch(self, api_client, branch):
         response = api_client.patch(
             self._url(branch.id), {'name': 'Hijacked'}, format='json'
         )
-
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── UPDATE (PUT) ──────────────────────────────────────────────────────────
@@ -448,7 +428,6 @@ class TestRetrieveUpdateDeleteBranchAPIView:
         response = api_client.put(
             self._url(branch.id), _branch_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     # ── DELETE ────────────────────────────────────────────────────────────────

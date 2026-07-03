@@ -130,7 +130,7 @@ class SetActiveBranchAPIView(generics.GenericAPIView):
             raise ValidationError({'branchId': _('Branch ID is required.')})
 
         #Get branch ID from request data
-        branchId = validate_uuid(request.data.get('branchId'))
+        branchId = validate_uuid(request.data.get('branchId'), 'branchId')
         if branchId in (None, ''):
             active_branch = None
         else:

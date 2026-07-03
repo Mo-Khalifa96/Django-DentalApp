@@ -145,7 +145,6 @@ class TestListCreateAppointmentsAPIView:
             _create_payload(patient, dentist_user, proc),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_create_auto_sets_status_to_pending(
@@ -160,7 +159,6 @@ class TestListCreateAppointmentsAPIView:
             _create_payload(patient, dentist_user, proc),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         appt = Appointment.objects.get(id=response.data['data']['id'])
         assert appt.status == Appointment.AppointmentStatusChoices.PENDING
@@ -177,7 +175,6 @@ class TestListCreateAppointmentsAPIView:
             _create_payload(patient, dentist_user, proc),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         appt = Appointment.objects.get(id=response.data['data']['id'])
         assert appt.procedureName == 'Root Canal'
@@ -272,7 +269,6 @@ class TestListCreateAppointmentsAPIView:
                             # branchId=str(branch.id)),
             format='json',
         )
-
         assert response.status_code == status.HTTP_409_CONFLICT or render_error(response)
         assert response.data['error']['code'] == 'APPOINTMENT_CONFLICT'
         assert response.data['error']['conflictWith']['patientName'] == patient1.name
@@ -302,7 +298,6 @@ class TestListCreateAppointmentsAPIView:
                             branchId=str(b2.id)),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_create_allows_non_conflicting_time_same_doctor(
@@ -325,7 +320,6 @@ class TestListCreateAppointmentsAPIView:
                             startTime='10:00:00', endTime='11:00:00'),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_create_response_is_wrapped(
@@ -339,7 +333,6 @@ class TestListCreateAppointmentsAPIView:
             _create_payload(patient, dentist_user, proc),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
@@ -395,7 +388,6 @@ class TestRetrieveUpdateCancelAppointmentAPIView:
         response = api_client.patch(
             _appt_url(appt.id), {'status': 'confirmed'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         appt.refresh_from_db()
         assert appt.status == 'confirmed'
@@ -422,7 +414,6 @@ class TestRetrieveUpdateCancelAppointmentAPIView:
             {'date': appt_date.isoformat(), 'startTime': '09:30:00', 'endTime': '10:30:00'},
             format='json',
         )
-
         assert response.status_code == status.HTTP_409_CONFLICT or render_error(response)
 
     def test_update_response_is_wrapped(
@@ -435,7 +426,6 @@ class TestRetrieveUpdateCancelAppointmentAPIView:
         response = api_client.patch(
             _appt_url(appt.id), {'notes': 'updated'}, format='json'
         )
-
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -454,7 +444,6 @@ class TestRetrieveUpdateCancelAppointmentAPIView:
             {'reason': 'Patient not available.'},
             format='json',
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['success'] is True
 

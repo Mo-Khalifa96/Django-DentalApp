@@ -152,7 +152,6 @@ class TestListCreateInvoicesAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Invoice.objects.filter(patient=patient).exists()
 
@@ -165,7 +164,6 @@ class TestListCreateInvoicesAPIView:
         api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-
         invoice = Invoice.objects.get(patient=patient)
         assert invoice.status == Invoice.InvoiceStatusChoices.ISSUED
         assert invoice.issuedAt is not None
@@ -180,7 +178,6 @@ class TestListCreateInvoicesAPIView:
         api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-
         invoice = Invoice.objects.get(patient=patient)
         assert invoice.status == Invoice.InvoiceStatusChoices.SUBMITTED
         assert invoice.submittedAt is not None
@@ -194,7 +191,6 @@ class TestListCreateInvoicesAPIView:
         api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-
         invoice = Invoice.objects.get(patient=patient)
         assert re.match(r'^INV-\d{4}-\d{5}$', invoice.invoiceNumber)
 
@@ -209,7 +205,6 @@ class TestListCreateInvoicesAPIView:
             _create_payload(patient, branchId=str(branch.id)),
             format='json',
         )
-
         invoice = Invoice.objects.get(patient=patient)
         assert invoice.patientName == 'Invoice Patient'
         assert invoice.branchName == branch.name
@@ -230,7 +225,6 @@ class TestListCreateInvoicesAPIView:
             ),
             format='json',
         )
-
         invoice = Invoice.objects.get(patient=patient)
         assert invoice.subtotal == Decimal('300.00')
 
@@ -247,7 +241,6 @@ class TestListCreateInvoicesAPIView:
                             discount='150.00'),
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_without_items_returns_400(
@@ -261,7 +254,6 @@ class TestListCreateInvoicesAPIView:
             {**_create_payload(patient), 'items': []},
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_without_branch_id_key_returns_400(
@@ -307,7 +299,6 @@ class TestListCreateInvoicesAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_create_response_is_wrapped(self, api_client, admin_user, patient_factory):
@@ -316,7 +307,6 @@ class TestListCreateInvoicesAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
@@ -407,7 +397,6 @@ class TestRetrieveUpdateDeleteInvoiceAPIView:
         response = api_client.patch(
             _invoice_url(invoice.id), {'status': 'accepted'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         invoice.refresh_from_db()
         assert invoice.status == Invoice.InvoiceStatusChoices.ACCEPTED
@@ -448,7 +437,6 @@ class TestRetrieveUpdateDeleteInvoiceAPIView:
             {'status': 'accepted', 'subtotal': '999.00'},
             format='json',
         )
-
         invoice.refresh_from_db()
         assert invoice.subtotal == original_subtotal   # unchanged
 
@@ -490,7 +478,6 @@ class TestRetrieveUpdateDeleteInvoiceAPIView:
             {'items': new_items, 'subtotal': '500.00'},
             format='json',
         )
-
         invoice.refresh_from_db()
         assert invoice.invoice_items.count() == 2  #now two items after full update
         descriptions = set(invoice.invoice_items.values_list('description', flat=True))
@@ -536,7 +523,6 @@ class TestRetrieveUpdateDeleteInvoiceAPIView:
             },
             format='json',
         )
-
         invoice.refresh_from_db()
         assert invoice.patient != other_patient  #unchanged
 

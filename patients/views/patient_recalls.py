@@ -108,7 +108,7 @@ class RetrievePatientRecallsOptionsAPIView(BranchToSerializerMixin, generics.Gen
     def get_serializer_context(self):
         context = super().get_serializer_context()  #get branchId and add doctorId
         #add doctor and branch ids to serializer context (if provided)
-        doctorId = validate_uuid(self.request.query_params.get('doctorId', None))
+        doctorId = validate_uuid(self.request.query_params.get('doctorId', None), 'doctorId')
         if doctorId:
             if not User.objects.filter(id=doctorId, role__in=['dentist', 'admin']).exists():
                 raise ValidationError({'doctorId': _("User not found or not registered as 'dentist'.")})

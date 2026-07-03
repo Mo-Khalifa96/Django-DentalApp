@@ -32,11 +32,6 @@ if settings.DEBUG:
         path('swagger/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     ]
 
-# if settings.ENABLE_SILK:
-#     urlpatterns += [
-#         path('silk/', include('silk.urls', namespace='silk')),
-#     ]
-
 
 #Serve media files during development
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

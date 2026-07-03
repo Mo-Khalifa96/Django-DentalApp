@@ -155,7 +155,6 @@ class TestListCreateBillsAPIView:
             _create_payload(patient, visit),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Bill.objects.filter(patient=patient).exists()
 
@@ -204,7 +203,6 @@ class TestListCreateBillsAPIView:
             _create_payload(patient, visit, subtotal='200.00', discount='50.00'),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         bill = Bill.objects.get(patient=patient)
         assert bill.totalAmount == Decimal('150.00')
@@ -220,7 +218,6 @@ class TestListCreateBillsAPIView:
             _create_payload(patient, visit, subtotal='100.00', discount='150.00'),
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_visit_belonging_to_wrong_patient_returns_400(
@@ -237,7 +234,6 @@ class TestListCreateBillsAPIView:
             _create_payload(patient_a, visit_b),   #isit belongs to patient_b, not patient_a
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_without_branch_id_returns_400(
@@ -275,7 +271,6 @@ class TestListCreateBillsAPIView:
             _create_payload(patient, visit, subtotal='350.00'),
             format='json',
         )
-
         visit.refresh_from_db()
         # Signal sets cost = totalAmount of the new bill (350 - 0 = 350)
         assert visit.cost != initial_cost
@@ -293,7 +288,6 @@ class TestListCreateBillsAPIView:
             _create_payload(patient, visit),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_create_response_is_wrapped(
@@ -305,7 +299,6 @@ class TestListCreateBillsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient, visit), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
@@ -407,7 +400,6 @@ class TestRetrieveUpdateDeleteBillAPIView:
         response = api_client.patch(
             _bill_url(bill.id), {'description': 'Updated Description'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         bill.refresh_from_db()
         assert bill.description == 'Updated Description'
@@ -461,7 +453,6 @@ class TestRetrieveUpdateDeleteBillAPIView:
             {'visitIds': [str(v2.id)]},
             format='json',
         )
-
         # Signal should have updated v2.cost, and v1.cost should have been cleared
         v1.refresh_from_db()
         v2.refresh_from_db()
@@ -524,7 +515,6 @@ class TestAutogenerateInvoiceAPIView:
             {'billId': str(bill.id)},
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Invoice.objects.filter(bill=bill).exists()
 
@@ -543,7 +533,6 @@ class TestAutogenerateInvoiceAPIView:
             {'billId': str(bill.id)},
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_generate_invoice_response_is_wrapped(
@@ -556,7 +545,6 @@ class TestAutogenerateInvoiceAPIView:
             {'billId': str(bill.id)},
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
@@ -568,7 +556,6 @@ class TestAutogenerateInvoiceAPIView:
         response = api_client.post(
             _invoice_url(bill.id), {'billId': str(bill.id)}, format='json'
         )
-
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 

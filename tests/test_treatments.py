@@ -208,7 +208,6 @@ class TestListCreateTreatmentPlansAPIView:
             {'title': 'Empty Plan', 'totalCost': '0.00', 'items': []},
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_invalid_procedure_id_returns_400(
@@ -259,7 +258,6 @@ class TestListCreateTreatmentPlansAPIView:
         response = api_client.post(
             _list_url(patient.id), _create_payload((proc, '100.00')), format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_create_response_is_wrapped(
@@ -271,7 +269,6 @@ class TestListCreateTreatmentPlansAPIView:
         response = api_client.post(
             _list_url(patient.id), _create_payload((proc, '100.00')), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
@@ -299,7 +296,6 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
         response = api_client.patch(
             _detail_url(patient.id, plan.id), {'title': 'New'}, format='json'
         )
-
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED or render_error(response)
 
     # ── RETRIEVE ──────────────────────────────────────────────────────────────
@@ -371,7 +367,6 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
             },
             format='json',
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         plan.refresh_from_db()
         assert plan.title == 'Updated Plan'
@@ -443,7 +438,6 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
             },
             format='json',
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_update_response_is_wrapped(
@@ -458,7 +452,6 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
         response = api_client.put(
             _detail_url(patient.id, plan.id), {'title': 'Renamed'}, format='json'
         )
-
         assert response.data.get('success') is True
         assert 'data' in response.data
 

@@ -17,7 +17,7 @@ class BaseFilterSet(FilterSet):
         user = self.request.user 
 
         #assign branch query (if provided)
-        branchId = validate_uuid(self.request.query_params.get('branchId'))
+        branchId = validate_uuid(self.request.query_params.get('branchId'), 'branchId')
 
         #return filter
         if branchId:

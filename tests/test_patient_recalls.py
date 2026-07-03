@@ -161,7 +161,6 @@ class TestListCreatePatientRecallsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert PatientRecall.objects.filter(patient=patient).exists()
 
@@ -242,7 +241,6 @@ class TestListCreatePatientRecallsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
@@ -256,7 +254,6 @@ class TestListCreatePatientRecallsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_assistant_cannot_create_recall(
@@ -267,7 +264,6 @@ class TestListCreatePatientRecallsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_create(self, api_client, patient_factory):
@@ -275,7 +271,6 @@ class TestListCreatePatientRecallsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
-
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
@@ -299,7 +294,6 @@ class TestUpdateDeletePatientRecallAPIView:
         response = api_client.patch(
             _recall_url(recall.id), {'status': 'confirmed'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         recall.refresh_from_db()
         assert recall.status == PatientRecall.RecallStatusChoices.CONFIRMED
@@ -315,7 +309,6 @@ class TestUpdateDeletePatientRecallAPIView:
         response = api_client.patch(
             _recall_url(recall.id), {'status': 'contacted'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         recall.refresh_from_db()
         assert recall.contactedAt is not None
@@ -331,7 +324,6 @@ class TestUpdateDeletePatientRecallAPIView:
             {'dueDate': new_due, 'notes': 'Follow up required'},
             format='json',
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         recall.refresh_from_db()
         assert str(recall.dueDate) == new_due
@@ -368,7 +360,6 @@ class TestUpdateDeletePatientRecallAPIView:
         response = api_client.patch(
             _recall_url(recall.id), {'status': 'no_answer'}, format='json'
         )
-
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -381,7 +372,6 @@ class TestUpdateDeletePatientRecallAPIView:
         response = api_client.patch(
             _recall_url(recall.id), {'status': 'no_answer'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
 
     def test_user_not_in_recall_branch_cannot_update(
@@ -398,7 +388,6 @@ class TestUpdateDeletePatientRecallAPIView:
         response = api_client.patch(
             _recall_url(recall.id), {'status': 'confirmed'}, format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_admin_can_delete_recall(self, api_client, admin_user, recall_factory):
@@ -532,7 +521,6 @@ class TestRetrievePatientRecallsOptionsAPIView:
         response = api_client.get(
             reverse(self.URL), {'doctorId': str(receptionist_user.id)}
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_unauthenticated_returns_401(self, api_client):

@@ -63,7 +63,7 @@ class FilterByBranchMixin:
     def filter_by_branch(self, queryset, branch_field='branch_id'):
         #get user
         user = self.request.user
-        branchId_qp = validate_uuid(self.request.query_params.get('branchId'))
+        branchId_qp = validate_uuid(self.request.query_params.get('branchId'), 'branchId')
 
         #filter queryset by the user's associated branch or current active branch
         branches_count = user.branches.count()
@@ -100,7 +100,7 @@ class FilterByBranchMixin:
 class BranchToSerializerMixin:
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        branchId = validate_uuid(self.request.query_params.get('branchId'))
+        branchId = validate_uuid(self.request.query_params.get('branchId'), 'branchId')
         if branchId:
             try:
                 Branch.objects.get(id=branchId)

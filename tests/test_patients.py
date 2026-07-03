@@ -132,7 +132,6 @@ class TestListCreatePatientsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Patient.objects.filter(name='Test Patient').exists()
 
@@ -142,7 +141,6 @@ class TestListCreatePatientsAPIView:
         api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert Patient.objects.get(name='Test Patient').status == Patient.StatusChoices.ACTIVE
 
     def test_create_auto_creates_dental_chart(self, api_client, admin_user):
@@ -151,7 +149,6 @@ class TestListCreatePatientsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         patient = Patient.objects.get(id=response.data['data']['id'])
         chart   = patient.patient_dentalchart
@@ -170,7 +167,6 @@ class TestListCreatePatientsAPIView:
             _create_payload(phone='01099887766', countryCode='20'),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         # Local display must match original input
         assert response.data['data']['phone'] == '01099887766'
@@ -201,7 +197,6 @@ class TestListCreatePatientsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         patient = Patient.objects.get(id=response.data['data']['id'])
         assert patient.branch == branch
@@ -221,7 +216,6 @@ class TestListCreatePatientsAPIView:
             _create_payload(countryCode='abc'),
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_invalid_email_returns_400(self, api_client, admin_user):
@@ -231,7 +225,6 @@ class TestListCreatePatientsAPIView:
             _create_payload(email='not-an-email'),
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
         assert 'email' in response.data['error']['fields']
 
@@ -242,7 +235,6 @@ class TestListCreatePatientsAPIView:
             _create_payload(phone='not-a-phone-!!!!'),
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_receptionist_with_create_patient_permission_can_create(
@@ -253,7 +245,6 @@ class TestListCreatePatientsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_create_response_is_wrapped(self, api_client, admin_user):
@@ -261,7 +252,6 @@ class TestListCreatePatientsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
@@ -337,7 +327,6 @@ class TestRetrieveUpdateDeletePatientAPIView:
             {'address': '123 New Street', 'notes': 'Updated notes'},
             format='json',
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         patient.refresh_from_db()
         assert patient.address == '123 New Street'
@@ -366,7 +355,6 @@ class TestRetrieveUpdateDeletePatientAPIView:
             {'phone': '01011112222'},
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
         assert 'phone' in response.data['error']['fields']
 
@@ -380,7 +368,6 @@ class TestRetrieveUpdateDeletePatientAPIView:
             {'countryCode': '44'},
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_update_phone_pair_together_succeeds(
@@ -393,7 +380,6 @@ class TestRetrieveUpdateDeletePatientAPIView:
             {'countryCode': '20', 'phone': '01088889999'},
             format='json',
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         # Response displays normalized local number
         assert response.data['data']['phone'] == '01088889999'
@@ -404,7 +390,6 @@ class TestRetrieveUpdateDeletePatientAPIView:
         response = api_client.patch(
             _patient_url(patient.id), {'notes': 'test'}, format='json'
         )
-
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -421,7 +406,6 @@ class TestRetrieveUpdateDeletePatientAPIView:
         response = api_client.patch(
             _patient_url(patient.id), {'notes': 'Updated by receptionist'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
 
     # ── DELETE ────────────────────────────────────────────────────────────────
@@ -591,7 +575,6 @@ class TestDentalChartAPIView:
             {'teeth': {'11': {'status': 'cavity', 'notes': 'Needs filling'}}},
             format='json',
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         patient.patient_dentalchart.refresh_from_db()
         assert patient.patient_dentalchart.teeth['11']['status'] == 'cavity'
@@ -606,7 +589,6 @@ class TestDentalChartAPIView:
         response = api_client.patch(
             _dentalchart_url(patient.id), {'teeth': {}}, format='json'
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_patch_invalid_fdi_tooth_number_returns_400(
@@ -620,7 +602,6 @@ class TestDentalChartAPIView:
             {'teeth': {'99': {'status': 'healthy', 'notes': ''}}},
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
         assert response.data['error']['fields']['teeth']['99'] == 'Invalid FDI tooth number.'
 
@@ -635,7 +616,6 @@ class TestDentalChartAPIView:
             {'teeth': {'11': {'status': 'not_a_real_status', 'notes': ''}}},
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     # ── PUT (full update – replace) ───────────────────────────────────────────
@@ -655,14 +635,12 @@ class TestDentalChartAPIView:
         response = api_client.put(
             _dentalchart_url(patient.id), full_payload, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         patient.patient_dentalchart.refresh_from_db()
         assert all(
             v['status'] == 'filling'
             for v in patient.patient_dentalchart.teeth.values()
         )
-
     def test_put_incomplete_teeth_payload_returns_400(
         self, api_client, admin_user, patient_factory
     ):
@@ -674,7 +652,6 @@ class TestDentalChartAPIView:
             {'teeth': {'11': {'status': 'healthy', 'notes': ''}}},
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
         assert response.data['error']['fields']['teeth'] == 'Teeth data missing or incomplete.'
 

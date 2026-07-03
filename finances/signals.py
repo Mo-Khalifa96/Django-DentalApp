@@ -1,6 +1,6 @@
-from datetime import date
 from decimal import Decimal
 from django.db.models import Sum
+from django.utils import timezone
 from django.dispatch import receiver
 from finances.models import Bill, Transaction
 from django.db.models.functions import Coalesce
@@ -88,7 +88,7 @@ def update_transaction_aggregates(sender, instance, **kwargs):
 
         #calculate total ytd used from insurance-type payments
         coverage.usedYTD = Transaction.objects.filter(
-            patient=instance.patient, method='insurance', date__year=date.today().year
+            patient=instance.patient, method='insurance', date__year=timezone.now().year
                 ).aggregate(total_ytd=Coalesce(Sum('amount'), Decimal('0'))
             )['total_ytd']
         

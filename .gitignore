@@ -9,6 +9,7 @@ pytest.ini
 .seeded
 /.Markdown/
 **/.DS_Store
+.hypothesis/
 *.toml
 *.pyc
 *.pem

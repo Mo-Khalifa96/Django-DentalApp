@@ -171,8 +171,7 @@ class RetrieveUpdatePatientCoverageSerializer(UserPermissionsMixin, serializers.
         rep = super().to_representation(instance)
         request = self.context.get('request')
         if request.method == 'GET':
-            if (instance.patient and instance.updatedAt and
-             instance.updatedAt.date() == instance.patient.createdAt.date()):
+            if instance and instance.updatedAt.date() == instance.patient.createdAt.date():
                 rep['updatedAt'] = None
         return rep
 

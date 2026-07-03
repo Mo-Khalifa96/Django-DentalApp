@@ -124,8 +124,8 @@ class RetrieveTransactionsOptionsAPIView(BranchToSerializerMixin, generics.Gener
 
     def get_serializer_context(self):
         context = super().get_serializer_context()  #get branchId and add others
-        patientId = validate_uuid(self.request.query_params.get('patientId'))
-        doctorId = validate_uuid(self.request.query_params.get('doctorId'))
+        patientId = validate_uuid(self.request.query_params.get('patientId'), 'patientId')
+        doctorId = validate_uuid(self.request.query_params.get('doctorId'), 'doctorId')
 
         if patientId:
             try:

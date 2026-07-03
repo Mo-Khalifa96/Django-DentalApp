@@ -1,5 +1,6 @@
 import uuid
 import pytest
+from .utils import render_error
 from django.urls import reverse
 from rest_framework import status
 from finances.models import InsuranceProvider
@@ -48,7 +49,7 @@ class TestListCreateInsuranceProvidersAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         ids = [i['id'] for i in response.data['data']]
         assert str(p1.id) in ids
         assert str(p2.id) in ids
@@ -60,7 +61,7 @@ class TestListCreateInsuranceProvidersAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.data['success'] is True
+        assert response.data['success'] is True or render_error(response)
         for key in ('data', 'pagination', 'links', 'metadata'):
             assert key in response.data, f'Missing key: {key}'
 
@@ -79,7 +80,7 @@ class TestListCreateInsuranceProvidersAPIView:
         api_client.force_authenticate(user=user)
         response = api_client.get(reverse(self.LIST_URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         ids = [i['id'] for i in response.data['data']]
         assert str(p_own.id) in ids
         assert str(p_other.id) not in ids
@@ -126,10 +127,11 @@ class TestListCreateInsuranceProvidersAPIView:
     def test_assistant_cannot_list_providers(self, api_client, assistant_user):
         api_client.force_authenticate(user=assistant_user)
         response = api_client.get(reverse(self.LIST_URL))
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_list_providers(self, api_client):
-        assert api_client.get(reverse(self.LIST_URL)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(reverse(self.LIST_URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── CREATE ────────────────────────────────────────────────────────────────
 
@@ -138,7 +140,7 @@ class TestListCreateInsuranceProvidersAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert InsuranceProvider.objects.filter(name='Test Provider').exists()
 
     def test_create_response_is_wrapped(self, api_client, admin_user):
@@ -146,7 +148,7 @@ class TestListCreateInsuranceProvidersAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-        assert response.data.get('success') is True
+        assert response.data.get('success') is True or render_error(response)
         assert 'data' in response.data
 
     def test_create_requires_coverage_percent(self, api_client, admin_user):
@@ -154,14 +156,14 @@ class TestListCreateInsuranceProvidersAPIView:
         payload = _create_payload()
         payload.pop('coveragePercent')
         response = api_client.post(reverse(self.LIST_URL), payload, format='json')
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_requires_tier(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
         payload = _create_payload()
         payload.pop('tier')
         response = api_client.post(reverse(self.LIST_URL), payload, format='json')
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_invalid_tier_returns_400(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
@@ -170,7 +172,7 @@ class TestListCreateInsuranceProvidersAPIView:
             _create_payload(tier='not_a_real_tier'),
             format='json',
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_negative_coverage_percent_returns_400(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
@@ -179,7 +181,7 @@ class TestListCreateInsuranceProvidersAPIView:
             _create_payload(coveragePercent=-10),
             format='json',
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_coverage_percent_over_100_is_unacceptible(
         self, api_client, admin_user
@@ -190,14 +192,14 @@ class TestListCreateInsuranceProvidersAPIView:
             _create_payload(coveragePercent=150),
             format='json',
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_without_branch_id_key_returns_400(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
         payload = _create_payload()
         payload.pop('branchId')
         response = api_client.post(reverse(self.LIST_URL), payload, format='json')
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_explicit_branch(self, api_client, admin_user, branch):
         api_client.force_authenticate(user=admin_user)
@@ -206,7 +208,7 @@ class TestListCreateInsuranceProvidersAPIView:
             _create_payload(branchId=str(branch.id)),
             format='json',
         )
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         provider = InsuranceProvider.objects.get(name='Test Provider')
         assert provider.branch == branch
 
@@ -219,20 +221,20 @@ class TestListCreateInsuranceProvidersAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_assistant_cannot_create_provider(self, api_client, assistant_user):
         api_client.force_authenticate(user=assistant_user)
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_create_provider(self, api_client):
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -251,7 +253,7 @@ class TestRetrieveUpdateDeleteInsuranceProviderAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(_detail_url(provider.id))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['data']['id'] == str(provider.id)
 
     def test_retrieve_response_includes_metadata(
@@ -276,24 +278,27 @@ class TestRetrieveUpdateDeleteInsuranceProviderAPIView:
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(_detail_url(provider.id))
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     def test_nonexistent_provider_returns_404(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
-        assert api_client.get(_detail_url(uuid.uuid4())).status_code == status.HTTP_404_NOT_FOUND
+        response = api_client.get(_detail_url(uuid.uuid4()))
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     def test_unauthenticated_cannot_retrieve_provider(
         self, api_client, insurance_provider_factory
     ):
         provider = insurance_provider_factory()
-        assert api_client.get(_detail_url(provider.id)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(_detail_url(provider.id))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     def test_assistant_cannot_retrieve_provider(
         self, api_client, assistant_user, insurance_provider_factory
     ):
         provider = insurance_provider_factory()
         api_client.force_authenticate(user=assistant_user)
-        assert api_client.get(_detail_url(provider.id)).status_code == status.HTTP_403_FORBIDDEN
+        response = api_client.get(_detail_url(provider.id))
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     # ── UPDATE ────────────────────────────────────────────────────────────────
 
@@ -305,7 +310,7 @@ class TestRetrieveUpdateDeleteInsuranceProviderAPIView:
         response = api_client.patch(
             _detail_url(provider.id), {'coveragePercent': 90}, format='json'
         )
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         provider.refresh_from_db()
         assert provider.coveragePercent == 90
 
@@ -331,7 +336,7 @@ class TestRetrieveUpdateDeleteInsuranceProviderAPIView:
         response = api_client.patch(
             _detail_url(provider.id), {'tier': 'bogus'}, format='json'
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_update_response_is_wrapped(
         self, api_client, admin_user, insurance_provider_factory
@@ -341,7 +346,7 @@ class TestRetrieveUpdateDeleteInsuranceProviderAPIView:
         response = api_client.patch(
             _detail_url(provider.id), {'notes': 'Renewed contract'}, format='json'
         )
-        assert response.data.get('success') is True
+        assert response.data.get('success') is True or render_error(response)
         assert 'data' in response.data
 
     def test_receptionist_cannot_update_provider(
@@ -352,7 +357,7 @@ class TestRetrieveUpdateDeleteInsuranceProviderAPIView:
         response = api_client.patch(
             _detail_url(provider.id), {'notes': 'Hijacked'}, format='json'
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_update_provider(
         self, api_client, insurance_provider_factory
@@ -361,7 +366,7 @@ class TestRetrieveUpdateDeleteInsuranceProviderAPIView:
         response = api_client.patch(
             _detail_url(provider.id), {'notes': 'Hijacked'}, format='json'
         )
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── DELETE ────────────────────────────────────────────────────────────────
 
@@ -373,7 +378,7 @@ class TestRetrieveUpdateDeleteInsuranceProviderAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(_detail_url(pid))
 
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
         assert not InsuranceProvider.objects.filter(id=pid).exists()
 
     def test_delete_is_hard_delete(
@@ -390,17 +395,20 @@ class TestRetrieveUpdateDeleteInsuranceProviderAPIView:
     ):
         provider = insurance_provider_factory()
         api_client.force_authenticate(user=receptionist_user)
-        assert api_client.delete(_detail_url(provider.id)).status_code == status.HTTP_403_FORBIDDEN
+        response = api_client.delete(_detail_url(provider.id))
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_delete_provider(
         self, api_client, insurance_provider_factory
     ):
         provider = insurance_provider_factory()
-        assert api_client.delete(_detail_url(provider.id)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.delete(_detail_url(provider.id))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     def test_delete_nonexistent_provider_returns_404(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
-        assert api_client.delete(_detail_url(uuid.uuid4())).status_code == status.HTTP_404_NOT_FOUND
+        response = api_client.delete(_detail_url(uuid.uuid4()))
+        assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -415,20 +423,21 @@ class TestRetrieveInsuranceProvidersOptionsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert 'branchChoices' in response.data
         assert 'tierChoices' in response.data
 
     def test_response_is_not_wrapped(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
-        assert 'success' not in api_client.get(reverse(self.URL)).data
+        response = api_client.get(reverse(self.URL))
+        assert 'success' not in response.data or render_error(response)
 
     def test_tier_choices_cover_all_tiers(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))
         returned = {c['value'] for c in response.data['tierChoices']}
         expected = {c.value for c in InsuranceProvider.InuranceTierChoices}
-        assert returned == expected
+        assert returned == expected or render_error(response)
 
     def test_branch_choices_reflect_existing_branches(
         self, api_client, admin_user, branch_factory
@@ -437,11 +446,13 @@ class TestRetrieveInsuranceProvidersOptionsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))
         ids = {str(c['branchId']) for c in response.data['branchChoices']}
-        assert str(b1.id) in ids
+        assert str(b1.id) in ids or render_error(response)
 
     def test_non_admin_can_access_options(self, api_client, receptionist_user):
         api_client.force_authenticate(user=receptionist_user)
-        assert api_client.get(reverse(self.URL)).status_code == status.HTTP_200_OK
+        response = api_client.get(reverse(self.URL))
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
 
     def test_unauthenticated_returns_401(self, api_client):
-        assert api_client.get(reverse(self.URL)).status_code == status.HTTP_401_UNAUTHORIZED
+        response = api_client.get(reverse(self.URL))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)

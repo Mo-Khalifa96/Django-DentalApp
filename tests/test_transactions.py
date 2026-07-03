@@ -123,7 +123,6 @@ class TestListCreateTransactionsAPIView:
             _create_payload(bill, visit),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Transaction.objects.filter(bill=bill).exists()
 
@@ -139,7 +138,6 @@ class TestListCreateTransactionsAPIView:
             _create_payload(bill, visit),
             format='json',
         )
-
         transaction = Transaction.objects.get(bill=bill)
         assert transaction.method == Transaction.PaymentMethodChoices.CASH
 
@@ -153,7 +151,6 @@ class TestListCreateTransactionsAPIView:
         api_client.post(
             reverse(self.LIST_URL), _create_payload(bill, visit), format='json'
         )
-
         transaction = Transaction.objects.get(bill=bill)
         assert transaction.patientName == bill.patient.name
         assert transaction.billDescription == bill.description
@@ -168,7 +165,6 @@ class TestListCreateTransactionsAPIView:
         api_client.post(
             reverse(self.LIST_URL), _create_payload(bill, visit), format='json'
         )
-
         transaction = Transaction.objects.get(bill=bill)
         assert transaction.createdBy == admin_user.name
 
@@ -182,7 +178,6 @@ class TestListCreateTransactionsAPIView:
         api_client.post(
             reverse(self.LIST_URL), _create_payload(bill, visit), format='json'
         )
-
         transaction = Transaction.objects.get(bill=bill)
         assert transaction.patient == bill.patient
         assert transaction.branch == branch
@@ -202,7 +197,6 @@ class TestListCreateTransactionsAPIView:
             _create_payload(bill, visit, amount='250.00'),
             format='json',
         )
-
         bill.refresh_from_db()
         assert bill.totalPaid == Decimal('250.00')
 
@@ -221,7 +215,6 @@ class TestListCreateTransactionsAPIView:
             _create_payload(bill, visit, amount='300.00'),
             format='json',
         )
-
         visit.refresh_from_db()
         assert visit.paid == Decimal('300.00')
         assert visit.paid != initial_paid
@@ -237,7 +230,6 @@ class TestListCreateTransactionsAPIView:
             _create_payload(bill, bill.visits.first()),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_create_response_is_wrapped(self, api_client, admin_user, bill_factory):
@@ -246,7 +238,6 @@ class TestListCreateTransactionsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(bill, bill.visits.first()), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
@@ -277,7 +268,6 @@ class TestUpdateDeleteTransactionAPIView:
         response = api_client.patch(
             _transaction_url(transaction.id), {'amount': '300.00'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         transaction.refresh_from_db()
         assert transaction.amount == Decimal('300.00')
@@ -292,7 +282,6 @@ class TestUpdateDeleteTransactionAPIView:
         response = api_client.patch(
             _transaction_url(transaction.id), {'amount': '999.00'}, format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_patch_read_only_fields_are_ignored(

@@ -77,7 +77,6 @@ class TestClinicTaxConfigAPIView:
         response = api_client.get(
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data['data']['clinicName'] == tax_config.clinicName
 
@@ -91,7 +90,6 @@ class TestClinicTaxConfigAPIView:
         response = api_client.get(
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
@@ -106,7 +104,6 @@ class TestClinicTaxConfigAPIView:
         response = api_client.get(
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
-
         assert 'metadata' in response.data
         assert 'userPermissions' in response.data['metadata']
 
@@ -120,7 +117,6 @@ class TestClinicTaxConfigAPIView:
         response = api_client.get(
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
-
         data = response.data['data']
         for field in ('id', 'clinicName', 'address', 'phone', 'taxId',
                      'activityCode', 'commercialReg', 'branchId'):
@@ -136,7 +132,6 @@ class TestClinicTaxConfigAPIView:
         response = api_client.get(
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
-
         assert tax_config.branch_id == response.data['data']['branchId']
 
     def test_retrieve_without_branch_returns_global_config(
@@ -161,7 +156,6 @@ class TestClinicTaxConfigAPIView:
         response = api_client.get(
             reverse(self.URL), {'branchId': str(fake_branch_id)}, format='json'
         )
-
         assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     def test_retrieve_not_found_returns_404(
@@ -173,7 +167,6 @@ class TestClinicTaxConfigAPIView:
         response = api_client.get(
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
-
         assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     def test_non_admin_cannot_retrieve_tax_config(
@@ -185,7 +178,6 @@ class TestClinicTaxConfigAPIView:
         response = api_client.get(
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_retrieve_tax_config(self, api_client, branch):
@@ -193,7 +185,6 @@ class TestClinicTaxConfigAPIView:
         response = api_client.get(
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
-
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── CREATE (POST) ────────────────────────────────────────────────────────
@@ -239,7 +230,6 @@ class TestClinicTaxConfigAPIView:
             activityCode='ACT-999',
             commercialReg='CR-999999',
         )
-
         response = api_client.post(reverse(self.URL), payload, format='json')
 
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
@@ -337,7 +327,6 @@ class TestClinicTaxConfigAPIView:
             ),
             format='json',
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         tax_config.refresh_from_db()
         assert tax_config.clinicName == 'Updated Clinic Name'
@@ -362,7 +351,6 @@ class TestClinicTaxConfigAPIView:
             },
             format='json',
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         tax_config.refresh_from_db()
         assert tax_config.clinicName == 'Partially Updated'
@@ -379,7 +367,6 @@ class TestClinicTaxConfigAPIView:
         response = api_client.delete(
             reverse(self.URL), {'branchId': str(branch.id)}, format='json'
         )
-
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED or render_error(response)
 
     # ── OPTIONS ────────────────────────────────────────────────────────────
@@ -451,7 +438,6 @@ class TestTaxConfigSerializerFields:
             {'branchId': str(branch.id)},
             format='json',
         )
-
         assert 'branchId' in response.data['data']
 
     def test_id_is_read_only(
@@ -466,7 +452,6 @@ class TestTaxConfigSerializerFields:
             {'branchId': str(branch.id)},
             format='json',
         )
-
         assert 'id' in response.data['data']
 
 

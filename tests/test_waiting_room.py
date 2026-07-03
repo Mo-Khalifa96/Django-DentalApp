@@ -191,7 +191,6 @@ class TestListCreateWaitingRoomItemsAPIView:
             {'appointmentId': str(appt.id), 'branchId': str(branch.id)},
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert WaitingRoom.objects.get(appointment=appt).branch == branch
 
@@ -203,7 +202,6 @@ class TestListCreateWaitingRoomItemsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), {'branchId': None}, format='json'
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_response_is_wrapped(
@@ -219,7 +217,6 @@ class TestListCreateWaitingRoomItemsAPIView:
             {'appointmentId': str(appt.id), 'branchId': None},
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
@@ -238,7 +235,6 @@ class TestListCreateWaitingRoomItemsAPIView:
             {'appointmentId': str(appt.id), 'branchId': None},
             format='json',
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
 
@@ -273,7 +269,6 @@ class TestUpdateDeleteWaitingRoomItemAPIView:
             payload,
             format='json',
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         item.refresh_from_db()
         assert item.room == 'Chair 3'
@@ -308,7 +303,6 @@ class TestUpdateDeleteWaitingRoomItemAPIView:
             payload,
             format='json',
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
@@ -332,7 +326,6 @@ class TestUpdateDeleteWaitingRoomItemAPIView:
             payload,
             format='json',
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_user_without_permission_cannot_update(
@@ -348,7 +341,6 @@ class TestUpdateDeleteWaitingRoomItemAPIView:
             payload,
             format='json',
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_admin_can_delete_waiting_room_item(

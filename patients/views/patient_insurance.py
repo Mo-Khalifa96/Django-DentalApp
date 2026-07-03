@@ -70,14 +70,15 @@ class CreateRetrieveUpdatePatientCoverageAPIView(CreateAPIView, RetrieveUpdateAP
     
     def get_object(self):
         if not hasattr(self, '_coverage_object'):
-            patientId = validate_uuid(self.kwargs['patientId'])
-            patient = get_object_or_404(Patient.objects.only('id'), id=patientId)
+            patient = get_object_or_404(Patient.objects.only('id'), id=self.kwargs['patientId'])
             coverage = PatientCoverage.objects.select_related('patient', 'provider').get(patient_id=patient.id)
             
             #check object permission and cache coverage instance
             self.check_object_permissions(self.request, coverage)
             self._coverage_object = coverage
             return self._coverage_object
+
+        return self._coverage_object
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -107,7 +108,7 @@ class RetrievePatientCoverageOptionsAPIView(BranchToSerializerMixin, generics.Ge
 
     def get_serializer_context(self):
         context = super().get_serializer_context()  #get branchId and add doctorId
-        doctorId = validate_uuid(self.request.query_params.get('doctorId'))
+        doctorId = validate_uuid(self.request.query_params.get('doctorId'), 'doctorId')
 
         if doctorId:
             if not User.objects.filter(id=doctorId, role__in=['dentist', 'admin']).exists():

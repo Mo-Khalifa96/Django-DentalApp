@@ -66,12 +66,10 @@ class TestListCreateInventoryAPIView:
         inventory_factory(
             name='Masks', category='Consumables', currentStock=20, minStock=5,
         )
-
         api_client.force_authenticate(user=assistant_user)
         response = api_client.get(
             reverse(self.LIST_URL), {'lowStock': 'true', 'category': 'Consumables'}
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert [i['id'] for i in response.data['data']] == [str(low_stock.id)]
 
@@ -128,7 +126,6 @@ class TestListCreateInventoryAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Inventory.objects.filter(name='Test Item').exists()
 
@@ -138,7 +135,6 @@ class TestListCreateInventoryAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         item = Inventory.objects.get(id=response.data['data']['id'])
         assert item.lastOrdered is not None
@@ -158,7 +154,6 @@ class TestListCreateInventoryAPIView:
             _create_payload(branchId=str(branch.id)),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         item = Inventory.objects.get(name='Test Item')
         assert item.branch == branch
@@ -173,14 +168,12 @@ class TestListCreateInventoryAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_create_inventory_item(self, api_client):
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
@@ -230,7 +223,6 @@ class TestRetrieveUpdateDeleteInventoryAPIView:
             },
             format='json',
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         item.refresh_from_db()
         assert item.currentStock == 12
@@ -270,7 +262,6 @@ class TestRetrieveUpdateDeleteInventoryAPIView:
         response = api_client.patch(
             _detail_url(item.id), {'currentStock': 99}, format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_admin_can_delete_item(self, api_client, admin_user, inventory_factory):

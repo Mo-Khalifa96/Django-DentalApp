@@ -287,7 +287,6 @@ class TestListCreateLabsAPIView:
         response = api_client.post(
             reverse(self.URL), self._lab_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Lab.objects.get(name='Test Lab').branch is None
 
@@ -303,7 +302,6 @@ class TestListCreateLabsAPIView:
         response = api_client.post(
             reverse(self.URL), self._lab_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Lab.objects.get(name='Test Lab').branch == branch
 
@@ -318,7 +316,6 @@ class TestListCreateLabsAPIView:
         response = api_client.post(
             reverse(self.URL), self._lab_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Lab.objects.get(name='Test Lab').branch == branch
 
@@ -327,7 +324,6 @@ class TestListCreateLabsAPIView:
         response = api_client.post(
             reverse(self.URL), self._lab_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
@@ -338,7 +334,6 @@ class TestListCreateLabsAPIView:
         response = api_client.post(
             reverse(self.URL), self._lab_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert 'metadata' not in response.data
 
@@ -354,7 +349,6 @@ class TestListCreateLabsAPIView:
         response = api_client.post(
             reverse(self.URL), self._lab_payload(phone='not-a-phone'), format='json'
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_user_with_only_view_permission_cannot_create_lab(
@@ -365,14 +359,12 @@ class TestListCreateLabsAPIView:
         response = api_client.post(
             reverse(self.URL), self._lab_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_create_lab(self, api_client):
         response = api_client.post(
             reverse(self.URL), self._lab_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
@@ -490,7 +482,6 @@ class TestRetrieveUpdateDeleteLabAPIView:
         response = api_client.patch(
             self._url(lab.id), {'name': 'Renamed Lab'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         lab.refresh_from_db()
         assert lab.name == 'Renamed Lab'
@@ -505,7 +496,6 @@ class TestRetrieveUpdateDeleteLabAPIView:
         api_client.patch(
             self._url(lab.id), {'contactPerson': 'Updated Contact'}, format='json'
         )
-
         lab.refresh_from_db()
         assert lab.contactPerson == 'Updated Contact'
         assert lab.address == original_address   # unchanged
@@ -527,7 +517,6 @@ class TestRetrieveUpdateDeleteLabAPIView:
             {'branchId': str(new_branch.id)},
             format='json',
         )
-
         lab.refresh_from_db()
         assert lab.branch == original_branch
 
@@ -539,7 +528,6 @@ class TestRetrieveUpdateDeleteLabAPIView:
         response = api_client.patch(
             self._url(lab.id), {'phone': 'not-a-phone'}, format='json'
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_update_response_is_wrapped(self, api_client, admin_user, lab_factory):
@@ -548,7 +536,6 @@ class TestRetrieveUpdateDeleteLabAPIView:
         response = api_client.patch(
             self._url(lab.id), {'name': 'Updated'}, format='json'
         )
-
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -566,7 +553,6 @@ class TestRetrieveUpdateDeleteLabAPIView:
         response = api_client.patch(
             self._url(lab.id), {'name': 'Hijacked'}, format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_user_without_update_permission_cannot_update_lab(
@@ -578,7 +564,6 @@ class TestRetrieveUpdateDeleteLabAPIView:
         response = api_client.patch(
             self._url(lab.id), {'name': 'Hijacked'}, format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_update_lab(self, api_client, lab_factory):
@@ -586,7 +571,6 @@ class TestRetrieveUpdateDeleteLabAPIView:
         response = api_client.patch(
             self._url(lab.id), {'name': 'Hijacked'}, format='json'
         )
-
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── UPDATE (PUT) ──────────────────────────────────────────────────────────
@@ -838,7 +822,6 @@ class TestListCreateLabOrdersAPIView:
             self._payload(lab, patient, proc),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert LabOrder.objects.filter(lab=lab, patient=patient).exists()
 
@@ -885,7 +868,6 @@ class TestListCreateLabOrdersAPIView:
             self._payload(lab, patient, proc),
             format='json',
         )
-
         order = LabOrder.objects.get(lab=lab, patient=patient)
         assert order.status == LabOrder.OrderStatusChoices.SENT
 
@@ -902,7 +884,6 @@ class TestListCreateLabOrdersAPIView:
             self._payload(lab, patient, proc, status='in_production'),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         order = LabOrder.objects.get(lab=lab, patient=patient)
         assert order.status == LabOrder.OrderStatusChoices.IN_PRODUCTION
@@ -921,7 +902,6 @@ class TestListCreateLabOrdersAPIView:
             self._payload(lab, patient, proc),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert LabOrder.objects.get(lab=lab, patient=patient).branch is None
 
@@ -940,7 +920,6 @@ class TestListCreateLabOrdersAPIView:
             self._payload(lab, patient, proc),
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_auto_assigns_branch_from_user_active_branch(
@@ -962,7 +941,6 @@ class TestListCreateLabOrdersAPIView:
             self._payload(lab, patient, proc),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert LabOrder.objects.get(lab=lab, patient=patient).branch == branch
 
@@ -980,7 +958,6 @@ class TestListCreateLabOrdersAPIView:
             self._payload(lab, patient, proc),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_create_response_is_wrapped(
@@ -996,7 +973,6 @@ class TestListCreateLabOrdersAPIView:
             self._payload(lab, patient, proc),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
@@ -1015,7 +991,6 @@ class TestListCreateLabOrdersAPIView:
             self._payload(lab, patient, proc),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert 'metadata' not in response.data
 
@@ -1039,7 +1014,6 @@ class TestListCreateLabOrdersAPIView:
             self._payload(lab, patient, proc, toothNumber='99'),
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_user_without_create_permission_cannot_create(
@@ -1055,7 +1029,6 @@ class TestListCreateLabOrdersAPIView:
             self._payload(lab, patient, proc),
             format='json',
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_create_lab_order(
@@ -1070,7 +1043,6 @@ class TestListCreateLabOrdersAPIView:
             self._payload(lab, patient, proc),
             format='json',
         )
-
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
@@ -1101,7 +1073,6 @@ class TestUpdateDeleteLabOrderAPIView:
         response = api_client.patch(
             self._url(order.id), {'status': 'in_production'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         order.refresh_from_db()
         assert order.status == LabOrder.OrderStatusChoices.IN_PRODUCTION
@@ -1114,7 +1085,6 @@ class TestUpdateDeleteLabOrderAPIView:
         response = api_client.patch(
             self._url(order.id), {'dueDate': new_due}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         order.refresh_from_db()
         assert str(order.dueDate) == new_due
@@ -1125,7 +1095,6 @@ class TestUpdateDeleteLabOrderAPIView:
         response = api_client.patch(
             self._url(order.id), {'cost': '999.00'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         order.refresh_from_db()
         assert str(order.cost) == '999.00'
@@ -1138,7 +1107,6 @@ class TestUpdateDeleteLabOrderAPIView:
         response = api_client.patch(
             self._url(order.id), {'instructions': 'Use shade A2, metal-free'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         order.refresh_from_db()
         assert order.instructions == 'Use shade A2, metal-free'
@@ -1165,7 +1133,6 @@ class TestUpdateDeleteLabOrderAPIView:
             },
             format='json',
         )
-
         order.refresh_from_db()
         assert order.toothNumber    == original_tooth
         assert str(order.sentDate)  == original_sent_str
@@ -1179,7 +1146,6 @@ class TestUpdateDeleteLabOrderAPIView:
         response = api_client.patch(
             self._url(order.id), {'status': 'delivered'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         order.refresh_from_db()
         assert order.deliveredDate == date.today()
@@ -1192,7 +1158,6 @@ class TestUpdateDeleteLabOrderAPIView:
         response = api_client.patch(
             self._url(order.id), {'status': 'received'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         order.refresh_from_db()
         assert order.receivedDate == date.today()
@@ -1203,7 +1168,6 @@ class TestUpdateDeleteLabOrderAPIView:
         response = api_client.patch(
             self._url(order.id), {'status': 'in_production'}, format='json'
         )
-
         assert response.data.get('success') is True
         assert 'data' in response.data
 
@@ -1216,7 +1180,6 @@ class TestUpdateDeleteLabOrderAPIView:
         response = api_client.patch(
             self._url(order.id), {'status': 'in_production'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
 
     def test_user_not_in_lab_order_branch_cannot_update(
@@ -1233,7 +1196,6 @@ class TestUpdateDeleteLabOrderAPIView:
         response = api_client.patch(
             self._url(order.id), {'status': 'in_production'}, format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_user_without_update_permission_cannot_update(
@@ -1245,7 +1207,6 @@ class TestUpdateDeleteLabOrderAPIView:
         response = api_client.patch(
             self._url(order.id), {'status': 'in_production'}, format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_update_lab_order(
@@ -1255,7 +1216,6 @@ class TestUpdateDeleteLabOrderAPIView:
         response = api_client.patch(
             self._url(order.id), {'status': 'in_production'}, format='json'
         )
-
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     def test_patch_nonexistent_lab_order_returns_404(self, api_client, admin_user):
@@ -1263,7 +1223,6 @@ class TestUpdateDeleteLabOrderAPIView:
         response = api_client.patch(
             self._url(uuid.uuid4()), {'status': 'in_production'}, format='json'
         )
-
         assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
     # ── DELETE ────────────────────────────────────────────────────────────────

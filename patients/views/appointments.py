@@ -152,7 +152,7 @@ class RetrieveAppointmentOptionsAPIView(BranchToSerializerMixin, generics.Generi
 
     def get_serializer_context(self):
         context = super().get_serializer_context()  #get branchId and add doctorId
-        doctorId = validate_uuid(self.request.query_params.get('doctorId'))
+        doctorId = validate_uuid(self.request.query_params.get('doctorId'), 'doctorId')
 
         if doctorId:
             if not User.objects.filter(id=doctorId, role__in=['dentist', 'admin']).exists():

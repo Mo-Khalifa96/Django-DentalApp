@@ -208,7 +208,6 @@ class TestListCreateVisitsAPIView:
                 'endDate':   timezone.localdate().isoformat(),
             },
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert [i['id'] for i in response.data['data']] == [str(in_range_visit.id)]
 
@@ -290,7 +289,6 @@ class TestListCreateVisitsAPIView:
         response = api_client.post(
             _list_url(patient.id), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert Visit.objects.filter(patient=patient).exists()
 
@@ -321,7 +319,6 @@ class TestListCreateVisitsAPIView:
             _create_payload(doctorId=str(dentist_user.id)),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         visit = Visit.objects.get(id=response.data['data']['id'])
         assert visit.doctor_id == dentist_user.id
@@ -355,7 +352,6 @@ class TestListCreateVisitsAPIView:
             _create_payload(doctorId=str(receptionist_user.id)),
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_layer1_accepts_assistant_as_doctor_id(
@@ -370,7 +366,6 @@ class TestListCreateVisitsAPIView:
             _create_payload(doctorId=str(assistant.id)),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         visit = Visit.objects.get(id=response.data['data']['id'])
         assert visit.doctor_id == assistant.id
@@ -384,7 +379,6 @@ class TestListCreateVisitsAPIView:
         response = api_client.post(
             _list_url(patient.id), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         visit = Visit.objects.get(id=response.data['data']['id'])
         assert visit.doctor_id == dentist_user.id
@@ -398,7 +392,6 @@ class TestListCreateVisitsAPIView:
         response = api_client.post(
             _list_url(patient.id), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         visit = Visit.objects.get(id=response.data['data']['id'])
         assert visit.doctor_id == admin_user.id
@@ -412,7 +405,6 @@ class TestListCreateVisitsAPIView:
         response = api_client.post(
             _list_url(patient.id), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         visit = Visit.objects.get(id=response.data['data']['id'])
         assert visit.doctor_id == dentist_user.id
@@ -434,7 +426,6 @@ class TestListCreateVisitsAPIView:
         response = api_client.post(
             _list_url(patient.id), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         visit = Visit.objects.get(id=response.data['data']['id'])
         assert visit.doctor_id is None
@@ -457,7 +448,6 @@ class TestListCreateVisitsAPIView:
         response = api_client.post(
             _list_url(patient.id), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         visit = Visit.objects.get(id=response.data['data']['id'])
         assert visit.doctor_id == patient.doctor_id
@@ -497,7 +487,6 @@ class TestListCreateVisitsAPIView:
             {**_create_payload(), 'xrayUploads': [png_file]},
             format='multipart',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         visit = Visit.objects.get(id=response.data['data']['id'])
         assert visit.xray is True
@@ -512,7 +501,6 @@ class TestListCreateVisitsAPIView:
         response = api_client.post(
             _list_url(patient.id), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data['data']['xray'] is False
 
@@ -527,7 +515,6 @@ class TestListCreateVisitsAPIView:
         response = api_client.post(
             _list_url(patient.id), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert len(response.data['data']['xrayUrls']) == 1
 
@@ -545,7 +532,6 @@ class TestListCreateVisitsAPIView:
         response = api_client.post(
             _list_url(patient.id), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_create_response_is_wrapped(self, api_client, admin_user, patient_factory):
@@ -554,7 +540,6 @@ class TestListCreateVisitsAPIView:
         response = api_client.post(
             _list_url(patient.id), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data

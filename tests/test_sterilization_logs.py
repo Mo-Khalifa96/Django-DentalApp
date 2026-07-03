@@ -146,7 +146,6 @@ class TestListCreateSterilizationLogsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 
     def test_create_auto_sets_operator_from_user_name(self, api_client, admin_user):
@@ -154,7 +153,6 @@ class TestListCreateSterilizationLogsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(operator=None), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         log = SterilizationLog.objects.latest('createdAt')
         assert log.operator == admin_user.name
@@ -167,7 +165,6 @@ class TestListCreateSterilizationLogsAPIView:
             _create_payload(operator='Tech A'),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         log = SterilizationLog.objects.latest('createdAt')
         assert log.operator == 'Tech A'
@@ -179,7 +176,6 @@ class TestListCreateSterilizationLogsAPIView:
             _create_payload(result='passed'),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         log = SterilizationLog.objects.latest('createdAt')
         assert log.sealedAt is not None
@@ -192,7 +188,6 @@ class TestListCreateSterilizationLogsAPIView:
             _create_payload(instrumentSets=[]),
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_with_invalid_instrument_set_returns_400(self, api_client, admin_user):
@@ -203,7 +198,6 @@ class TestListCreateSterilizationLogsAPIView:
             _create_payload(instrumentSets=['not_a_real_kit']),
             format='json',
         )
-
         assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_create_deduplicates_instrument_sets(self, api_client, admin_user):
@@ -214,7 +208,6 @@ class TestListCreateSterilizationLogsAPIView:
             _create_payload(instrumentSets=['rct_kit', 'basic_exam_kit', 'rct_kit']),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         log = SterilizationLog.objects.latest('createdAt')
         assert log.instrumentSets == sorted({'rct_kit', 'basic_exam_kit'})
@@ -234,7 +227,6 @@ class TestListCreateSterilizationLogsAPIView:
             _create_payload(branchId=str(branch.id)),
             format='json',
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         log = SterilizationLog.objects.latest('createdAt')
         assert log.branch == branch
@@ -244,7 +236,6 @@ class TestListCreateSterilizationLogsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
@@ -255,7 +246,6 @@ class TestListCreateSterilizationLogsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code != status.HTTP_403_FORBIDDEN or render_error(response)
         assert response.status_code != status.HTTP_401_UNAUTHORIZED or render_error(response)
 
@@ -266,14 +256,12 @@ class TestListCreateSterilizationLogsAPIView:
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_unauthenticated_cannot_create(self, api_client):
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'
         )
-
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 
@@ -299,7 +287,6 @@ class TestUpdateDeleteSterilizationLogAPIView:
         response = api_client.patch(
             self._url(log.id), {'result': 'passed'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         log.refresh_from_db()
         assert log.result == SterilizationLog.SterilizationResultChoices.PASSED
@@ -310,7 +297,6 @@ class TestUpdateDeleteSterilizationLogAPIView:
         response = api_client.patch(
             self._url(log.id), {'notes': 'Checked by supervisor'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         log.refresh_from_db()
         assert log.notes == 'Checked by supervisor'
@@ -325,7 +311,6 @@ class TestUpdateDeleteSterilizationLogAPIView:
             {'date': '2000-01-01', 'time': '00:00:00'},
             format='json',
         )
-
         log.refresh_from_db()
         assert str(log.date) == original_date
 
@@ -348,7 +333,6 @@ class TestUpdateDeleteSterilizationLogAPIView:
         response = api_client.patch(
             self._url(log.id), {'result': 'passed'}, format='json'
         )
-
         assert response.status_code == status.HTTP_200_OK or render_error(response)
 
     def test_user_not_in_log_branch_cannot_update(
@@ -364,7 +348,6 @@ class TestUpdateDeleteSterilizationLogAPIView:
         response = api_client.patch(
             self._url(log.id), {'result': 'passed'}, format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_user_without_update_permission_cannot_update(
@@ -375,7 +358,6 @@ class TestUpdateDeleteSterilizationLogAPIView:
         response = api_client.patch(
             self._url(log.id), {'result': 'passed'}, format='json'
         )
-
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_admin_can_delete_log(self, api_client, admin_user, log_factory):
