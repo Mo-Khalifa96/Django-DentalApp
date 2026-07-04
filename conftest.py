@@ -262,7 +262,7 @@ def treatment_plan_factory():
             )
 
         TreatmentPlanItem.objects.bulk_create(created_items)
-        treatment_plan.totalCost = f'{total_cost:.2f}'
+        treatment_plan.totalCost = Decimal(f'{total_cost:.2f}')
         treatment_plan.save(update_fields=['totalCost'])
         return treatment_plan
 

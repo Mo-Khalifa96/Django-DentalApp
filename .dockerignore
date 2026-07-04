@@ -1,4 +1,5 @@
 .env*
+**.env
 .git/
 .gitignore
 .aws/
@@ -25,5 +26,6 @@ __pycache__/
 .DS_Store
 **/.DS_Store
 /.Markdown/
+**/.Markdown/
 aws-credentials.env
 pip-wheel-metadata/

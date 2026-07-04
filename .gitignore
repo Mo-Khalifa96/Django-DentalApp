@@ -1,4 +1,5 @@
 .env*
+**.env
 *.md
 !README.md
 __pycache__/
@@ -8,6 +9,7 @@ pytest.ini
 .vscode/
 .seeded
 /.Markdown/
+**/.Markdown/
 **/.DS_Store
 .hypothesis/
 *.toml

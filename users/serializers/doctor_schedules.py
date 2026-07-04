@@ -146,7 +146,7 @@ class DoctorScheduleOptionsSerializer(serializers.Serializer):
             child=serializers.DictField(child=serializers.CharField(allow_blank=True, allow_null=True))
         ))
     def get_doctorChoices(self, obj):
-        branchId = self.context.get('branchId')
+        branchId = self.context.get('branchId')  #TODO - is that what we want? Or do we get all docs from all branches?
         filters = {'branch_id': branchId, 'role__in': ['dentist', 'admin']} if branchId else {'role__in': ['dentist', 'admin']}
 
         return [

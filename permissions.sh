@@ -4,6 +4,7 @@ set -e
 
 #Grant executable permissions to the other scripts
 echo "Setting permissions..."
+chmod +x /app/update.sh 2>/dev/null || true
 chmod +x /app/wait-for-it.sh 2>/dev/null || true
 chmod +x /app/database-backup.sh 2>/dev/null || true
 chmod +x /app/database-backup-cron.sh 2>/dev/null || true

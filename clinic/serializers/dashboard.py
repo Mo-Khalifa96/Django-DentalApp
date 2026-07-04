@@ -92,6 +92,9 @@ class DashboardOptionsSerializer(serializers.Serializer):
         ))
     def get_doctorChoices(self, obj):
         branchId = self.context.get('branchId')
+        if not branchId and Branch.objects.exists():
+            return []
+        
         filters = {'branch_id': branchId, 'role__in': ['dentist', 'admin']} if branchId else {'role__in': ['dentist', 'admin']}
 
         return [

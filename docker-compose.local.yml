@@ -117,7 +117,7 @@ services:
           cpus: '${POSTGRES_CPU_LIMIT:-0.75}'
           memory: '${POSTGRES_RAM_LIMIT:-400M}'
         reservations:
-          cpus: '${POSTGRES_CPU_RESERVE:-0.3}'
+          cpus: '${POSTGRES_CPU_RESERVE:-0.25}'
     logging:
       driver: "json-file"
       options:
