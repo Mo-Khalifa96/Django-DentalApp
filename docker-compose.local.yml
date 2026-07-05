@@ -170,11 +170,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '${WEB_CPU_LIMIT:-0.75}'
-          memory: '${WEB_RAM_LIMIT:-400M}'
-        reservations:
-          cpus: '${WEB_CPU_RESERVE:-0.25}'
-          memory: '${WEB_RAM_RESERVE:-200M}'
+          cpus: '1.0'
+          memory: '1000M'
+        # reservations:
+          # cpus: '0.25'
+          # memory: '500M'
 
   profiler:
     build: .
@@ -203,11 +203,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '${WEB_CPU_LIMIT:-0.75}'
-          memory: '${WEB_RAM_LIMIT:-400M}'
-        reservations:
-          cpus: '${WEB_CPU_RESERVE:-0.25}'
-          memory: '${WEB_RAM_RESERVE:-200M}'
+          cpus: '1.0'
+          memory: '1000M'
+        # reservations:
+          # cpus: '0.25'
+          # memory: '500M'
 
 
 networks:

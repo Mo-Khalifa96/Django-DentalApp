@@ -35,10 +35,10 @@ services:
       resources:
         limits:
           cpus: '${WEB_CPU_LIMIT:-1.0}'
-          memory: '${WEB_RAM_LIMIT:-750M}'
+          memory: '${WEB_RAM_LIMIT:-1000M}'
         reservations:
           cpus: '${WEB_CPU_RESERVE:-0.25}'
-          memory: '${WEB_RAM_RESERVE:-400M}'
+          memory: '${WEB_RAM_RESERVE:-500M}'
     logging:
       driver: "json-file"
       options:
@@ -90,6 +90,7 @@ services:
           memory: '${QCLUSTER_RAM_LIMIT:-500M}'
         reservations:
           cpus: '${QCLUSTER_CPU_RESERVE:-0.1}'
+          memory: '${QCLUSTER_RAM_RESERVE:-250M}'
     logging:
       driver: "json-file"
       options:
@@ -123,9 +124,10 @@ services:
       resources:
         limits:
           cpus: '${POSTGRES_CPU_LIMIT:-0.75}'
-          memory: '${POSTGRES_RAM_LIMIT:-500M}'
+          memory: '${POSTGRES_RAM_LIMIT:-750M}'
         reservations:
           cpus: '${POSTGRES_CPU_RESERVE:-0.25}'
+          memory: '${POSTGRES_RAM_RESERVE:-350M}'
     logging:
       driver: "json-file"
       options:
@@ -161,7 +163,7 @@ services:
       resources:
         limits:
           cpus: '${PGBACKUP_CPU_LIMIT:-0.3}'
-          memory: '${PGBACKUP_RAM_LIMIT:-200M}'
+          memory: '${PGBACKUP_RAM_LIMIT:-400M}'
     volumes:
       - ./backups:/backups
       - ./logs:/app/logs
@@ -190,7 +192,7 @@ services:
       resources:
         limits:
           cpus: '${SMTP_CPU_LIMIT:-0.1}'
-          memory: '${SMTP_RAM_LIMIT:-100M}'
+          memory: '${SMTP_RAM_LIMIT:-125M}'
     logging:
       driver: "json-file"
       options:
@@ -227,7 +229,7 @@ services:
       resources:
         limits:
           cpus: '${NGINX_CPU_LIMIT:-0.2}'
-          memory: '${NGINX_RAM_LIMIT:-128M}'
+          memory: '${NGINX_RAM_LIMIT:-125M}'
         reservations:
           cpus: '${NGINX_CPU_RESERVE:-0.05}'
           memory: '${NGINX_RAM_RESERVE:-32M}'

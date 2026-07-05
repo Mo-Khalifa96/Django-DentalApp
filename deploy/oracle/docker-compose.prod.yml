@@ -82,10 +82,10 @@ services:
       resources:
         limits:
           cpus: '${QCLUSTER_CPU_LIMIT:-0.5}'
-          memory: '${QCLUSTER_RAM_LIMIT:-750M}'
+          memory: '${QCLUSTER_RAM_LIMIT:-500M}'
         reservations:
           cpus: '${QCLUSTER_CPU_RESERVE:-0.1}'
-          memory: '${QCLUSTER_RAM_RESERVE:-200M}'
+          memory: '${QCLUSTER_RAM_RESERVE:-250M}'
     logging:
       driver: "json-file"
       options:
@@ -123,7 +123,7 @@ services:
           memory: '${POSTGRES_RAM_LIMIT:-750M}'
         reservations:
           cpus: '${POSTGRES_CPU_RESERVE:-0.25}'
-          memory: '${POSTGRES_RAM_RESERVE:-250M}'
+          memory: '${POSTGRES_RAM_RESERVE:-350M}'
     logging:
       driver: "json-file"
       options:
@@ -164,7 +164,7 @@ services:
       resources:
         limits:
           cpus: '${PGBACKUP_CPU_LIMIT:-0.3}'
-          memory: '${PGBACKUP_RAM_LIMIT:-300M}'
+          memory: '${PGBACKUP_RAM_LIMIT:-400M}'
     logging:
       driver: "json-file"
       options:
@@ -205,7 +205,7 @@ services:
       resources:
         limits:
           cpus: '${NGINX_CPU_LIMIT:-0.2}'
-          memory: '${NGINX_RAM_LIMIT:-128M}'
+          memory: '${NGINX_RAM_LIMIT:-125M}'
         reservations:
           cpus: '${NGINX_CPU_RESERVE:-0.05}'
           memory: '${NGINX_RAM_RESERVE:-32M}'
