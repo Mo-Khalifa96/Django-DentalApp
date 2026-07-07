@@ -32,6 +32,10 @@ jobs:
         run: |
           pip install pipenv
           pipenv install --system --deploy --dev
+      - name: Debug env
+        env:
+          DB_PORT: "5432"
+        run: echo "DB_PORT is $DB_PORT"
       - name: Run tests
         env:
           DJANGO_SETTINGS_MODULE: DentalTech.settings.dev
