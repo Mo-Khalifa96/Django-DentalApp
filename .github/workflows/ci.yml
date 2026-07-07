@@ -34,8 +34,12 @@ jobs:
           pipenv install --system --deploy --dev
       - name: Run tests
         env:
-          DB_HOST: localhost
+          DJANGO_SETTINGS_MODULE: DentalTech.settings.dev
+          ENVIRONMENT: local
+          DEV_SECRET_KEY: "ci-fake-secret-key"
           DB_NAME: test_db
           DB_USER: test_user
           DB_PASSWORD: test_pass
+          DB_PORT: "5432"
+          EMAIL_PORT: "25"
         run: pytest
