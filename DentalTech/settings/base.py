@@ -12,6 +12,9 @@ dotenv_path = BASE_DIR / '.env'
 if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path)   #or consider using python-decouple instead of doing all this to load env variables
 
+#Ensure logs directory exists
+os.makedirs(BASE_DIR / 'logs', exist_ok=True)
+
 
 #Apps list 
 INSTALLED_APPS = [
