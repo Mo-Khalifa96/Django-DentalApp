@@ -8,6 +8,9 @@ echo ""
 #Fetch and save relevant environment variables (no AWS_ vars anymore)
 printenv | grep -E 'POSTGRES_|OCI_' | sed 's/^/export /' > /app/env.sh
 
+#Add path to env.sh
+echo "export PATH=$PATH" >> /app/env.sh
+
 #Set strict permission (owner only (root) - read/write only)
 chmod 600 /app/env.sh
 
