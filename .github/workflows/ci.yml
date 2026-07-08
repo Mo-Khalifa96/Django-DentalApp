@@ -44,4 +44,4 @@ jobs:
           DB_PASSWORD: test_pass
           DB_PORT: "5432"
           EMAIL_PORT: "25"
-        run: pytest -x
+        run: pytest --maxfail=3 --tb=short --durations=5

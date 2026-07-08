@@ -147,7 +147,7 @@ services:
   tests:
     build: .
     container_name: dentaltech-local-tests
-    command: ./wait-for-it.sh postgres:5432 -- ptw --poll --runner "pytest --testmon -v -x"
+    command: ./wait-for-it.sh postgres:5432 -- ptw --poll --runner "pytest --testmon -v -x --durations=5"
     tty: true
     profiles: ["local"]
     env_file:

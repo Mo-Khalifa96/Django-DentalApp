@@ -1,0 +1,44 @@
+name: Revert on CI Failure
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  revert:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event == 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Check if failed commit is the most recent
+        id: check_recent_commit
+        run: |
+          CURRENT_TIP=$(git rev-parse main)
+          FAILED_SHA="${{ github.event.workflow_run.head_sha }}"
+          if [ "$CURRENT_TIP" == "$FAILED_SHA" ]; then
+            echo "safe_to_revert=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Main has moved on since the failed commit ($FAILED_SHA) — skipping auto-revert to avoid reverting newer work."
+            echo "safe_to_revert=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Revert the failed commit
+        if: steps.check_recent_commit.outputs.safe_to_revert == 'true'
+        run: |
+          git revert --no-edit ${{ github.event.workflow_run.head_sha }}
+          git push origin main
