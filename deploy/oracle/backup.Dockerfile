@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     bash \
     cron \
     curl \
+    jq \
     tzdata \
     locales \
     && pip install --break-system-packages oci-cli \
