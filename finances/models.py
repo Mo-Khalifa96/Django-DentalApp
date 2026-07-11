@@ -27,7 +27,7 @@ class ClinicalTaxConfig(models.Model):
     address = models.CharField(max_length=500)
     phone = models.CharField(max_length=50, validators=[validate_phone_number])
     #One-to-One relationship to the Branch model (i.e., one tax config, one branch)
-    branch = models.OneToOneField('clinic.Branch', related_name='tax_config', blank=True,  #TODO - fetch branch under the hood from user like /auth/me/
+    branch = models.OneToOneField('clinic.Branch', related_name='tax_config', blank=True,
                                         null=True, on_delete=models.CASCADE, db_index=True)  #branch should be editable here
 
     #Objects after filtering by manager

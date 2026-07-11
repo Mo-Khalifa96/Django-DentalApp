@@ -40,7 +40,7 @@ class RetrieveAppointmentSerializer(UserPermissionsMixin, AppointmentSerializer)
 
     @extend_schema_field(serializers.CharField)
     def get_patientPhone(self, obj):
-        return '0' + obj.patient.phone[len(obj.patient.countryCode):]  #TODO
+        return '0' + obj.patient.phone[len(obj.patient.countryCode):]
 
 
 #Create appointment serializer (inherits from appointment serializer)

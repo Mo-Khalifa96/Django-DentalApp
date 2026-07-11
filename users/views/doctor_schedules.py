@@ -73,7 +73,7 @@ class CRUD_DoctorScheduleAPIView(CreateAPIView, RetrieveUpdateDeleteAPIView):
         return [DoctorSchedulePermissions()]  #applies object permission on create/update/delete
 
 
-    def create(self, request, *args, **kwargs):   #TODO - test functionality against current handler
+    def create(self, request, *args, **kwargs):
         #Check the doctor's id exists before running the request
         doctor = self.get_doctor()
 

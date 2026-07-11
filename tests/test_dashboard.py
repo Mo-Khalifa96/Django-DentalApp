@@ -46,6 +46,7 @@ class TestDashboardStatsAPI:
         self, api_client, receptionist_user
     ):
         """receptionist has 'view.clinicalAnalytics' by default."""
+        
         api_client.force_authenticate(user=receptionist_user)
         response = _get(api_client)
 
@@ -102,7 +103,7 @@ class TestDashboardStatsAPI:
     # Financial data – Revenue and Outstanding
     # ══════════════════════════════════════════════════════════════════════════════
 
-    def test_revenue_is_sum_of_transaction_amounts_not_visit_paid(  #TODO - REMOVE AFTER
+    def test_revenue_is_sum_of_transaction_amounts_not_visit_paid(
         self, api_client, admin_user, patient_factory, dentist_user,
         visit_factory, bill_factory, transaction_factory
     ):
@@ -122,6 +123,7 @@ class TestDashboardStatsAPI:
         self, api_client, admin_user, bill_factory, transaction_factory
     ):
         """outstanding = SUM(Bill.totalAmount) - SUM(Transaction.amount)."""
+
         bill = bill_factory(subtotal=Decimal('300.00'), totalAmount=Decimal('300.00'))
         transaction_factory(bill=bill, visit=bill.visits.first(),
                             patient=bill.patient, amount=Decimal('100.00'))
@@ -147,6 +149,7 @@ class TestDashboardStatsAPI:
         self, api_client, receptionist_user
     ):
         """receptionist has view.clinicalAnalytics but NOT view.financialAnalytics."""
+
         api_client.force_authenticate(user=receptionist_user)
         data = _data(_get(api_client))
 
@@ -157,6 +160,7 @@ class TestDashboardStatsAPI:
         self, api_client, user_factory
     ):
         """accountant has view.financialAnalytics by default."""
+
         accountant = user_factory(role='accountant')
         api_client.force_authenticate(user=accountant)
         data = _data(_get(api_client))
@@ -168,6 +172,7 @@ class TestDashboardStatsAPI:
         self, api_client, admin_user, bill_factory
     ):
         """Bill.objects (used for outstanding) filters isDeleted=False."""
+
         bill = bill_factory(subtotal=Decimal('500.00'), totalAmount=Decimal('500.00'))
         bill.isDeleted = True
         bill.save(update_fields=['isDeleted'])
@@ -201,6 +206,7 @@ class TestDashboardStatsAPI:
         self, api_client, admin_user, bill_factory, transaction_factory
     ):
         """dateRange=today uses Q(date__exact=today)."""
+
         bill       = bill_factory()
         yesterday  = date.today() - timedelta(days=1)
         transaction_factory(bill=bill, visit=bill.visits.first(),
@@ -231,6 +237,7 @@ class TestDashboardStatsAPI:
         self, api_client, admin_user, bill_factory, transaction_factory
     ):
         """dateRange=week: Q(date__range=(starting_saturday, ending_friday))."""
+
         bill      = bill_factory()
         two_weeks = date.today() - timedelta(days=14)
         transaction_factory(bill=bill, visit=bill.visits.first(),
@@ -288,6 +295,7 @@ class TestDashboardStatsAPI:
         procedure_factory, appointment_factory
     ):
         """Default appointmentsCount uses Q(date__exact=today)."""
+
         patient = patient_factory()
         proc    = procedure_factory()
         appointment_factory(patient=patient, doctor=dentist_user, procedure=proc,
@@ -303,6 +311,7 @@ class TestDashboardStatsAPI:
         procedure_factory, appointment_factory
     ):
         """Appointment queryset uses .exclude(status='cancelled')."""
+
         patient = patient_factory()
         proc    = procedure_factory()
         appointment_factory(patient=patient, doctor=dentist_user, procedure=proc,
@@ -336,6 +345,7 @@ class TestDashboardStatsAPI:
         self, api_client, admin_user, patient_factory, branch_factory
     ):
         """Admin with no branchId QP → Q() filter → sees everything."""
+
         b1 = branch_factory()
         b2 = branch_factory()
         patient_factory(branch=b1)
@@ -354,6 +364,7 @@ class TestDashboardStatsAPI:
         For user with exactly one assigned branch, filter_by_branch yields
         Q(branch_id=user.branches.first().id).
         """
+
         b1 = branch_factory()
         b2 = branch_factory()
         accountant = user_factory(role='accountant')
@@ -446,6 +457,7 @@ class TestDashboardAppointmentsTodayAPI:
         procedure_factory, appointment_factory
     ):
         """Filter is date__exact=today."""
+
         today     = timezone.localdate()
         proc      = procedure_factory()
         today_appt = appointment_factory(patient=patient_factory(), doctor=dentist_user,
