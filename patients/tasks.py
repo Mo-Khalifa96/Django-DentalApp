@@ -1,5 +1,6 @@
 import logging
 from decimal import Decimal
+from datetime import timedelta
 from django.utils import timezone
 from django.db import transaction
 from patients.models import PatientCoverage
@@ -9,22 +10,35 @@ from patients.models import PatientCoverage
 logger = logging.getLogger('django-q')
 
 
-#Weekly task to update patient insurance details
+#Daily task to update patient insurance details
 def update_patient_insurance_details_task():
-    '''Weekly task to check insurance eligibility and update patient insurance details accordingly.'''
+    '''Daily task to check insurance eligibility and update patient insurance details accordingly.'''
 
     try:
         with transaction.atomic():
             #date today
             today = timezone.localtime(timezone.now())
+            today_date = today.date()
 
+            #Update expiring coverages
+            #get coverages whose 'effectiveTo' is within 30 days from today
+            expiring_coverages = PatientCoverage.objects.filter(
+                effectiveTo__isnull=False, effectiveTo__range=(today_date, today_date+timedelta(days=30))
+             ).all()
+            
+            expiring_coverages.update(eligibilityStatus='expiring', 
+                                      eligibilityChecked=today.date(),
+                                      updatedAt=today
+                                    )
+            
+            #Update expired coverages
             #get coverages past their 'effectiveTo' date
-            coverages_to_update = PatientCoverage.objects.filter(
+            expired_coverages = PatientCoverage.objects.filter(
                 effectiveTo__isnull=False, effectiveTo__lt=today.date()
-                ).all()
+             ).all()
             
             #update selected coverages
-            coverages_to_update.update(eligibilityStatus='expired', 
+            expired_coverages.update(eligibilityStatus='expired', 
                                        deductibleMet=False,
                                        eligibilityChecked=today.date(),
                                        updatedAt=today

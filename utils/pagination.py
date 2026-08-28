@@ -1,6 +1,6 @@
 from rest_framework.response import Response 
 from users.utils import get_category_from_url
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.pagination import PageNumberPagination, CursorPagination
 
 
 #Define custom page paginator (with permissions)
@@ -75,6 +75,37 @@ class TreatmentPlansPagination(PageNumberPagination):
         return Response({
             'success': True,
             'data': data,
+            'metadata': {
+                'userPermissions': user_permissions
+            }
+        })
+
+
+#Define a custom cursor paginator for whatsapp messages
+class MessagesHistoryPaginator(CursorPagination):
+    page_size = 10
+    ordering = '-createdAt'
+    cursor_query_param = 'cursor'
+
+    def get_paginated_response(self, data):
+        #Get user permissions
+        user_permissions = 'N/A'
+        if self.request and self.request.user:
+            user_permissions = self.request.user.get_user_permissions()  #defaults/sidebar perms
+            user_permissions['send.whatsappMessage'] = 'send.whatsappMessage' in getattr(self.request.user, 'userPermissions', [])
+
+        return Response({
+            'success': True,
+            'data': data,
+            'pagination': {
+                'pageSize': self.page_size,
+                'hasNext': self.has_next,
+                'hasPrevious': self.has_previous,
+            },
+            'links': {
+                'next': self.get_next_link(),
+                'previous': self.get_previous_link(),
+            },
             'metadata': {
                 'userPermissions': user_permissions
             }

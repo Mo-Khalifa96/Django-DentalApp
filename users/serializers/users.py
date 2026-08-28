@@ -165,7 +165,6 @@ class UpdateUserSerializer(serializers.ModelSerializer):
 
         return fields
     
-
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         request = self.context.get('request')

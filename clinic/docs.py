@@ -26,7 +26,7 @@ dashboard_stats_schema = extend_schema_serializer(
                 },
                 'metadata': {
                     'userPermissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
@@ -66,7 +66,7 @@ dashboard_stats_schema = extend_schema_serializer(
                 },
                 'metadata': {
                     'userPermissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
@@ -104,7 +104,7 @@ dashboard_stats_schema = extend_schema_serializer(
                 },
                 'metadata': {
                     'userPermissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
@@ -277,6 +277,72 @@ waiting_room_options_schema = extend_schema_serializer(
                     {'value': 'Chair 2', 'label': 'Chair 2'},
                     {'value': 'Consultation Room', 'label': 'Consultation Room'},
                 ]
+            }
+        )
+    ]
+)
+
+
+#Schema for lab order updates
+update_lab_order_schema = extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            name='Request pre-production',
+            request_only=True,
+            description='Request body before production (when status is `sent`).',
+            value={
+                "labId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "patientId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "procedureId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "toothNumber": "22",
+                "instructions": "string",
+                "dueDate": "2026-08-20",
+                "receivedDate": None,
+                "deliveredDate": None,
+                "status": "sent",
+                "cost": "550",
+                "currency": "EGP"
+            }
+        ),
+        OpenApiExample(
+            name='Request post-production',
+            request_only=True,
+            description='Request body after the order is locked, i.e., after status is moved to `in_production`, `delivered`, or `recieved`.',
+            value={
+                "instructions": "string",
+                "dueDate": "2026-08-20",
+                "receivedDate": None,
+                "deliveredDate": "2026-08-20",
+                "status": "delivered",
+                "cost": "550",
+                "currency": "EGP"
+            }
+        ),
+        OpenApiExample(
+            name='Response (200 OK)',
+            response_only=True,
+            value={
+                "success": True,
+                "data": {
+                    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "labId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "labName": "Dental Care Labs",
+                    "patientId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "patientName": "Ahmed Hassan",
+                    "procedureId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "procedureName": "Dental Crown (Ceramic)",
+                    "toothNumber": "22",
+                    "instructions": "",
+                    "sentDate": "2026-08-18",
+                    "dueDate": "2026-08-20",
+                    "receivedDate": None,
+                    "deliveredDate": "2026-08-20",
+                    "status": "sent",
+                    "cost": "550",
+                    "currency": "EGP",
+                    "branchId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "updatedAt": "2026-08-18T19:00:31.132Z"
+                }
             }
         )
     ]

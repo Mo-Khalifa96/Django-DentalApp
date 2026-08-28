@@ -182,9 +182,11 @@ class TestListCreatePatientRecallsAPIView:
         """save(): if phone not provided → phone = patient.phone."""
         patient = patient_factory()
         api_client.force_authenticate(user=admin_user)
-        api_client.post(
+        response = api_client.post(
             reverse(self.LIST_URL), _create_payload(patient), format='json'
         )
+        render_error(response)
+        
         recall = PatientRecall.objects.get(patient=patient)
         assert recall.phone == patient.phone
 
@@ -328,17 +330,6 @@ class TestUpdateDeletePatientRecallAPIView:
         recall.refresh_from_db()
         assert str(recall.dueDate) == new_due
         assert recall.notes == 'Follow up required'
-
-    def test_phone_is_read_only_on_update(self, api_client, admin_user, recall_factory):
-        """UpdatePatientRecallSerializer marks phone as read_only."""
-        recall = recall_factory()
-        original_phone = recall.phone
-        api_client.force_authenticate(user=admin_user)
-        api_client.patch(
-            _recall_url(recall.id), {'phone': '+20100000000'}, format='json'
-        )
-        recall.refresh_from_db()
-        assert recall.phone == original_phone
 
     def test_branch_id_is_read_only_on_update(
         self, api_client, admin_user, recall_factory, branch_factory

@@ -3,16 +3,26 @@ from django.db import transaction
 from rest_framework import serializers
 from patients.validators import FDI_PERMANENT
 from finances.models import InsuranceProvider
-from patients.models import Patient, DentalChart
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
+from patients.models import Patient, DentalChart, PatientDocument
 from utils.mixins import UserPermissionsMixin, ValidateBranchMixin
 from services.translation.serializers import TranslatedChoiceField
-from patients.docs import (create_patient_schema, update_patient_schema, patients_options_schema, 
-                            dentalchart_options_schema)
+from patients.docs import (create_patient_schema, full_update_patient_schema, partial_update_patient_schema,
+                           patients_options_schema, dentalchart_options_schema)
 
 
 #SERIALIZERS FOR PATIENTS
+#Serializer for patient documents -- Nested serializer 
+class PatientDocumentsSerializer(serializers.ModelSerializer):
+    type = TranslatedChoiceField(choices=PatientDocument.DocumentTypeChoices.choices, 
+                                 required=False, allow_blank=True, allow_null=True)
+
+    class Meta:
+        model = PatientDocument
+        fields = ['document', 'fileName', 'type', 'contentType', 'sizeBytes', 'notes', 'uploadedBy', 'uploadedAt']
+        read_only_fields = ['fileName', 'contentType', 'sizeBytes', 'uploadedBy', 'uploadedAt']
+
 #Serializer for creating new patient
 @create_patient_schema
 class CreatePatientSerializer(ValidateBranchMixin, serializers.ModelSerializer):
@@ -21,13 +31,27 @@ class CreatePatientSerializer(ValidateBranchMixin, serializers.ModelSerializer):
     insurance = serializers.CharField(source='patient_insurance.providerName', default=None, read_only=True)
     insuranceProviderId = serializers.PrimaryKeyRelatedField(queryset=InsuranceProvider.objects.all(),
                                         required=False, default=None, allow_null=True, write_only=True)
+    documents = PatientDocumentsSerializer(many=True, source='patient_documents', required=False,
+                                           allow_null=True, allow_empty=True)
+    # documentUrls = serializers.SerializerMethodField()  #output only
+
     class Meta:
         model = Patient
         fields = ['id', 'name', 'age', 'gender', 'countryCode', 'phone', 'email', 'address', 'nationalId',
                   'bloodType', 'allergies', 'insurance', 'insuranceProviderId', 'notes', 'status', 
-                  'branchId', 'createdAt', 'updatedAt']
-        read_only_fields = ['id', 'status', 'insurance', 'createdAt', 'updatedAt']
-    
+                  'documents', 'branchId', 'createdAt', 'updatedAt']
+        read_only_fields = ['id', 'insurance', 'status', 'createdAt', 'updatedAt']
+
+
+    # @extend_schema_field(serializers.ListField(child=serializers.URLField()))
+    # def documentUrls(self, obj):
+    #     request = self.context.get('request')
+    #     documents = obj.patient_documents.all()
+    #     if request:
+    #         return [request.build_absolute_uri(doc.document.url) for doc in documents]
+    #     return [doc.document.url for doc in documents]
+
+
     def validate_countryCode(self, countryCode):
         if not countryCode:
             raise serializers.ValidationError(_('Country code is required.'))
@@ -47,11 +71,46 @@ class CreatePatientSerializer(ValidateBranchMixin, serializers.ModelSerializer):
                 data['phone'] = phone 
         return data
 
+    def to_internal_value(self, data):
+        #parse incoming data correctly
+        if hasattr(data, 'dict'):
+            data = data.dict()
+        
+        return super().to_internal_value(data) 
+
     @transaction.atomic
     def create(self, validated_data):
+        #fetch insurance provider before creating patient
         provider = validated_data.pop('insuranceProviderId', None)
-        patient = Patient.objects.create(**validated_data)
+
+        #fetch document uploads before creating patient
+        documents = validated_data.pop('patient_documents', [])
+
+        #create patient instance
+        patient = Patient(**validated_data) #Patient.objects.create(**validated_data)
         patient.save(provider=provider)
+
+        #Handle document uploads 
+        if documents:
+            user = self.context.get('request').user
+
+            docs_to_upload = [
+                PatientDocument(
+                    patient=patient,
+                    document=doc['document'],
+                    type=doc.get('type'),
+                    fileName=doc['document'].name,
+                    contentType=doc['document'].content_type,
+                    sizeBytes=doc['document'].size,
+                    notes=doc.get('notes'),
+                    uploadedBy=user.name,
+                )
+                for doc in documents   #doc is a dictionary
+            ]
+
+            #upload documents to PatientDocument model
+            PatientDocument.objects.bulk_create(docs_to_upload)
+
         return patient
 
 
@@ -76,41 +135,130 @@ class RetrievePatientSerializer(UserPermissionsMixin, serializers.ModelSerialize
     insurance = serializers.CharField(source='patient_insurance.providerName', read_only=True)
     insuranceId = serializers.CharField(source='patient_insurance.memberId', read_only=True)
     phone = serializers.SerializerMethodField()
+    documents = PatientDocumentsSerializer(many=True, source='patient_documents', read_only=True)
 
     class Meta:
         model = Patient
         fields = ['id', 'name', 'age', 'gender', 'countryCode', 'phone', 'email', 'address', 'nationalId',
                   'bloodType', 'allergies', 'insurance', 'insuranceId', 'lastVisit', 'nextAppointment', 
-                  'notes', 'status', 'branchId', 'createdAt', 'updatedAt']
+                  'notes', 'status', 'documents', 'branchId', 'createdAt', 'updatedAt']
     
     @extend_schema_field(serializers.CharField)
     def get_phone(self, obj):
         return '0' + obj.phone[len(obj.countryCode):]
 
-
-#Serializer for updating patient details 
-@update_patient_schema
-class UpdatePatientSerializer(serializers.ModelSerializer):
+#Serializer for PUT-only requests to update patient details with documents
+@full_update_patient_schema
+class FullUpdatePatientSerializer(serializers.ModelSerializer):
     status = TranslatedChoiceField(choices=Patient.StatusChoices.choices, required=False)
     insurance = serializers.CharField(source='patient_insurance.providerName', default=None, read_only=True)
     insuranceProviderId = serializers.PrimaryKeyRelatedField(queryset=InsuranceProvider.objects.all(), 
                                                         required=False, allow_null=True, write_only=True)
+    documents = PatientDocumentsSerializer(many=True, source='patient_documents', required=False,
+                                           allow_null=True, allow_empty=True)
 
     class Meta:
         model = Patient
-        fields = ['id', 'name', 'countryCode', 'phone', 'address', 'nationalId', 'bloodType', 
-                  'allergies', 'insurance', 'insuranceProviderId', 'notes', 'status', 'updatedAt']
-        read_only_fields = ['id', 'name', 'insurance', 'updatedAt']
-        extra_kwargs = {field: {'required': False} for field in 
-            ('name', 'countryCode', 'phone', 'address', 'nationalId', 'bloodType', 'allergies',
-            'insuranceProviderId', 'notes', 'status')
-            }
+        fields = ['id', 'name', 'age', 'gender', 'countryCode', 'phone', 'email', 'address', 'nationalId', 
+                  'bloodType', 'allergies', 'insurance', 'insuranceProviderId', 'notes', 'status', 
+                  'documents', 'updatedAt']
+        read_only_fields = ['id', 'insurance', 'updatedAt']
+        # extra_kwargs = {field: {'required': False} for field in 
+        #     ('name', 'age', 'gender', 'countryCode', 'phone', 'email', 'address', 'nationalId', 
+        #      'bloodType', 'allergies', 'insuranceProviderId', 'notes', 'status')
+        #     }
     
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
-    #     request = self.context.get('request')
-    #     is_put_request = request and request.method == 'PUT'
-    #     self.fields['insuranceProviderId'].required = True if is_put_request else False
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        phone = data.get('phone')
+        code = data.get('countryCode')
+        if phone and code:
+            try:
+                data['phone'] = '0' + phone[len(code):]
+            except:
+                data['phone'] = phone 
+        return data
+
+    def to_internal_value(self, data):
+        #parse incoming data correctly
+        if hasattr(data, 'dict'):
+            data = data.dict()
+        return super().to_internal_value(data) 
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        #create object to flag missing provider
+        _MISSING = object()
+
+        #handle patient's insurance coverage upon provider update
+        insurance_provider = validated_data.pop('insuranceProviderId', _MISSING)
+        if insurance_provider is not _MISSING and\
+         insurance_provider != instance.patient_insurance.provider:
+            #get patient inurance coverage instance
+            coverage = instance.patient_insurance
+
+            #assign new provider
+            coverage.provider = insurance_provider
+
+            #set old fields to None
+            for field in ('memberId', 'annualMax', 'deductibleMet', 'usedYTD', 'currency',
+                        'effectiveFrom', 'effectiveTo', 'eligibilityChecked', 'eligibilityStatus'):
+                setattr(coverage, field, None)
+            
+            #save patient coverage changes
+            coverage.save()
+        
+        #Handle document uploads        
+        #check if documents are passed at all
+        if 'patient_documents' in validated_data:       #delete old documents and write-over
+            existing_docs = instance.patient_documents.all()
+            for doc in existing_docs:
+                doc.document.delete(save=False)  #deletes file from DB
+            existing_docs.delete()  #deletes rows
+        
+        #fetch document uploads before creating patient
+        documents = validated_data.pop('patient_documents', [])
+        
+        if documents:
+            user = self.context.get('request').user
+
+            #handle uploads
+            docs_to_upload = [
+                PatientDocument(
+                    patient=instance,
+                    document=doc['document'],
+                    type=doc.get('type'),
+                    fileName=doc['document'].name,
+                    contentType=doc['document'].content_type,
+                    sizeBytes=doc['document'].size,
+                    notes=doc.get('notes'),
+                    uploadedBy=user.name,
+                )
+                for doc in documents
+            ]
+            
+            #bulk-create documents
+            PatientDocument.objects.bulk_create(docs_to_upload)
+
+        #call parent update() method
+        return super().update(instance, validated_data)
+
+
+#Serializer for PATCH only requests to update patient details without documents
+@partial_update_patient_schema
+class PartialUpdatePatientSerializer(serializers.ModelSerializer):
+    status = TranslatedChoiceField(choices=Patient.StatusChoices.choices, required=False)
+    insurance = serializers.CharField(source='patient_insurance.providerName', default=None, read_only=True)
+    insuranceProviderId = serializers.PrimaryKeyRelatedField(queryset=InsuranceProvider.objects.all(), 
+                                                        required=False, allow_null=True, write_only=True)
+    documents = PatientDocumentsSerializer(many=True, source='patient_documents', read_only=True)   #read only
+
+    class Meta:
+        model = Patient
+        fields = ['id', 'name', 'age', 'gender', 'countryCode', 'phone', 'email', 'address', 'nationalId', 
+                  'bloodType', 'allergies', 'insurance', 'insuranceProviderId', 'notes', 'status', 'documents',
+                  'updatedAt']
+        read_only_fields = ['id', 'insurance', 'documents', 'updatedAt']
 
     def validate(self, data):
         code, phone = data.get('countryCode'), data.get('phone')
@@ -151,7 +299,7 @@ class UpdatePatientSerializer(serializers.ModelSerializer):
             
             #save patient coverage changes
             coverage.save()
-
+        
         #call parent update() method
         return super().update(instance, validated_data)
 
@@ -164,6 +312,7 @@ class PatientsOptionsSerializer(serializers.Serializer):
     genderChoices = serializers.SerializerMethodField()
     statusChoices = serializers.SerializerMethodField()
     bloodTypeChoices = serializers.SerializerMethodField()
+    documentTypeChoices = serializers.SerializerMethodField()
 
     @extend_schema_field(
         serializers.ListField(
@@ -223,6 +372,16 @@ class PatientsOptionsSerializer(serializers.Serializer):
             for choice in Patient.bloodTypeChoices
         ]
 
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.DictField(child=serializers.CharField())
+        ))
+    def get_documentTypeChoices(self, obj):
+        return [
+            {'value': choice[0], 'label': choice[1]}
+            for choice in PatientDocument.DocumentTypeChoices
+        ]
+
 
 ##########################
 
@@ -231,6 +390,9 @@ class PatientsOptionsSerializer(serializers.Serializer):
 #Tooth serializer
 class ToothDetailSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=DentalChart.ToothStatusChoices.choices)
+    surfaces = serializers.ListField(child=serializers.ChoiceField(
+         choices=DentalChart.ToothSurfacesChoices.choices
+    ), required=False, allow_empty=True, allow_null=True)
     notes = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 #Dental Chart serializer
@@ -282,10 +444,14 @@ class DentalChartSerializer(serializers.ModelSerializer):
         updated_teeth = validated_data.get('teeth', {})
 
         if request.method == 'PATCH':
-            #get and use stored teeth dict for update
+            #get and use stored teeth dict for patch update
             teeth_dict = instance.teeth.copy()
-            teeth_dict.update(updated_teeth)
+            for tooth_number, tooth_data in updated_teeth.items():
+                #merge at the field level within each touched tooth,
+                existing_tooth = teeth_dict.get(tooth_number, {})
+                teeth_dict[tooth_number] = {**existing_tooth, **tooth_data}
             instance.teeth = teeth_dict
+        
         else:
             #update entire teeth dict
             instance.teeth = updated_teeth
@@ -299,6 +465,7 @@ class DentalChartSerializer(serializers.ModelSerializer):
 class DentalChartOptionsSerializer(serializers.Serializer):
     toothNumberChoices = serializers.SerializerMethodField()
     toothStatusChoices = serializers.SerializerMethodField()
+    toothSurfaceChoices = serializers.SerializerMethodField()
 
     @extend_schema_field(
         serializers.ListField(
@@ -318,6 +485,16 @@ class DentalChartOptionsSerializer(serializers.Serializer):
         return [
             {'value': choice.value, 'label': str(choice.label)}
             for choice in DentalChart.ToothStatusChoices
+        ]
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.DictField(child=serializers.CharField())
+        ))
+    def get_toothSurfaceChoices(self, obj):
+        return [
+            {'value': choice.value, 'label': str(choice.label)}
+            for choice in DentalChart.ToothSurfacesChoices
         ]
 
 

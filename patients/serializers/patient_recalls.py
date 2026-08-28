@@ -1,4 +1,5 @@
 from clinic.models import Branch
+from django.db import transaction
 from rest_framework import serializers
 from utils.mixins import ValidateBranchMixin
 from patients.models import Patient, PatientRecall
@@ -33,7 +34,32 @@ class CreatePatientRecallSerializer(ValidateBranchMixin, PatientRecallSerializer
         fields = ['id', 'patientId', 'patientName', 'phone', 'type', 'dueDate', 'notes', 
                   'status', 'branchId', 'createdAt']
         read_only_fields = ['id', 'patientName', 'createdAt']
+        # validators = []
 
+    @transaction.atomic
+    def create(self, validated_data):
+        patient = validated_data.pop('patient')
+        recall_type = validated_data.pop('type')
+        recall_status = validated_data.pop('status', None) or PatientRecall.RecallStatusChoices.PENDING
+
+        if recall_status == PatientRecall.RecallStatusChoices.PENDING\
+         and recall_type == PatientRecall.RecallTypeChoices.CHECKUP:
+            recall, _ = PatientRecall.objects.update_or_create(
+                        patient=patient,
+                        type=PatientRecall.RecallTypeChoices.CHECKUP,
+                        status='pending',
+                        defaults=validated_data
+                    )
+        else:
+            recall = PatientRecall.objects.create(
+                        patient=patient,
+                        type=recall_type,
+                        status=recall_status,
+                        **validated_data
+                    )
+        
+        return recall
+    
 
 #Update patient recall serializer
 class UpdatePatientRecallSerializer(PatientRecallSerializer):
@@ -44,7 +70,7 @@ class UpdatePatientRecallSerializer(PatientRecallSerializer):
     class Meta(PatientRecallSerializer.Meta):
         fields = ['id', 'patientId', 'patientName', 'phone', 'type', 'dueDate', 'notes', 
                   'status', 'contactedAt', 'branchId', 'updatedAt']
-        read_only_fields = ['id', 'patientId', 'patientName', 'phone', 'branchId', 'updatedAt']
+        read_only_fields = ['id', 'patientId', 'patientName', 'branchId', 'updatedAt']
 
 
 #Patient recalls options serializer

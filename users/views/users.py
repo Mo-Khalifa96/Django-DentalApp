@@ -240,7 +240,7 @@ class PermissionsAPIView(GenericAPIView):
         #build response data
         data = [
             {
-                'key': 'view.calender',
+                'key': 'view.calendar',
                 'label': 'View doctor appointments on dashboard',
                 'module': 'Dashboard'
             },

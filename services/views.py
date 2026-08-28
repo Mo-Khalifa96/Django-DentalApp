@@ -1,16 +1,22 @@
 from utils.base_views import * 
 from django.conf import settings
+from django.http import Http404
 from rest_framework import status
 from django.db import transaction
 from services.models import Message
-from utils.swagger_utils import extend_schema
+from patients.models import Patient
 from django_q.tasks import async_task
 from rest_framework.response import Response
+from utils.swagger_utils import extend_schema
+from rest_framework.exceptions import NotFound
+from services.docs import message_history_schema
 from users.permissions import PatientDataPermissions
+from utils.pagination import MessagesHistoryPaginator
+from django.utils.translation import gettext_lazy as _
 from services.whatsapp.exceptions import WhatsAppAPIError 
 from services.whatsapp.tasks import send_whatsapp_message_task
 from services.whatsapp.twilio import send_twilio_message_task   #TODO - remove successful whatsapp integration
-from services.serializers import WhatsappMessageSerializer
+from services.serializers import WhatsappMessageSerializer, MessagesHistorySerializer
 
 
 #WHATSAPP MESSAGES API VIEWS
@@ -64,3 +70,30 @@ class SendWhatsAppMessageAPIView(CreateAPIView):
         serializered_response = self.get_serializer(message).data
         return Response(serializered_response, status=status.HTTP_201_CREATED)
 
+
+# @extend_schema(tags=['WhatsApp'])
+@message_history_schema
+class ListMessagesHistoryAPIView(ListAPIView):
+    serializer_class = MessagesHistorySerializer
+    permission_classes = [PatientDataPermissions]
+    required_permission = 'send.whatsappMessage'
+    pagination_class = MessagesHistoryPaginator
+    ordering = ['-createdAt']
+    lookup_url_kwarg = 'patientId'
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        patient_id = self.kwargs.get('patientId')
+        
+        if not patient_id:
+            return Message.objects.none()
+
+        try:
+            patient = Patient.objects.only('id').get(id=patient_id)
+
+        except (Patient.DoesNotExist, Http404):
+            raise NotFound(_('Patient was not found or does not exist.'))
+        
+        return patient.patient_reminders.select_related(
+                'patient', 'appointment'
+            ).all()

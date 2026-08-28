@@ -138,14 +138,26 @@ class UpdateAppointmentSerializer(AppointmentSerializer):
                 queryset=User.objects.filter(role__in=['admin', 'dentist', 'assistant']), 
                 required=False)
     status = TranslatedChoiceField(choices=Appointment.AppointmentStatusChoices.choices, required=False, allow_blank=False, allow_null=False)
+    procedureId = serializers.PrimaryKeyRelatedField(source='procedure', queryset=Procedure.objects.all(), required=False)
+    type = TranslatedChoiceField(choices=Visit.VisitTypeChoices.choices, required=False)
 
     class Meta(AppointmentSerializer.Meta):
-        fields = ['id', 'doctorId', 'date', 'startTime', 'endTime', 'room', 'status', 'notes', 
-                  'branchId', 'updatedAt']
+        fields = ['id', 'doctorId', 'procedureId', 'type', 'date', 'startTime', 'endTime', 
+                  'room', 'status', 'notes', 'branchId', 'updatedAt']
         read_only_fields = ['id', 'updatedAt']
         extra_kwargs = {field: {'required': False} for field in 
-            ('date', 'startTime', 'endTime', 'room', 'status', 'notes', 'branchId')
-            }
+            ('procedureId', 'type', 'date', 'startTime', 'endTime', 'room', 'status', 'notes', 'branchId')
+         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # order = self.context.get('appointment', None)   #passed over from view
+        status = getattr(self.instance, 'status', None)
+    
+        #Allow editing if status is still pending or confirmed
+        if status and status in (Appointment.AppointmentStatusChoices.PENDING, Appointment.AppointmentStatusChoices.CONFIRMED):
+            self.fields['procedureId'].read_only = True
+            self.fields['type'].read_only = True    
 
     #validate patient-related data 
     def validate(self, data):

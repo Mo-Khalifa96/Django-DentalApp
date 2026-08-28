@@ -10,12 +10,14 @@ from utils.mixins import BranchToSerializerMixin
 from patients.docs import get_dentalchart_schema
 from users.permissions import PatientDataPermissions
 from rest_framework.permissions import IsAuthenticated
+from nested_multipart_parser.drf import DrfNestedParser
+from rest_framework.parsers import FormParser, JSONParser
 from django_filters.rest_framework import DjangoFilterBackend
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
 from patients.serializers.patients import (ListPatientSerializer, RetrievePatientSerializer, 
-                                           CreatePatientSerializer, UpdatePatientSerializer, 
-                                           DentalChartSerializer, PatientsOptionsSerializer, 
-                                           DentalChartOptionsSerializer)
+                                           CreatePatientSerializer, FullUpdatePatientSerializer,
+                                           PartialUpdatePatientSerializer, DentalChartSerializer, 
+                                           PatientsOptionsSerializer, DentalChartOptionsSerializer)
 
 
 #PATIENTS API VIEWS
@@ -29,22 +31,24 @@ class ListCreatePatientsAPIView(FilterListCreateAPIView):
     search_fields = ['name', 'phone', 'email', 'patient_insurance__providerName']  #search fields
     filterset_class = PatientsFilter  #filters by status, branch, and insurance provider
     filter_backends = [DjangoFilterBackend, SearchFilter, CustomOrderingFilter]
+    parser_classes = [JSONParser, DrfNestedParser, FormParser]
 
     def initial(self, request, *args, **kwargs):
         #determine required permission
         self.required_permission = get_required_permission('patients', request, self)
         super().initial(request, *args, **kwargs)
 
+
     def get_queryset(self):
         user = self.request.user
         if self.request.method == 'POST':
-            return Patient.objects.prefetch_related(
-                'patient_dentalchart', 'patient_insurance'
-            ).all()
+            return Patient.objects.select_related('patient_dentalchart', 'patient_insurance')\
+                    .prefetch_related('patient_documents').all()
         
         #Fetch patients data 
-        patients = Patient.objects.prefetch_related('patient_insurance')\
-                    .select_related('branch', 'doctor').all()
+        patients = Patient.objects.select_related(
+                'patient_insurance', 'branch', 'doctor'
+            ).all()
 
         #Filter queryset for list view by role
         if getattr(user, 'role', None) == 'admin':
@@ -69,9 +73,10 @@ class ListCreatePatientsAPIView(FilterListCreateAPIView):
 #Retrieve/update/delete patient API view
 @extend_schema(tags=['Patients'])
 class RetrieveUpdateDeletePatientAPIView(RetrieveUpdateDeleteAPIView):
-    queryset = Patient.objects.prefetch_related('patient_insurance')\
-                .select_related('branch', 'doctor').all()
+    queryset = Patient.objects.select_related('patient_insurance', 'branch', 'doctor')\
+                .prefetch_related('patient_documents').all()
     permission_classes = [PatientDataPermissions]
+    parser_classes = [JSONParser, DrfNestedParser, FormParser]
     lookup_url_kwarg = 'id'
     lookup_field = 'id'
 
@@ -81,9 +86,13 @@ class RetrieveUpdateDeletePatientAPIView(RetrieveUpdateDeleteAPIView):
         super().initial(request, *args, **kwargs)
 
     def get_serializer_class(self):
-        if self.request.method in ('PUT', 'PATCH'):
-            return UpdatePatientSerializer
-        return RetrievePatientSerializer
+        req_method = self.request.method
+        if req_method == 'PUT':
+            return FullUpdatePatientSerializer
+        elif req_method == 'PATCH':
+            return PartialUpdatePatientSerializer
+        else:
+            return RetrievePatientSerializer
 
     def destroy(self, request, *args, **kwargs):
         patient = self.get_object()

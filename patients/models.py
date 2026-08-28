@@ -9,8 +9,8 @@ from django.core.validators import MinValueValidator
 from django.contrib.postgres.fields import ArrayField
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import pgettext_lazy as _context
-from patients.validators import (validate_phone_number, validate_country_code,
-                             file_validators, validate_toothNumber, FDI_PERMANENT)
+from patients.validators import (validate_phone_number, validate_country_code, image_validators, 
+                                 file_validators, validate_toothNumber, FDI_PERMANENT)
 
 
 #Patient manager
@@ -23,25 +23,39 @@ class PatientsManager(models.Manager):
     def delete_patient(self, user, patient):
         '''Custom method to soft-delete patients.'''
         if user.role == 'admin':
+            #delete patient's files/images
+            self._delete_patient_files(patient)
             patient.delete()
+
         else:
             #Set is_deleted flag to True
             patient.is_deleted = True
             patient.status = 'inactive'
 
-            #Delete patient's x-rays 
-            xrays = patient.patient_xrays.all()
-            for xray in xrays:
-                xray.image.delete(save=False)
-            xrays.delete()  #delete xrays
+            #delete patient's files/images
+            self._delete_patient_files(patient)
 
-            #Delete reminder messages 
+            #delete reminder messages 
             patient.patient_reminders.all().delete()
 
             #save changes
             patient.save()
 
         return True 
+    
+    def _delete_patient_files(self, patient):
+            #delete patient's x-rays 
+            xrays = patient.patient_xrays.all()
+            for xray in xrays:
+                xray.image.delete(save=False)
+            xrays.delete()  #delete xrays
+
+            #delete patient's documents
+            documents = patient.patient_documents.all()
+            for doc in documents:
+                doc.document.delete(save=False)
+            documents.delete()
+
 
 #PATIENTS MODEL 
 class Patient(models.Model):
@@ -172,15 +186,27 @@ class DentalChart(models.Model):
         CAVITY = 'cavity', 'Cavity'
         FILLING = 'filling', 'Filling'
         CROWN = 'crown', 'Crown'
-        ROOT_CANAL = 'root_canal', 'Root Canal'
-        EXTRACTION = 'extraction', 'Extraction Required'
+        ROOT_CANAL = 'rct', 'Root Canal'
+        VENEER = 'veneer', 'Veneer'
+        EXTRACTION = 'extraction', 'Extraction'
         IMPLANT = 'implant', 'Implant'
         MISSING = 'missing', 'Missing'
-        CRACKED = 'cracked', 'Cracked'
+        WATCH = 'watch', 'Watch'
+    
+    class ToothSurfacesChoices(models.TextChoices):
+        M = 'M', 'mesial'
+        D = 'D', 'distal'
+        F = 'F', 'facial'
+        B = 'B', 'buccal'
+        L = 'L', 'lingual'
+        P = 'P', 'palatal'
+        O = 'O', 'occlusal'
+        I = 'I', 'incisal'
     
     #One-to-One relationship to the Patient model (i.e. one dental chart, one patient)
     patient = models.OneToOneField(Patient, related_name='patient_dentalchart', on_delete=models.CASCADE, db_index=True)    
     teeth = models.JSONField()  #Dictionary with nested dictionaries
+    # surfaces = ArrayField(models.CharField(max_length=255), default=list, blank=True, null=True)
     lastUpdated = models.DateTimeField(auto_now=True)
 
     #Objects after filtering by manager
@@ -268,9 +294,10 @@ class XRaysManager(models.Manager):
 
 #X-Rays model for xray image uploads
 class XRay(models.Model):
-    #Many-to-One relationship to the Patient model (i.e., many x-rays, one patient)
+    #Many-to-One relationship to the Patient and Visit models (i.e., many x-rays, one patient, one visit)
     patient = models.ForeignKey(Patient, related_name='patient_xrays', on_delete=models.CASCADE, db_index=True)
-    image = models.ImageField(upload_to='xrays/', validators=file_validators)
+    visit = models.ForeignKey(Visit, related_name='visit_xrays', on_delete=models.CASCADE, db_index=True)
+    image = models.ImageField(upload_to='xrays/', validators=image_validators)
     uploadedAt = models.DateTimeField(auto_now_add=True)
 
     #Objects after filtering by manager
@@ -286,6 +313,50 @@ class XRay(models.Model):
     
     def __str__(self):
         return f'{self.image.url}'
+
+
+#Patient documents manager
+class PatientDocumentsManager(models.Manager):
+    #Overriding get_query to filter out soft-deleted patients's data
+    def get_queryset(self): 
+        return super().get_queryset().filter(patient__is_deleted=False)
+
+
+#Patient documents model for document uploads
+class PatientDocument(models.Model):
+    class DocumentTypeChoices(models.TextChoices):
+        CONSENT = 'consent', _('Consent')
+        MEDICAL_HISTORY = 'medical_history', _('Medical history')
+        ID_DOCUMENT = 'id_document', _('ID document')
+        REFERRAL_LETTER = 'referral_letter', _('Referral letter')
+        RADIOGRAPH = 'radiograph', _('Radiograph')
+        OTHER = 'other', _('Other')
+        
+    #Many-to-One relationship to the Patient model (i.e., many documents, one patient)
+    patient = models.ForeignKey(Patient, related_name='patient_documents', on_delete=models.CASCADE, db_index=True)
+    document = models.FileField(upload_to='documents/', validators=file_validators)
+    fileName = models.CharField(max_length=125)
+    type = models.CharField(max_length=50, choices=DocumentTypeChoices.choices, blank=True, null=True)
+    contentType = models.CharField(max_length=50, blank=True, null=True) 
+    sizeBytes = models.IntegerField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    uploadedBy = models.CharField(max_length=255, blank=True, null=True) 
+    uploadedAt = models.DateTimeField(auto_now_add=True)
+
+    #Objects after filtering by manager
+    objects = PatientDocumentsManager()
+
+    #to access all objects
+    all_objects = models.Manager()
+    
+    class Meta:
+        db_table = 'PatientDocuments'
+        verbose_name_plural = 'PatientDocuments'
+        ordering = ['-uploadedAt']
+    
+    def __str__(self):
+        return f'{self.document.url}'
+
 
 #Appointments Manager 
 class AppointmentsManager(models.Manager):
@@ -556,7 +627,14 @@ class PatientRecall(models.Model):
             models.Index(fields=['patient', 'branch']),
             models.Index(fields=['patient', 'branch', 'status']),
         ]
-    
+        # constraints = [
+        #     models.UniqueConstraint(
+        #         fields=['patient', 'type'],
+        #         condition=Q(status='pending'),
+        #         name='unique_pending_recall_per_patient_and_type'
+        #     )
+        # ]
+
     def __str__(self):
         return f'{self.type} for patient {self.patient.name}'
     
@@ -586,6 +664,7 @@ class PatientCoverageManager(models.Manager):
 class PatientCoverage(models.Model):
     class EligibilityStatusChoices(models.TextChoices):
         ACTIVE = 'active', _context('insurance_status', 'Active')
+        EXPIRING = 'expiring', _('Expiring')
         EXPIRED = 'expired', _('Expired')
         NONE = 'none', _('None')
     

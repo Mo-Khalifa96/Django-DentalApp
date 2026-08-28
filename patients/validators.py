@@ -42,20 +42,33 @@ def validate_country_code(value):
 ############
 
 
-#Custom function to validate file size
-def validate_file_size(file):
-    '''Validated file/image size.'''
+#Custom function to validate image size
+def validate_image_size(file):
+    '''Validated image size.'''
     limit_mb = 5
     if file.size > limit_mb * 1024 * 1024:
-        raise ValidationError(_(f"File/Image size should not exceed {limit_mb} MB."))
+        raise ValidationError(_(f"Image size should not exceed {limit_mb} MB."))
 
+
+#Custom function to validate image format
+image_validators = [
+    validate_image_size,
+    FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'pdf', 'dicom', 'DICOM']),
+]
+
+
+#Custom function to validate file size
+def validate_file_size(file):
+    '''Validated file size.'''
+    limit_mb = 10
+    if file.size > limit_mb * 1024 * 1024:
+        raise ValidationError(_(f"File size should not exceed {limit_mb} MB."))
 
 #Custom function to validate file format
 file_validators = [
     validate_file_size,
-    FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'pdf']),
+    FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx']),
 ]
-
 
 ###########
 

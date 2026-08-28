@@ -1,5 +1,4 @@
 from utils.base_views import *
-from users.models import User
 from django_q.tasks import async_task
 from users.docs import login_view_schema
 from rest_framework import status, generics 
@@ -17,6 +16,22 @@ from users.serializers.auth import (CustomTokenObtainPairSerializer, ChangePassw
 @login_view_schema
 class TokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+
+        #Wrap response according to schema {'success': bool, 'data': {}}
+        if 200 <= response.status_code < 300 and response.data:
+            response.data = {
+                'success': True,
+                'data': response.data,
+                # 'metadata': {
+                #     'userPermissions': request.user.get_user_permissions()  #default permissions only
+                # }
+            }
+
+        return response
+
 
 @extend_schema(tags=['Auth'])
 class TokenRefreshView(TokenRefreshView):

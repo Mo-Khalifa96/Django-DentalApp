@@ -395,8 +395,6 @@ class TestDashboardStatsAPI:
         self, api_client, receptionist_user, branch
     ):
         receptionist_user.branches.add(branch)
-        print(receptionist_user.branches.only('id').first().id)
-        print(branch.id)
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.get(reverse(self.URL), {'branchId': str(branch.id)})
 

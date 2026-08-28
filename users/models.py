@@ -141,7 +141,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
         #Dashboard permissions 
         'dashboard': (
-            'view.calender',
+            'view.calendar',
             'view.clinicalAnalytics',
             'view.financialAnalytics'
         ),
@@ -280,7 +280,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
         #Default sidebar permissions 
         'sidebar': (
-            'view.calender',
+            'view.calendar',
             'view.waitingRoom',
             'view.patients',
             'view.appointments',
@@ -324,7 +324,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         #     - update.patient extends to dental-chart update view
 
         'receptionist': [
-            'view.calender', 'view.waitingRoom', 'view.patients', 'create.patient', 'update.patient', 
+            'view.calendar', 'view.waitingRoom', 'view.patients', 'create.patient', 'update.patient', 
             'view.appointments', 'view.appointmentDetail', 'create.appointment', 'update.appointment', 
             'delete.appointment', 'view.recalls', 'create.recall', 'update.recall', 'delete.recall', 
             'send.whatsappMessage', 'view.insuranceProviders', 'create.bill', 'create.transaction', 
@@ -333,7 +333,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ],
         
         'assistant': [  
-            'view.calender', 'view.waitingRoom', 'view.inventory', 'create.inventory', 
+            'view.calendar', 'view.waitingRoom', 'view.inventory', 'create.inventory', 
             'update.inventory', 'delete.inventory', 'view.labs', 'view.labOrders', 'view.labOrderDetail', 
             'create.labOrder', 'update.labOrder', 'view.sterilizationLogs', 'create.sterilizationLog', 
             'update.sterilizationLog', 'view.doctorSchedules', 'view.clinicalAnalytics', 

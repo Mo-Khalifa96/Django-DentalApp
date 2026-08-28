@@ -1,6 +1,7 @@
 from utils.base_views import *
-from django.db.models import Q
-from patients.models import Patient, Visit
+from django.db import transaction
+from django.utils import timezone
+from dateutil.relativedelta import relativedelta
 from rest_framework import status, generics
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -11,11 +12,11 @@ from rest_framework.filters import SearchFilter
 from utils.mixins import BranchToSerializerMixin
 from users.permissions import PatientDataPermissions
 from rest_framework.permissions import IsAuthenticated
+from patients.models import Patient, Visit, PatientRecall
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
 from patients.serializers.visits import PatientVisitSerializer, VisitOptionsSerializer
-
 
 #PATIENT VISITS API VIEWS 
 #List/Create patient visits API view 
@@ -42,7 +43,7 @@ class ListCreateVisitsAPIView(ListCreateAPIView):
 
     def get_patient(self):
         patient = get_object_or_404(
-            Patient.objects.prefetch_related('patient_xrays'),
+            Patient.objects.select_related('doctor'),
             id=self.kwargs['id']
         )
         #check object permission and return patient object
@@ -53,7 +54,7 @@ class ListCreateVisitsAPIView(ListCreateAPIView):
         user = self.request.user
         #Fetch patient visits for GET
         patient_visits = Visit.objects.select_related('patient', 'doctor')\
-         .prefetch_related('patient__patient_xrays').filter(patient_id=self.kwargs['id'])
+         .prefetch_related('visit_xrays').filter(patient_id=self.kwargs['id'])
         
         #filter queryset by role or permission
         if getattr(user, 'role', None) == 'dentist':
@@ -88,6 +89,31 @@ class ListCreateVisitsAPIView(ListCreateAPIView):
     def paginate_queryset(self, queryset):
         self.paginator.page_size = 10
         return super().paginate_queryset(queryset)
+
+    @transaction.atomic
+    def perform_create(self, serializer):
+        #Create a recall instance for 'routine_checkup' visits
+        visit = serializer.save()
+        patient = visit.patient
+
+        if visit.type == Visit.VisitTypeChoices.ROUTINE_CHECKUP:
+            today_date = timezone.localtime(timezone.now()).date()
+
+            PatientRecall.objects.update_or_create(
+                #look-up fields (if update)
+                patient=patient, 
+                type=PatientRecall.RecallTypeChoices.CHECKUP,
+                status= PatientRecall.RecallStatusChoices.PENDING,
+
+                #edit fields
+                defaults={    #updateable fields
+                    'branch': patient.branch,
+                    'phone': patient.phone,
+                    'dueDate': today_date + relativedelta(months=6),
+                    'contactedAt': None,
+                    'updatedAt': timezone.localtime(timezone.now()),
+                }
+            )
 
 
 #API View for serving optional choices data 

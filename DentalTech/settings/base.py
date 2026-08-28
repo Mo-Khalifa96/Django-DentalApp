@@ -256,6 +256,13 @@ REST_FRAMEWORK = {
         }
 
 
+#Configure multipart parser
+DRF_NESTED_MULTIPART_PARSER = {
+    "separator": "bracket",
+    "raise_duplicate": True,
+    "assign_duplicate": False,
+    "querydict": True,
+}
 
 #WHATSAPP SETTINGS 
 #flag for whether to enable automated reminders

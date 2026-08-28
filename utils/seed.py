@@ -429,8 +429,8 @@ def seed_patients(doctors, insurance_providers, num_patients=80):
             coverage.effectiveTo = date(date.today().year, 12, 31)
             coverage.eligibilityChecked = _random_past_date(years_back=1)
             coverage.eligibilityStatus = random.choices(
-                ['active', 'expired', 'none'],
-                weights=[70, 20, 10]
+                ['active', 'expiring', 'expired', 'none'],
+                weights=[60, 15, 15, 10]
             )[0]
             coverage.currency = 'EGP'
             coverage.save()
@@ -1047,7 +1047,7 @@ def run_seed(num_users=10, num_patients=80, num_visits=150,
 
     #Clear existing data in reverse dependency order
     print('Clearing existing data...')
-    Patient.all_objects.all().delete()   # cascades to DentalChart, XRay
+    Patient.all_objects.all().delete()   # cascades to DentalChart, XRay, PatientDocument
     Visit.all_objects.all().delete()
     Appointment.all_objects.all().delete()
     TreatmentPlan.all_objects.all().delete()

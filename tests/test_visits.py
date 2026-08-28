@@ -5,7 +5,8 @@ from .utils import render_error
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
-from patients.models import Visit, XRay
+from dateutil.relativedelta import relativedelta
+from patients.models import Visit, XRay, PatientRecall
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -504,19 +505,24 @@ class TestListCreateVisitsAPIView:
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data['data']['xray'] is False
 
-    def test_xray_urls_field_reflects_all_patient_xrays(
-        self, api_client, dentist_user, patient_factory, png_file
+    def test_xray_urls_field_reflects_visit_xrays_only(
+        self, api_client, dentist_user, patient_factory, visit_factory, png_file
     ):
-        """get_xrayUrls returns ALL of the patient's x-rays, not just this visit's."""
         patient = patient_factory(doctor=dentist_user)
-        XRay.objects.create(patient=patient, image=png_file)
 
+        #Create separate visit and xray
+        visit = visit_factory(patient=patient, doctor=dentist_user)
+        XRay.objects.create(patient=patient, visit=visit, image=png_file)
+
+        #create visit without xray
         api_client.force_authenticate(user=dentist_user)
         response = api_client.post(
             _list_url(patient.id), _create_payload(), format='json'
         )
+
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
-        assert len(response.data['data']['xrayUrls']) == 1
+        assert XRay.objects.count() == 1
+        assert len(response.data['data']['xrayUrls']) == 0
 
     def test_create_with_missing_required_fields_returns_400(
         self, api_client, admin_user, patient_factory
@@ -543,6 +549,173 @@ class TestListCreateVisitsAPIView:
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         assert response.data.get('success') is True
         assert 'data' in response.data
+
+    # ── CREATE (auto-generated checkup recall) ──────────────────────────────────
+
+    def test_create_routine_checkup_visit_creates_pending_recall(
+        self, api_client, admin_user, patient_factory
+    ):
+        """perform_create(): a 'routine_checkup' visit auto-creates a pending
+        checkup PatientRecall for the patient if one doesn't already exist."""
+        patient = patient_factory(doctor=None)
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _list_url(patient.id),
+            _create_payload(type='routine_checkup'),
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+        assert PatientRecall.objects.filter(
+            patient=patient, type='checkup', status='pending'
+        ).exists()
+
+    def test_create_routine_checkup_visit_sets_recall_due_date_six_months_out(
+        self, api_client, admin_user, patient_factory
+    ):
+        """dueDate is computed as today + relativedelta(months=6), matching
+        the calendar-month arithmetic convention used elsewhere (recalls)."""
+        patient = patient_factory(doctor=None)
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _list_url(patient.id),
+            _create_payload(type='routine_checkup'),
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+        recall = PatientRecall.objects.get(patient=patient, type='checkup', status='pending')
+        expected_due = timezone.localdate() + relativedelta(months=6)
+        assert recall.dueDate == expected_due
+
+    def test_create_routine_checkup_visit_recall_uses_patient_branch_and_phone(
+        self, api_client, admin_user, patient_factory, branch
+    ):
+        """The auto-created recall snapshots the patient's current branch
+        and phone number at creation time."""
+        patient = patient_factory(doctor=None, branch=branch)
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _list_url(patient.id),
+            _create_payload(type='routine_checkup'),
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+        recall = PatientRecall.objects.get(patient=patient, type='checkup', status='pending')
+        assert recall.branch == branch
+        assert recall.phone == patient.phone
+
+    def test_create_non_checkup_visit_does_not_create_recall(
+        self, api_client, admin_user, patient_factory
+    ):
+        """Only 'routine_checkup' visits trigger recall creation — a
+        'follow_up' or 'emergency' visit must not."""
+        patient = patient_factory(doctor=None)
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _list_url(patient.id),
+            _create_payload(type='follow_up'),
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+        assert not PatientRecall.objects.filter(patient=patient, type='checkup').exists()
+
+    def test_create_routine_checkup_visit_creates_new_recall_when_prior_recall_is_contacted(
+        self, api_client, admin_user, patient_factory
+    ):
+        """
+        has_pending_recall filters on status='pending' specifically — a
+        prior checkup recall already marked 'contacted' (or any non-pending
+        status) does not block a new pending recall from being created.
+        """
+        patient = patient_factory(doctor=None)
+        contacted_recall = PatientRecall.objects.create(
+            patient=patient, type='checkup', status='contacted',
+            dueDate=timezone.localdate() - timedelta(days=5),
+            contactedAt=timezone.localtime(timezone.now()),
+        )
+
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _list_url(patient.id),
+            _create_payload(type='routine_checkup'),
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+
+        assert PatientRecall.objects.filter(
+            patient=patient, type='checkup', status='pending'
+        ).exists()
+        # the older contacted recall is untouched, a distinct new row exists
+        contacted_recall.refresh_from_db()
+        assert contacted_recall.status == 'contacted'
+
+    
+    def test_create_routine_checkup_visit_extends_existing_pending_recall_due_date(
+        self, api_client, admin_user, patient_factory
+    ):
+        """
+        update_or_create() now updates an EXISTING pending checkup recall rather
+        than being blocked by a separate has_pending_recall check (since removed).
+        A new routine_checkup visit always pushes the recall's dueDate forward to
+        6 months from the visit date, even if a pending recall with an earlier
+        due date already existed — modeling an unannounced/early checkup
+        resetting the "next visit due" clock.
+        """
+        patient = patient_factory(doctor=None)
+        original_due = timezone.localdate() + timedelta(days=10)
+        existing_recall = PatientRecall.objects.create(
+            patient=patient, type='checkup', status='pending', dueDate=original_due
+        )
+
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _list_url(patient.id),
+            _create_payload(type='routine_checkup'),
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+
+        # still exactly one pending checkup recall (updated, not duplicated)
+        assert PatientRecall.objects.filter(
+            patient=patient, type='checkup', status='pending'
+        ).count() == 1
+        existing_recall.refresh_from_db()
+        expected_due = timezone.localdate() + relativedelta(months=6)
+        assert existing_recall.dueDate == expected_due
+        assert existing_recall.dueDate != original_due   # pushed later
+
+
+    def test_creating_double_visits_do_not_lead_to_duplicate_pending_checkup_recalls(
+        self, api_client, admin_user, patient_factory
+    ):
+        patient = patient_factory(doctor=None)
+
+        #test recall count before post request 
+        assert PatientRecall.objects.filter(
+            patient=patient, type='checkup', status='pending'
+        ).count() == 0
+
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _list_url(patient.id),
+            _create_payload(type='routine_checkup'),
+            format='json',
+        )
+        response2 = api_client.post(
+            _list_url(patient.id),
+            _create_payload(type='routine_checkup'),
+            format='json',
+        )
+        
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+        assert response2.status_code == status.HTTP_201_CREATED or render_error(response)
+
+        #check we have exactly two visits
+        assert Visit.objects.filter(patient=patient).count() == 2
+
+        #now test pending checkup recall count after post requests (should be updated, not duplicated)
+        assert PatientRecall.objects.filter(
+            patient=patient, type='checkup', status='pending'
+        ).count() == 1
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -590,4 +763,4 @@ class TestRetrieveVisitsOptionsAPIView:
     def test_unauthenticated_returns_401(self, api_client):
         response = api_client.get(reverse(self.URL))
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
-    
+

@@ -3,6 +3,7 @@ import pytest
 from .utils import render_error
 from django.urls import reverse
 from rest_framework import status
+from django.utils import timezone
 from clinic.models import WaitingRoom
 
 
@@ -131,34 +132,34 @@ class TestListCreateWaitingRoomItemsAPIView:
         self, api_client, admin_user, appointment_factory, patient_factory,
         procedure_factory, dentist_user
     ):
-        appt = appointment_factory(
+        appointment = appointment_factory(
             patient=patient_factory(), doctor=dentist_user, procedure=procedure_factory()
         )
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
             reverse(self.LIST_URL),
-            {'appointmentId': str(appt.id), 'branchId': None},
+            {'appointmentId': str(appointment.id), 'branchId': None},
             format='json',
         )
-        
+
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
-        assert WaitingRoom.objects.filter(appointment=appt).exists()
+        assert WaitingRoom.objects.filter(appointment=appointment).exists()
 
     def test_create_auto_sets_status_to_waiting(
         self, api_client, admin_user, appointment_factory, patient_factory,
         procedure_factory, dentist_user
     ):
         """WaitingRoom.save() always sets status='waiting' on creation."""
-        appt = appointment_factory(
+        appointment = appointment_factory(
             patient=patient_factory(), doctor=dentist_user, procedure=procedure_factory()
         )
         api_client.force_authenticate(user=admin_user)
         api_client.post(
             reverse(self.LIST_URL),
-            {'appointmentId': str(appt.id), 'branchId': None},
+            {'appointmentId': str(appointment.id), 'branchId': None},
             format='json',
         )
-        item = WaitingRoom.objects.get(appointment=appt)
+        item = WaitingRoom.objects.get(appointment=appointment)
         assert item.status == WaitingRoom.StatusChoices.WAITING
 
     def test_create_auto_sets_arrived_at(
@@ -166,38 +167,37 @@ class TestListCreateWaitingRoomItemsAPIView:
         procedure_factory, dentist_user
     ):
         """WaitingRoom.save() sets arrivedAt = now() on creation."""
-        appt = appointment_factory(
+        appointment = appointment_factory(
             patient=patient_factory(), doctor=dentist_user, procedure=procedure_factory()
         )
         api_client.force_authenticate(user=admin_user)
         api_client.post(
             reverse(self.LIST_URL),
-            {'appointmentId': str(appt.id), 'branchId': None},
+            {'appointmentId': str(appointment.id), 'branchId': None},
             format='json',
         )
-        item = WaitingRoom.objects.get(appointment=appt)
+        item = WaitingRoom.objects.get(appointment=appointment)
         assert item.arrivedAt is not None
 
     def test_create_with_branch_assigns_it(
         self, api_client, admin_user, appointment_factory, patient_factory,
         procedure_factory, dentist_user, branch
     ):
-        appt = appointment_factory(
+        appointment = appointment_factory(
             patient=patient_factory(), doctor=dentist_user, procedure=procedure_factory()
         )
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
             reverse(self.LIST_URL),
-            {'appointmentId': str(appt.id), 'branchId': str(branch.id)},
+            {'appointmentId': str(appointment.id), 'branchId': str(branch.id)},
             format='json',
         )
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
-        assert WaitingRoom.objects.get(appointment=appt).branch == branch
+        assert WaitingRoom.objects.get(appointment=appointment).branch == branch
 
-    def test_create_without_appointment_returns_400(
+    def test_create_without_appointment_or_patient_returns_400(
         self, api_client, admin_user
     ):
-        """appointmentId is required."""
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
             reverse(self.LIST_URL), {'branchId': None}, format='json'
@@ -208,13 +208,13 @@ class TestListCreateWaitingRoomItemsAPIView:
         self, api_client, admin_user, appointment_factory, patient_factory,
         procedure_factory, dentist_user
     ):
-        appt = appointment_factory(
+        appointment = appointment_factory(
             patient=patient_factory(), doctor=dentist_user, procedure=procedure_factory()
         )
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
             reverse(self.LIST_URL),
-            {'appointmentId': str(appt.id), 'branchId': None},
+            {'appointmentId': str(appointment.id), 'branchId': None},
             format='json',
         )
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
@@ -226,16 +226,211 @@ class TestListCreateWaitingRoomItemsAPIView:
         procedure_factory
     ):
         """dentist lacks view.waitingRoom → blocked at permission level."""
-        appt = appointment_factory(
+        appointment = appointment_factory(
             patient=patient_factory(), doctor=dentist_user, procedure=procedure_factory()
         )
         api_client.force_authenticate(user=dentist_user)
         response = api_client.post(
             reverse(self.LIST_URL),
-            {'appointmentId': str(appt.id), 'branchId': None},
+            {'appointmentId': str(appointment.id), 'branchId': None},
             format='json',
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
+
+    def test_create_walkin_with_patient_id_only_succeeds(
+        self, api_client, admin_user, patient_factory
+    ):
+        """
+        No appointmentId, no explicit isWalkIn flag — omission is NOT treated
+        as isWalkIn=False (data.get('isWalkIn') defaults to None, not False),
+        so this should succeed as an implicit walk-in.
+        """
+        patient = patient_factory()
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            {'patientId': str(patient.id), 'branchId': None},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+        item = WaitingRoom.objects.get(patient=patient, appointment__isnull=True)
+        assert item.isWalkIn is True
+
+    def test_create_walkin_with_explicit_isWalkIn_true_succeeds(
+        self, api_client, admin_user, patient_factory
+    ):
+        patient = patient_factory()
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            {'patientId': str(patient.id), 'isWalkIn': True, 'branchId': None},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+
+    def test_create_with_explicit_isWalkIn_false_and_no_appointment_returns_400(
+        self, api_client, admin_user, patient_factory
+    ):
+        """Explicit isWalkIn=False without an appointmentId must be rejected."""
+        patient = patient_factory()
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            {'patientId': str(patient.id), 'isWalkIn': False, 'branchId': None},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+        assert 'appointmentId' in response.data['error']['fields']
+
+    def test_create_with_appointment_forces_isWalkIn_false(
+        self, api_client, admin_user, appointment_factory, patient_factory,
+        procedure_factory, dentist_user
+    ):
+        """isWalkIn is server-derived from appointment presence, not client-set."""
+        appointment = appointment_factory(
+            patient=patient_factory(), doctor=dentist_user, procedure=procedure_factory()
+        )
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            {'appointmentId': str(appointment.id), 'isWalkIn': True, 'branchId': None},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+        item = WaitingRoom.objects.get(appointment=appointment)
+        assert item.isWalkIn is False
+
+    def test_create_with_appointment_auto_assigns_patient(
+        self, api_client, admin_user, appointment_factory, patient_factory,
+        procedure_factory, dentist_user
+    ):
+        """`data['patient'] = appointment.patient` regardless of whether patientId was sent."""
+        patient = patient_factory()
+        appointment = appointment_factory(
+            patient=patient, doctor=dentist_user, procedure=procedure_factory()
+        )
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            {'appointmentId': str(appointment.id), 'branchId': None},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+        item = WaitingRoom.objects.get(appointment=appointment)
+        assert item.patient == patient
+
+    def test_create_with_mismatched_patient_and_appointment_returns_400(
+        self, api_client, admin_user, appointment_factory, patient_factory,
+        procedure_factory, dentist_user
+    ):
+        appointment_patient = patient_factory()
+        other_patient = patient_factory()
+        appointment = appointment_factory(
+            patient=appointment_patient, doctor=dentist_user, procedure=procedure_factory()
+        )
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            {'appointmentId': str(appointment.id), 'patientId': str(other_patient.id), 'branchId': None},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+        assert 'patientId' in response.data['error']['fields']
+        assert not WaitingRoom.objects.filter(appointment=appointment).exists()
+
+    def test_create_with_invalid_doctor_id_does_not_mutate_appointment(
+        self, api_client, admin_user, appointment_factory, patient_factory,
+        procedure_factory, dentist_user
+    ):
+        """
+        Regression test: an invalid doctorId must 400 WITHOUT having already
+        written a doctor reassignment to the Appointment. Guards against the
+        ordering issues.
+        """
+        appointment = appointment_factory(
+            patient=patient_factory(), doctor=dentist_user, procedure=procedure_factory()
+        )
+        original_doctor_id = appointment.doctor_id
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            {
+                'appointmentId': str(appointment.id),
+                'doctorId': str(uuid.uuid4()),  #nonexistent doctor
+                'branchId': None,
+            },
+            format='json',
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+        appointment.refresh_from_db()
+        assert appointment.doctor_id == original_doctor_id
+        assert not WaitingRoom.objects.filter(appointment=appointment).exists()
+
+    def test_create_with_mismatched_patient_does_not_mutate_appointment_doctor(
+        self, api_client, admin_user, appointment_factory, patient_factory,
+        procedure_factory, dentist_user, user_factory
+    ):
+        other_doctor = user_factory(role='dentist')
+        appointment = appointment_factory(
+            patient=patient_factory(), doctor=dentist_user, procedure=procedure_factory()
+        )
+        other_patient = patient_factory()
+        original_doctor_id = appointment.doctor_id
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            {
+                'appointmentId': str(appointment.id),
+                'patientId': str(other_patient.id),
+                'doctorId': str(other_doctor.id),
+                'branchId': None,
+            },
+            format='json',
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+        appointment.refresh_from_db()
+        assert appointment.doctor_id == original_doctor_id
+
+    def test_create_with_valid_doctor_id_reassigns_appointment_doctor(
+        self, api_client, admin_user, appointment_factory, patient_factory,
+        procedure_factory, dentist_user, user_factory
+    ):
+        """Happy path for the reassignment write, to complement the two guard tests above."""
+        new_doctor = user_factory(role='dentist')
+        appointment = appointment_factory(
+            patient=patient_factory(), doctor=dentist_user, procedure=procedure_factory()
+        )
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            {
+                'appointmentId': str(appointment.id),
+                'doctorId': str(new_doctor.id),
+                'branchId': None,
+            },
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+        appointment.refresh_from_db()
+        assert appointment.doctor_id == new_doctor.id
+        assert appointment.doctorName == new_doctor.name
+
+    def test_create_walkin_response_includes_patient_snapshot(
+        self, api_client, admin_user, patient_factory
+    ):
+        """get_patientId/get_patientName must resolve from obj.patient when appointment is None."""
+        patient = patient_factory()
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            reverse(self.LIST_URL),
+            {'patientId': str(patient.id), 'branchId': None},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+        data = response.data['data']
+        assert data['patientId'] == patient.id
+        assert data['patientName'] == patient.name
+        assert data['appointmentId'] is None
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -342,6 +537,101 @@ class TestUpdateDeleteWaitingRoomItemAPIView:
             format='json',
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
+
+    def test_status_transition_to_in_chair_sets_started_at(
+        self, api_client, receptionist_user, waiting_room_factory
+    ):
+        item = waiting_room_factory()
+        assert item.startedAt is None
+        api_client.force_authenticate(user=receptionist_user)
+        response = api_client.patch(
+            self._url(item.id), {'status': 'in_chair'}, format='json'
+        )
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
+        item.refresh_from_db()
+        assert item.startedAt is not None
+
+
+    def test_status_transition_to_done_sets_completed_at_and_completes_appointment(
+        self, api_client, receptionist_user, waiting_room_factory, appointment_factory,
+        patient_factory, dentist_user, procedure_factory
+    ):
+        """
+        WaitingRoom.save(): status='done' also marks the linked appointment
+        'completed', sets its endTime, and clears the patient's nextAppointment.
+        """
+        patient = patient_factory(nextAppointment=timezone.localdate())
+        appointment = appointment_factory(patient=patient, doctor=dentist_user, procedure=procedure_factory())
+        item = waiting_room_factory(appointment=appointment)
+
+        api_client.force_authenticate(user=receptionist_user)
+        response = api_client.patch(
+            self._url(item.id), {'status': 'done'}, format='json'
+        )
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
+
+        item.refresh_from_db()
+        assert item.completedAt is not None
+
+        appointment.refresh_from_db()
+        assert appointment.status == 'completed'
+        assert appointment.endTime is not None
+
+        patient.refresh_from_db()
+        assert patient.nextAppointment is None
+
+
+    def test_status_done_for_walkin_item_does_not_touch_appointment(
+        self, api_client, receptionist_user, waiting_room_factory, patient_factory
+    ):
+        """WaitingRoom.save(): the appointment-completion cascade only runs
+        `if self.appointment` — a walk-in item (no appointment) safely skips it."""
+        patient = patient_factory()
+        item = waiting_room_factory(appointment=None, patient=patient)
+
+        api_client.force_authenticate(user=receptionist_user)
+        response = api_client.patch(
+            self._url(item.id), {'status': 'done'}, format='json'
+        )
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
+        item.refresh_from_db()
+        assert item.completedAt is not None
+
+    def test_re_saving_in_chair_item_does_not_overwrites_startedAt_time(
+        self, api_client, receptionist_user, waiting_room_factory
+    ):
+        item = waiting_room_factory()
+        api_client.force_authenticate(user=receptionist_user)
+
+        api_client.patch(self._url(item.id), {'status': 'in_chair'}, format='json')
+        item.refresh_from_db()
+        original_started_at = item.startedAt
+        assert original_started_at is not None
+
+        response = api_client.patch(self._url(item.id), {'room': 'Chair 5'}, format='json')
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
+        item.refresh_from_db()
+        assert item.startedAt == original_started_at
+
+
+    def test_re_saving_done_item_does_not_overwrite_completedAt_time(
+        self, api_client, receptionist_user, waiting_room_factory, appointment_factory,
+        patient_factory, dentist_user, procedure_factory
+    ):
+        patient = patient_factory()
+        appointment = appointment_factory(patient=patient, doctor=dentist_user, procedure=procedure_factory())
+        item = waiting_room_factory(appointment=appointment)
+
+        api_client.force_authenticate(user=receptionist_user)
+        api_client.patch(self._url(item.id), {'status': 'done'}, format='json')
+        item.refresh_from_db()
+        original_completed_at = item.completedAt
+        assert original_completed_at is not None
+
+        response = api_client.patch(self._url(item.id), {'room': 'Chair 5'}, format='json')
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
+        item.refresh_from_db()
+        assert item.completedAt == original_completed_at
 
     def test_admin_can_delete_waiting_room_item(
         self, api_client, admin_user, waiting_room_factory

@@ -16,11 +16,13 @@ class TransactionSerializer(serializers.ModelSerializer):
     patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     method = TranslatedChoiceField(choices=Transaction.PaymentMethodChoices.choices, read_only=True)
+    status = TranslatedChoiceField(choices=Transaction.TransactionStatusChoices.choices, read_only=True)
 
     class Meta:
         model = Transaction
         fields = ['id', 'billId', 'billDescription', 'patientId', 'patientName', 'visitId', 'treatmentTitle', 
-                  'branchId', 'branchName', 'date', 'amount', 'currency', 'method', 'note', 'createdBy', 'isDeleted']
+                  'branchId', 'branchName', 'date', 'amount', 'currency', 'method', 'status', 'note', 'createdBy', 
+                  'isDeleted']
 
     def get_fields(self):
         fields = super().get_fields()
@@ -32,6 +34,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             fields.pop('treatmentTitle', None)
             fields.pop('branchName', None)
             fields.pop('createdBy', None)
+            fields.pop('status', None)
             fields.pop('isDeleted', None)
         return fields
 
@@ -68,10 +71,12 @@ class CreateTransactionSerializer(TransactionSerializer):
 class UpdateTransactionSerializer(TransactionSerializer):
     method = TranslatedChoiceField(choices=Transaction.PaymentMethodChoices.choices,
                                    required=False, allow_blank=False, allow_null=False)
+    status = TranslatedChoiceField(choices=Transaction.TransactionStatusChoices.choices,
+                                   required=False, allow_blank=False, allow_null=False)
     
     class Meta(TransactionSerializer.Meta):
         fields = ['id', 'billId', 'visitId', 'patientId', 'patientName', 'branchId', 
-                  'date', 'amount', 'currency', 'method', 'note']
+                  'date', 'amount', 'currency', 'method', 'status', 'note']
         read_only_fields = ['id', 'billId', 'visitId', 'patientId', 'patientName', 'branchId']
                 
 

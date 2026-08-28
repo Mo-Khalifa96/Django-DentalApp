@@ -45,21 +45,24 @@ def get_login_schema():
                         response_only=True,
                         status_codes=[200],
                         value={
-                            'refresh': '<JWT refresh token>',
-                            'access': '<JWT access token>',
-                            'user': {
-                                'id': 'ebe27408-2fb9-42b2-977a-fbaa1bf0a396',
-                                'email': 'dr.layla@dentaltech.com',
-                                'name': 'Dr. Layla Hassan',
-                                'role': 'dentist',
-                                'specialization': 'General Dentistry',
-                                'activeBranchId': 'f8c1df87-88d5-4516-9498-7d3273d28db2',
-                                'branchIds': [
-                                    'f8c1df87-88d5-4516-9498-7d3273d28db2',
-                                    '4b003dd4-f654-4ac3-8dc4-07bd2c7bd7f3',
-                                    '908be626-8934-4093-a93f-1541d50ceb29'
+                            'success': True,
+                            'data': {
+                                'refresh': '<JWT refresh token>',
+                                'access': '<JWT access token>',
+                                'user': {
+                                    'id': 'ebe27408-2fb9-42b2-977a-fbaa1bf0a396',
+                                    'email': 'dr.layla@dentaltech.com',
+                                    'name': 'Dr. Layla Hassan',
+                                    'role': 'dentist',
+                                    'specialization': 'General Dentistry',
+                                    'activeBranchId': 'f8c1df87-88d5-4516-9498-7d3273d28db2',
+                                    'branchIds': [
+                                        'f8c1df87-88d5-4516-9498-7d3273d28db2',
+                                        '4b003dd4-f654-4ac3-8dc4-07bd2c7bd7f3',
+                                        '908be626-8934-4093-a93f-1541d50ceb29'
                                     ]
                                 }
+                            }
                         }
                     ),
                     OpenApiExample(
@@ -82,7 +85,7 @@ def get_login_schema():
 #Schema for 'permissions' field
 permissions_field_schema = extend_schema_field({
     'type': 'object', 'properties': {
-        'view.calender': {'type': 'boolean'},
+        'view.calendar': {'type': 'boolean'},
         'view.clinicalAnalytics': {'type': 'boolean'},
         'view.financialAnalytics': {'type': 'boolean'},
         'view.waitingRoom': {'type': 'boolean'},
@@ -174,7 +177,7 @@ retrieve_user_schema = extend_schema_serializer(
                     ],
                     'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
                     'permissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': False,
                         'view.waitingRoom': True,
@@ -246,7 +249,7 @@ retrieve_user_schema = extend_schema_serializer(
                 },
                 'metadata': {
                     'userPermissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
@@ -292,7 +295,7 @@ retrieve_user_schema = extend_schema_serializer(
                 },
                 'metadata': {
                     'userPermissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
@@ -339,7 +342,7 @@ update_user_schema = extend_schema_serializer(
                     ],
                 'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
                 'permissions': {
-                    'view.calender': True,
+                    'view.calendar': True,
                     'view.clinicalAnalytics': True,
                     'view.financialAnalytics': False,
                     'view.waitingRoom': True,
@@ -441,7 +444,7 @@ update_user_schema = extend_schema_serializer(
                     ],
                     'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
                     'permissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': False,
                         'view.waitingRoom': True,

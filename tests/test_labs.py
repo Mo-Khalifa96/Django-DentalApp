@@ -1111,33 +1111,6 @@ class TestUpdateDeleteLabOrderAPIView:
         order.refresh_from_db()
         assert order.instructions == 'Use shade A2, metal-free'
 
-    def test_read_only_fields_are_ignored_on_update(
-        self, api_client, admin_user, lab_order_factory, lab_factory
-    ):
-        """
-        UpdateLabOrderSerializer marks labId, patientId, procedureId, toothNumber,
-        sentDate, currency, branchId as read_only. Sending them must have no effect.
-        """
-        order = lab_order_factory()
-        different_lab = lab_factory()
-        original_tooth    = order.toothNumber
-        original_sent_str = str(order.sentDate)
-
-        api_client.force_authenticate(user=admin_user)
-        api_client.patch(
-            self._url(order.id),
-            {
-                'labId':       str(different_lab.id),
-                'toothNumber': '21',
-                'sentDate':    '2000-01-01',
-            },
-            format='json',
-        )
-        order.refresh_from_db()
-        assert order.toothNumber    == original_tooth
-        assert str(order.sentDate)  == original_sent_str
-        assert order.lab            != different_lab
-
     def test_status_delivered_sets_delivered_date(
         self, api_client, admin_user, lab_order_factory
     ):
@@ -1224,6 +1197,102 @@ class TestUpdateDeleteLabOrderAPIView:
             self._url(uuid.uuid4()), {'status': 'in_production'}, format='json'
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
+
+    def test_read_only_fields_post_production_are_ignored_on_update(
+        self, api_client, admin_user, lab_order_factory, lab_factory
+    ):
+        order = lab_order_factory()
+        different_lab = lab_factory()
+        original_tooth    = order.toothNumber
+        original_sent_str = str(order.sentDate)
+
+        order.status = 'in_production'
+        order.save()
+
+        api_client.force_authenticate(user=admin_user)
+        api_client.patch(
+            self._url(order.id),
+            {
+                'labId':       str(different_lab.id),
+                'toothNumber': '21',
+                'sentDate':    '2000-01-01',
+            },
+            format='json',
+        )
+        order.refresh_from_db()
+        assert order.toothNumber    == original_tooth
+        assert str(order.sentDate)  == original_sent_str
+        assert order.lab            != different_lab
+
+    def test_labid_patientid_procedureid_toothnumber_editable_while_status_is_sent(
+        self, api_client, admin_user, lab_order_factory, lab_factory, patient_factory,
+        procedure_factory
+    ):
+        order = lab_order_factory(status='sent')
+        new_lab       = lab_factory()
+        new_patient   = patient_factory()
+        new_procedure = procedure_factory()
+
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.patch(
+            self._url(order.id),
+            {
+                'labId':       str(new_lab.id),
+                'patientId':   str(new_patient.id),
+                'procedureId': str(new_procedure.id),
+                'toothNumber': '21',
+            },
+            format='json',
+        )
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
+        order.refresh_from_db()
+        assert order.lab         == new_lab
+        assert order.patient     == new_patient
+        assert order.procedure   == new_procedure
+        assert order.toothNumber == '21'
+
+
+    def test_patientid_and_procedureid_also_become_read_only_post_production(
+        self, api_client, admin_user, lab_order_factory, patient_factory, procedure_factory
+    ):
+        order = lab_order_factory()
+        different_patient   = patient_factory()
+        different_procedure = procedure_factory()
+
+        order.status = 'in_production'
+        order.save()
+
+        api_client.force_authenticate(user=admin_user)
+        api_client.patch(
+            self._url(order.id),
+            {
+                'patientId':   str(different_patient.id),
+                'procedureId': str(different_procedure.id),
+            },
+            format='json',
+        )
+        order.refresh_from_db()
+        assert order.patient   != different_patient
+        assert order.procedure != different_procedure
+
+
+    def test_cost_and_instructions_remain_editable_post_production(
+        self, api_client, admin_user, lab_order_factory
+    ):
+        order = lab_order_factory()
+        order.status = 'in_production'
+        order.save()
+
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.patch(
+            self._url(order.id),
+            {'cost': '250.00', 'instructions': 'Rush order'},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
+        order.refresh_from_db()
+        assert str(order.cost) == '250.00'
+        assert order.instructions == 'Rush order'
 
     # ── DELETE ────────────────────────────────────────────────────────────────
 

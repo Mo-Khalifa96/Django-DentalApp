@@ -1,12 +1,12 @@
 from patients.models import Patient
 from rest_framework import serializers
 from patients.utils import TEETH_CHOICES
-from clinic.docs import labs_options_schema
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 from clinic.models import Branch, Procedure, Lab, LabOrder
 from utils.mixins import UserPermissionsMixin, ValidateBranchMixin
 from services.translation.serializers import TranslatedChoiceField
+from clinic.docs import update_lab_order_schema, labs_options_schema
 
 
 #SERIALIZERS FOR LABS 
@@ -16,7 +16,7 @@ class LabSerializer(UserPermissionsMixin, ValidateBranchMixin, serializers.Model
 
     class Meta:
         model = Lab
-        fields = ['id', 'name', 'phone', 'address', 'contactPerson', 'notes', 'branchId']
+        fields = ['id', 'name', 'phone', 'address', 'contactPerson', 'turnaroundDays', 'notes', 'branchId']
         read_only_fields = ['id']
 
 
@@ -25,10 +25,10 @@ class UpdateLabSerializer(LabSerializer):
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     
     class Meta(LabSerializer.Meta):
-        fields = ['id', 'name', 'phone', 'address', 'contactPerson', 'notes', 'branchId']
+        fields = ['id', 'name', 'phone', 'address', 'contactPerson', 'turnaroundDays', 'notes', 'branchId']
         read_only_fields = ['id', 'branchId']
         extra_kwargs = {field: {'required': False} for field in
-            ('name', 'phone', 'address', 'contactPerson', 'notes')
+            ('name', 'phone', 'address', 'contactPerson', 'turnaroundDays', 'notes')
         }
 
 
@@ -62,21 +62,33 @@ class CreateLabOrderSerializer(ValidateBranchMixin, LabOrderSerializer):
 
 
 #Update lab order serializer
+@update_lab_order_schema
 class UpdateLabOrderSerializer(LabOrderSerializer):
-    labId = serializers.PrimaryKeyRelatedField(source='lab', read_only=True)
-    patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
-    procedureId = serializers.PrimaryKeyRelatedField(source='procedure', read_only=True)
+    labId = serializers.PrimaryKeyRelatedField(source='lab', queryset=Lab.objects.all(), required=False, allow_null=False)
+    patientId = serializers.PrimaryKeyRelatedField(source='patient', queryset=Patient.objects.all(), required=False, allow_null=False)
+    procedureId = serializers.PrimaryKeyRelatedField(source='procedure', queryset=Procedure.objects.all(), required=False, allow_null=False)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     status = TranslatedChoiceField(choices=LabOrder.OrderStatusChoices.choices, 
                               required=False, allow_blank=False, allow_null=False)  #not required on create & update
 
     class Meta(LabOrderSerializer.Meta):
         fields = ['id', 'labId', 'labName', 'patientId', 'patientName', 'procedureId', 'procedureName', 'toothNumber', 
-                  'instructions', 'sentDate', 'dueDate', 'receivedDate', 'deliveredDate', 'status', 'cost',
+                  'instructions', 'sentDate', 'dueDate', 'receivedDate', 'deliveredDate', 'status', 'cost', 'currency',
                   'branchId', 'updatedAt']
-        read_only_fields = ['id', 'labId', 'labName', 'patientId', 'patientName', 'procedureId', 'procedureName', 
-                            'toothNumber', 'sentDate', 'currency', 'branchId', 'updatedAt']
-
+        read_only_fields = ['id', 'labName', 'patientName', 'procedureName', 'sentDate', 'branchId', 'updatedAt']
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # order = self.context.get('order', None)   #passed over from view
+        order_status = getattr(self.instance, 'status', None)
+    
+        #Allow editing if status is still pre-production (i.e., 'sent')
+        if order_status and order_status != LabOrder.OrderStatusChoices.SENT:
+            self.fields['labId'].read_only = True
+            self.fields['patientId'].read_only = True
+            self.fields['procedureId'].read_only = True
+            self.fields['toothNumber'].read_only = True
+    
 
 #Lab orders options serializer
 @labs_options_schema

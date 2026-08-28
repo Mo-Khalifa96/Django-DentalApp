@@ -71,6 +71,7 @@ def update_transaction_aggregates(sender, instance, **kwargs):
     #Update visit `paid`
     #Calculate current visit's paid based on today's transactions
     if instance.visit:
+        instance.visit.currency = (instance.currency or None) if not instance.visit.currency else None
         instance.visit.paid = Transaction.objects.filter(visit=instance.visit)\
             .aggregate(total_paid=Coalesce(Sum('amount'), Decimal('0'))
         )['total_paid']

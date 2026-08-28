@@ -130,19 +130,21 @@ class Bill(models.Model):
     #Model function to auto-generate invoices from a bill
     @classmethod
     def generate_invoice(cls, bill):   
-        #Generate invoice for bill
+        # #Generate invoice for bill
         invoice = Invoice.objects\
             .update_or_create(
                 bill=bill,
-                patient=bill.patient,
-                branch=bill.branch,
-                subtotal=bill.subtotal,
-                discount=bill.discount,
-                total=bill.totalAmount,
-                currency=bill.currency,
-                status=Invoice.InvoiceStatusChoices.ISSUED,
+                defaults={
+                    'patient': bill.patient,
+                    'branch': bill.branch,
+                    'subtotal': bill.subtotal,
+                    'discount': bill.discount,
+                    'total': bill.totalAmount,
+                    'currency': bill.currency,
+                    'status': Invoice.InvoiceStatusChoices.ISSUED,
+                }
             )
-        
+                
         # if bill.treatment:
         #     treatment_items = bill.treatment.treatment_items.all()
         #     if treatment_items.exists():  #TODO -- this relation better exists between Bill and Invoice (bill items)
@@ -202,6 +204,10 @@ class Transaction(models.Model):
         BANK_TRANSFER = 'bank_transfer', _('Bank transfer')
         INSURANCE = 'insurance', _('Insurance')
         MOBILE_WALLET = 'mobile_wallet', _('Mobile wallet')
+    
+    class TransactionStatusChoices(models.TextChoices):
+        COMPLETED = 'completed', _('Completed')
+        REFUNDED = 'refunded', _('Refunded')
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     #Many-to-One relationships to Bill, Patient, Visit, Branch (i.e., many transactions, one bill/patient/visit/branch)
@@ -215,6 +221,7 @@ class Transaction(models.Model):
     amount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
     currency = models.CharField(max_length=5, blank=True, null=True)
     method = models.CharField(max_length=25, choices=PaymentMethodChoices.choices, blank=True, null=True)
+    status = models.CharField(max_length=20, choices=TransactionStatusChoices.choices, blank=True, null=True)
     note = models.CharField(max_length=500, blank=True, null=True)
 
     #snapshot fields to preserve fields when foreignkey is deleted (also will be shown to admin only)
@@ -243,6 +250,9 @@ class Transaction(models.Model):
     @transaction.atomic
     def save(self, *args, **kwargs):
         if self._state.adding:
+            #automatically assign status as completed on creation
+            self.status = self.TransactionStatusChoices.COMPLETED
+
             if not self.method:
                 self.method = self.PaymentMethodChoices.CASH
             # self.date = self.date or self.visit.date
@@ -250,6 +260,11 @@ class Transaction(models.Model):
             self.patientName = self.patient.name
             self.billDescription = self.bill.description
             self.treatmentTitle = self.bill.treatmentTitle
+        
+        #soft-delete refunded transactions (record still accessible by Admin only)
+        if self.status == self.TransactionStatusChoices.REFUNDED:
+            self.isDeleted = True
+
         #save changes 
         super().save(*args, **kwargs)
 
@@ -396,7 +411,6 @@ class InvoiceItem(models.Model):
     class Meta:
         db_table = 'InvoiceItems'
         verbose_name_plural = 'InvoiceItems'
-
 
 
 #Insurance Provider Manager

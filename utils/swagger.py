@@ -250,7 +250,6 @@ if settings.DEBUG:
                 }
             ]
 
-
     #Define main postprocessing hook
     def response_structure_postprocessing_hook(result, generator, request, public):
         for path, methods in result['paths'].items():
@@ -258,7 +257,8 @@ if settings.DEBUG:
                 if 'responses' not in operation:
                     continue 
                 
-                is_excluded = False if '/auth/me/' in path else any([pattern in path for pattern in ['/auth/', '/roles/', '/permissions/', '/options/']])
+                #paths to exclude
+                is_excluded = any([pattern in path for pattern in ['/roles/', '/permissions/', '/options/']]) # False if '/auth/me/' in path else any([pattern in path for pattern in ['/auth/', '/roles/', '/permissions/', '/options/']])
                 if is_excluded:
                     continue
 
@@ -271,7 +271,7 @@ if settings.DEBUG:
                         _wrap_cancel_appointment_response(operation)
                     continue 
 
-                if method == 'GET':
+                if method == 'GET':                    
                     if 'dashboard/appointments-today/' in path:
                         _wrap_special_pagination_responses_with_metadata(path, result, operation)
                         continue
@@ -284,6 +284,7 @@ if settings.DEBUG:
                     is_cursor = has_pagination and any(param.get('name') == 'cursor' for param in operation.get('parameters', []))
 
                     if is_cursor:
+                        _wrap_cursor_paginated_responses_with_metadata(path, result, operation)
                         continue
 
                     if has_page_pagination:
@@ -359,6 +360,54 @@ if settings.DEBUG:
 
         return result
 
+    def _wrap_cursor_paginated_responses_with_metadata(path, result, operation):
+        '''Hook to include userPermissions metadata and cursor-pagination fields
+        in cursor-paginated list responses (e.g. WhatsApp message history).'''
+
+        properties = _get_permissions_properties(path)
+
+        for status_code, response in operation['responses'].items():
+            if 200 <= int(status_code) < 300 and 'content' in response:
+                for media_type, content in response['content'].items():
+                    if 'schema' in content:
+                        original_schema = content['schema']
+
+                        content['schema'] = {
+                            'type': 'object',
+                            'properties': {
+                                'success': {'type': 'boolean', 'example': True},
+                                'data': {
+                                    'type': 'array',
+                                    'items': _extract_item_schema_from_reference(original_schema, result)
+                                },
+                                'pagination': {
+                                    'type': 'object',
+                                    'properties': {
+                                        'pageSize': {'type': 'integer', 'description': 'Items per page'},
+                                        'hasNext': {'type': 'boolean', 'description': 'Whether a next page exists'},
+                                        'hasPrevious': {'type': 'boolean', 'description': 'Whether a previous page exists'},
+                                    }
+                                },
+                                'links': {
+                                    'type': 'object',
+                                    'properties': {
+                                        'next': {'type': 'string', 'nullable': True, 'format': 'uri', 'description': 'Next page cursor link'},
+                                        'previous': {'type': 'string', 'nullable': True, 'format': 'uri', 'description': 'Previous page cursor link'}
+                                    }
+                                },
+                                'metadata': {
+                                    'type': 'object',
+                                    'properties': {
+                                        'userPermissions': {
+                                            'type': 'object',
+                                            'description': 'Dictionary with user permissions (boolean).',
+                                            'properties': properties
+                                        }
+                                    }
+                                }
+                            }
+                        }
+        return result
 
     def _wrap_special_pagination_responses_with_metadata(path, result, operation):
         '''Hook to include userPermissions metadata in custom paginated response.
@@ -426,7 +475,7 @@ if settings.DEBUG:
                                             'type': 'object',
                                             'description': 'Basic permissions for side/bottom bar icons.',
                                             'properties': {
-                                                'view.calender': {'type': 'boolean'},
+                                                'view.calendar': {'type': 'boolean'},
                                                 'view.waitingRoom': {'type': 'boolean'},
                                                 'view.patients': {'type': 'boolean'},
                                                 'view.appointments': {'type': 'boolean'},

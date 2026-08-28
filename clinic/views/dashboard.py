@@ -182,7 +182,7 @@ class DashboardStatisticsAPIView(GenericAPIView):
 class DashboardAppointmentTodayAPIView(FieldsTranslationMixin, FilterByBranchMixin, generics.ListAPIView):  #No finalize response mixin
     serializer_class = DashboardAppointmentTodaySerializer
     permission_classes = [SystemUserPermissions]
-    required_permission = 'view.calender'
+    required_permission = 'view.calendar'
     ordering = ['branch__name', 'startTime', 'endTime']  #default order of fields
     ordering_fields = ['startTime', 'endTime', 'status']  #order by date and status
     search_fields = ['patient__name', 'doctor__name', 'status', 'room']  #search by patient name, status, and room

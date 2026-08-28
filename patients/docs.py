@@ -22,18 +22,22 @@ def get_dentalchart_schema():
                                 'teeth': {
                                     "11": {
                                         "status": "healthy",
-                                        "notes": ""
+                                        "surfaces": None,
+                                        "notes": "", 
                                     },
                                     "12": {
                                         "status": "healthy",
+                                        "surfaces": None,
                                         "notes": ""
                                     },
                                     "13": {
                                         "status": "cavity",
+                                        "surfaces": ['M', 'B', 'O'],
                                         "notes": ""
                                     },
                                     "n": {
                                         "status": "healthy",
+                                        "surfaces": None,
                                         "notes": ""
                                     }
                                 },
@@ -56,10 +60,12 @@ def get_dentalchart_schema():
                             'teeth': {
                                 "12": {
                                     "status": "filling",
+                                    "surfaces": ['F'],
                                     "notes": "Composite filling placed"
                                 },
                                 "32": {
                                     "status": "cavity",
+                                    "surfaces": ['B', 'O', 'P'],
                                     "notes": ""
                                 },
                             },
@@ -76,10 +82,12 @@ def get_dentalchart_schema():
                                 'teeth': {
                                 "12": {
                                     "status": "filling",
+                                    "surfaces": ['F'],
                                     "notes": "Composite filling placed"
                                 },
                                 "32": {
                                     "status": "cavity",
+                                    "surfaces": ['B', 'O', 'P'],
                                     "notes": ""
                                 },
                             },
@@ -114,7 +122,7 @@ def get_dentalchart_schema():
                                 "fields": {
                                     "teeth": {
                                         "11": {
-                                            "status": '"veneer" is not a valid choice.'
+                                            "status": '"cracked" is not a valid choice.'
                                         }
                                     }
                                 }
@@ -136,18 +144,22 @@ def get_dentalchart_schema():
                             'teeth': {
                                 "11": {
                                     "status": "healthy",
+                                    "surfaces": None,
                                     "notes": ""
                                 },
                                 "12": {
                                     "status": "filling",
+                                    "surfaces": None,
                                     "notes": "Composite filling placed"
                                 },
                                 "13": {
                                     "status": "cavity",
+                                    "surfaces": ['M'],
                                     "notes": ""
                                 },
                                 "n": {
                                     "status": "healthy",
+                                    "surfaces": None,
                                     "notes": ""
                                 }
                             },
@@ -164,18 +176,22 @@ def get_dentalchart_schema():
                                 'teeth': {
                                     "11": {
                                         "status": "healthy",
+                                        "surfaces": None,
                                         "notes": ""
                                     },
                                     "12": {
                                         "status": "filling",
+                                        "surfaces": None,
                                         "notes": ""
                                     },
                                     "13": {
                                         "status": "cavity",
+                                        "surfaces": ['M'],
                                         "notes": ""
                                     },
                                     "n": {
                                         "status": "healthy",
+                                        "surfaces": None,
                                         "notes": ""
                                     }
                                 },
@@ -210,7 +226,7 @@ def get_dentalchart_schema():
                                 "fields": {
                                     "teeth": {
                                         "11": {
-                                            "status": '"veneer" is not a valid choice.'
+                                            "status": '"cracked" is not a valid choice.'
                                         }
                                     }
                                 }
@@ -228,6 +244,34 @@ create_patient_schema = extend_schema_serializer(
         OpenApiExample(
             name='Request body',
             request_only=True,
+            description=(
+                '''Note that this endpoint supports multipart requests for file uploads, employing a nested multipart parser.
+                Accordingly, the upload requests should ideally be built like this:
+                
+                \tconst form = new FormData();\n
+                \tformData.append('name', patientData.name);\n
+                \t...
+                \t...\n
+                \tform.append(`allergies[0])`, 'Latex')
+                \tform.append(`allergies[1])`, 'Pencillin')
+                \tdocumentsToUpload.forEach((doc, i) => {\n
+                    \tform.append(`documents[${i}][document]`, doc.file);\n
+                    \tform.append(`documents[${i}][type]`, doc.type);\n
+                });
+                \t...
+                \t...\n
+                \tawait fetch(`/api/patients/${patientId}/`, {
+                \tmethod: 'PUT',  // or PATCH, once the diagnostic above settles it
+                \theaders: {
+                \t    'Authorization': `Bearer ${token}`,
+                \t    ...
+                \t},
+                \tbody: formData,
+                });
+
+                \n
+                '''
+            ),
             value={
                 "name": "John Smith",
                 "age": 25,
@@ -241,6 +285,18 @@ create_patient_schema = extend_schema_serializer(
                 "allergies": ['Latex', 'Pencillin'], 
                 "insuranceProviderId": 'eae37601-3ab9-22f1-079b-ebca1ce8b221',  
                 "notes": '',
+                "documents": [
+                    {
+                        'document': '<FileUpload>',
+                        'type': 'medical_history',
+                        'notes': None,
+                    },
+                    {
+                        'document': '<FileUpload>',
+                        'type': 'id_document',
+                        'notes': 'Driver\'s license',
+                    }
+                ],
                 "branchId": 'ebe27408-2fb9-42b2-977a-fbaa1bf0a396'
             }
         ), 
@@ -265,6 +321,29 @@ create_patient_schema = extend_schema_serializer(
                     "insurance": 'MetLife Egypt', 
                     "insuranceProviderId": 'eae37601-3ab9-22f1-079b-ebca1ce8b221', 
                     "notes": "",
+                    "status": "active", 
+                    "documents": [
+                        {
+                            'document': 'https://dentaltech.com/media/documents/medical_history.pdf',
+                            'fileName': 'medical_history.pdf',
+                            'type': 'medical_history',
+                            'notes': None,
+                            'contentType': 'application/pdf',
+                            'sizeBytes': 2048500,
+                            'uploadedBy': 'Dr. Abdallah',
+                            'uploadedAt': "2026-04-24T23:33:54.610Z",
+                        },
+                        {
+                            'document': 'https://dentaltech.com/media/documents/national_id_scan.pdf',
+                            'fileName': 'national_id_scan.pdf',
+                            'type': 'id_document',
+                            'notes': 'Driver\'s license',
+                            'contentType': 'application/pdf',
+                            'sizeBytes': 1622500,
+                            'uploadedBy': 'Dr. Abdallah',
+                            'uploadedAt': "2026-04-24T23:33:54.610Z",
+                        }
+                    ],
                     "branchId": 'ebe27408-2fb9-42b2-977a-fbaa1bf0a396',
                     "createdAt": "2026-04-24T23:33:54.610Z",
                     "updatedAt": "2026-04-24T23:33:54.610Z"
@@ -289,21 +368,68 @@ create_patient_schema = extend_schema_serializer(
     ]
 )
 
-#Schema for update patient serializer
-update_patient_schema = extend_schema_serializer(
+#Schema for the full update patient serializer
+full_update_patient_schema = extend_schema_serializer(
     examples=[
         OpenApiExample(
             name='Request body',
             request_only=True,
+            description=(
+                '''Note that this endpoint supports multipart requests for file uploads, employing a nested multipart parser. 
+                Accordingly, the upload requests should ideally be built like this:
+                
+                \tconst form = new FormData();\n
+                \tformData.append('name', patientData.name);\n
+                \t...
+                \t...\n
+                \tform.append(`allergies[0])`, `Latex`)
+                \tform.append(`allergies[1])`, `Pencillin`)
+                \tdocumentsToUpload.forEach((doc, i) => {\n
+                    \tform.append(`documents[${i}][document]`, doc.file);\n
+                    \tform.append(`documents[${i}][type]`, doc.type);\n
+                });
+                \t...
+                \t...\n
+                \tawait fetch(`/api/patients/${patientId}/`, {
+                \tmethod: 'PUT',  // or PATCH, once the diagnostic above settles it
+                \theaders: {
+                \t    'Authorization': `Bearer ${token}`,
+                \t    ...
+                \t},
+                \tbody: formData,
+                });
+    
+                \n
+
+***IMPORTANT: Note that files on PUT requests are only deleted if submitting an empty array through a JSON request, not a multipart request. Multipart requests with empty arrays will delete nothing.***'''
+
+            ),
             value={
+                'name': 'John Smith',
+                'age': '27',
+                'gender': 'male',
                 'countryCode': '0010',
-                'phone': '0123456789', 
+                'phone': '0123456789',
+                'email': 'patient@email.com',
                 'address': 'Maadi, Cairo',
                 'nationalId': '525400222211100',
                 'bloodType': 'A+', 
                 'allergies': ['Latex'], 
                 "insuranceProviderId": '1e22bd5e-6a01-122d-8c90-04c8665fbb23', 
-                'notes': ''
+                'notes': '',
+                'status': 'active',
+                'documents': [
+                    {
+                        'document': '<FileUpload>',
+                        'type': 'medical_history',
+                        'notes': None,
+                    },
+                    {
+                        'document': '<FileUpload>',
+                        'type': 'other',
+                        'notes': None,
+                    }
+                ]
             }
         ),
         OpenApiExample(
@@ -313,9 +439,12 @@ update_patient_schema = extend_schema_serializer(
                 'success': True, 
                 'data': {
                     "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                    "name": "John Smith",
+                    'name': 'John Smith',
+                    'age': '27',
+                    'gender': 'male',
                     'countryCode': '0010',
-                    'phone': '0123456789', 
+                    'phone': '0123456789',
+                    'email': 'patient@email.com',
                     'address': 'Maadi, Cairo',
                     "nationalId": "525400222211100",
                     'bloodType': 'A+', 
@@ -323,7 +452,30 @@ update_patient_schema = extend_schema_serializer(
                     "insurance": 'MetLife Egypt',
                     "insuranceProviderId": '1e22bd5e-6a01-122d-8c90-04c8665fbb23', 
                     'notes': '',
-                    "updatedAt": "2026-04-24T17:32:03.201Z"
+                    'status': 'active',
+                    'documents': [
+                        {
+                            'document': 'https://dentaltech.com/media/documents/medical_history.pdf',
+                            'fileName': 'medical_history.pdf',
+                            'type': 'medical_history',
+                            'notes': None,
+                            'contentType': 'application/pdf',
+                            'sizeBytes': 2048500,
+                            'uploadedBy': 'Dr. Abdallah',
+                            'uploadedAt': "2026-05-24T17:32:03.201Z"
+                        },
+                        {
+                            'document': 'https://dentaltech.com/media/documents/clinic_form.pdf',
+                            'fileName': 'clinical_form.pdf',
+                            'type': 'other',
+                            'notes': None,
+                            'contentType': 'application/pdf',
+                            'sizeBytes': 1622500,
+                            'uploadedBy': 'Dr. Abdallah',
+                            'uploadedAt': "2026-05-24T17:32:03.201Z"
+                        }
+                    ],
+                    "updatedAt": "2026-05-24T17:32:03.201Z"
                 }
             }
         ),
@@ -343,6 +495,82 @@ update_patient_schema = extend_schema_serializer(
         ),
     ]
 )
+
+#Schema for the partial update patient serializer
+partial_update_patient_schema = extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            name='Request body',
+            request_only=True,
+            value={
+                'countryCode': '0010',
+                'phone': '0123456789',
+            }
+        ),
+        OpenApiExample(
+            name='Success Response (200 OK)', 
+            response_only=True,
+            value={
+                'success': True, 
+                'data': {
+                    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    'name': 'John Smith',
+                    'age': '27',
+                    'gender': 'male',
+                    'countryCode': '0010',
+                    'phone': '0123456789',
+                    'email': 'patient@email.com',
+                    'address': 'Maadi, Cairo',
+                    "nationalId": "525400222211100",
+                    'bloodType': 'A+', 
+                    'allergies': ['Latex'], 
+                    "insurance": 'MetLife Egypt',
+                    "insuranceProviderId": '1e22bd5e-6a01-122d-8c90-04c8665fbb23', 
+                    'notes': '',
+                    'status': 'active',
+                    'documents': [
+                        {
+                            'document': 'https://dentaltech.com/media/documents/medical_history.pdf',
+                            'fileName': 'medical_history.pdf',
+                            'type': 'medical_history',
+                            'notes': None,
+                            'contentType': 'application/pdf',
+                            'sizeBytes': 2048500,
+                            'uploadedBy': 'Dr. Abdallah',
+                            'uploadedAt': "2026-05-24T17:32:03.201Z"
+                        },
+                        {
+                            'document': 'https://dentaltech.com/media/documents/clinic_form.pdf',
+                            'fileName': 'clinic_form.pdf',
+                            'type': 'other',
+                            'notes': None,
+                            'contentType': 'application/pdf',
+                            'sizeBytes': 1622500,
+                            'uploadedBy': 'Dr. Abdallah',
+                            'uploadedAt': "2026-05-24T17:32:03.201Z"
+                        }
+                    ],
+                    "updatedAt": "2026-05-24T17:32:03.201Z"
+                }
+            }
+        ),
+        OpenApiExample(
+            name='Error Response (400 Bad Request)',
+            response_only=True,
+            value={
+                "success": False,
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Validation failed",
+                    "fields": {
+                        "phone": "Phone number is invalid."
+                    }
+                }
+            }
+        ),
+    ]
+)
+
 
 #Schema for patients options serializer 
 patients_options_schema = extend_schema_serializer(
@@ -378,6 +606,14 @@ patients_options_schema = extend_schema_serializer(
                     {'value': 'AB+', 'label': 'AB+'},
                     {'value': 'AB-', 'label': 'AB-'},
                 ],
+                'documentTypeChoices': [
+                    {'value': 'consent', 'label': 'Consent'},
+                    {'value': 'medical_history', 'label': 'Medical history'},
+                    {'value': 'id_document', 'label': 'ID document'},
+                    {'value': 'referral_letter', 'label': 'Referral letter'},
+                    {'value': 'radiograph', 'label': 'Radiograph'},
+                    {'value': 'other', 'label': 'Other'},
+                ]
             }
         )
     ]
@@ -398,15 +634,26 @@ dentalchart_options_schema = extend_schema_serializer(
                     {"value": "48", "label": "48"},
                 ],
                 'toothStatusChoices': [
-                    {'value': 'healthy', 'label': 'healthy'},
-                    {'value': 'cavity', 'label': 'cavity'},
-                    {'value': 'filling', 'label': 'filling'},
-                    {'value': 'crown', 'label': 'crown'},
-                    {'value': 'root canal', 'label': 'root canal'},
-                    {'value': 'extraction required', 'label': 'extraction required'},
-                    {'value': 'implant', 'label': 'implant'},
-                    {'value': 'missing', 'label': 'missing'},
-                    {'value': 'cracked', 'label': 'cracked'}
+                    {'value': 'healthy', 'label': 'Healthy'},
+                    {'value': 'cavity', 'label': 'Cavity'},
+                    {'value': 'filling', 'label': 'Filling'},
+                    {'value': 'crown', 'label': 'Crown'},
+                    {'value': 'rct', 'label': 'Root Canal'},
+                    {'value': 'veneer', 'label': 'Veneer'},
+                    {'value': 'extraction', 'label': 'Extraction'},
+                    {'value': 'implant', 'label': 'Implant'},
+                    {'value': 'missing', 'label': 'Missing'},
+                    {'value': 'watch', 'label': 'Watch'},
+                ],
+                'toothSurfaceChoices': [
+                    {'value': 'M', 'label': 'mesial'},
+                    {'value': 'D', 'label': 'distal'},
+                    {'value': 'F', 'label': 'facial'},
+                    {'value': 'B', 'label': 'buccal'},
+                    {'value': 'L', 'label': 'lingual'},
+                    {'value': 'P', 'label': 'palatal'},
+                    {'value': 'O', 'label': 'occlusal'},
+                    {'value': 'I', 'label': 'incisal'},
                 ],
             }
         )
@@ -603,6 +850,7 @@ patient_insurance_options_schema = extend_schema_serializer(
                 'eligibilityStatusChoices': [
                     {'value': 'active', 'label': 'Active'},
                     {'value': 'expired', 'label': 'Expired'},
+                    {'value': 'expiring', 'label': 'Expiring'},
                     {'value': 'none', 'label': 'None'},
                 ],
             }

@@ -127,6 +127,12 @@ class UpdateDeleteLabOrderAPIView(RetrieveUpdateDeleteAPIView):
         self.required_permission = get_required_permission('lab-orders', request, self)
         super().initial(request, *args, **kwargs)
 
+    # def get_serializer_context(self):
+    #     context = super().get_serializer_context()
+    #     if self.request.method == 'PATCH':
+    #         context['order'] = self.get_object()
+    #     return context
+
 
 #API View for serving choice options for lab and lab orders endpoints
 @extend_schema(

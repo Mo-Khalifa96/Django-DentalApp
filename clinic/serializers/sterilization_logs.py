@@ -21,8 +21,9 @@ class SterilizationLogSerializer(serializers.ModelSerializer):
    
     class Meta:
         model = SterilizationLog
-        fields = ['id', 'date', 'time', 'cycleType', 'instrumentSets', 'operator', 'result', 
-                  'sealedAt', 'shelfLifeDays', 'notes', 'branchId', 'createdAt', 'updatedAt']
+        fields = ['id', 'date', 'time', 'operator', 'cycleType', 'cycleNumber', 'instrumentSets', 'autoclaveType', 
+                  'temp', 'pressure', 'duration', 'result', 'sealedAt', 'shelfLifeDays', 'notes', 'branchId',
+                  'createdAt', 'updatedAt']
 
 
 #Create sterilization log serializer 
@@ -30,8 +31,9 @@ class CreateSterilizationLogSerializer(ValidateBranchMixin, SterilizationLogSeri
     branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
 
     class Meta(SterilizationLogSerializer.Meta):
-        fields = ['id', 'date', 'time', 'cycleType', 'instrumentSets', 'operator', 'result', 'sealedAt',
-                  'shelfLifeDays', 'notes', 'branchId', 'createdAt']
+        fields = ['id', 'date', 'time', 'operator', 'cycleType', 'cycleType', 'cycleNumber', 'instrumentSets', 
+                  'autoclaveType', 'temp', 'pressure', 'duration', 'result', 'sealedAt', 'shelfLifeDays', 'notes', 
+                  'branchId', 'createdAt']
         read_only_fields = ['id', 'date', 'time', 'createdAt']
 
 
@@ -66,8 +68,9 @@ class UpdateSterilizationLogSerializer(SterilizationLogSerializer):
         )
    
     class Meta(SterilizationLogSerializer.Meta):
-        fields = ['id', 'date', 'time', 'cycleType', 'instrumentSets', 'operator', 'result', 
-                  'sealedAt', 'shelfLifeDays', 'notes', 'branchId', 'updatedAt']
+        fields = ['id', 'date', 'time', 'operator', 'cycleType', 'cycleNumber', 'instrumentSets', 
+                  'autoclaveType', 'temp', 'pressure', 'duration', 'result', 'sealedAt', 'shelfLifeDays', 
+                  'notes', 'branchId', 'updatedAt']
         read_only_fields = ['id', 'date', 'time', 'branchId', 'updatedAt']
 
 

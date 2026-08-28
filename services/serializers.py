@@ -7,7 +7,7 @@ from services.translation.serializers import TranslatedChoiceField
 
 
 #WHATSAPP MESSAGES SERIALIZERS
-#Whatsapp Messages Serializer
+#Whatsapp messages Serializer
 class WhatsappMessageSerializer(serializers.ModelSerializer):
     messageId = serializers.PrimaryKeyRelatedField(source='id', read_only=True)
     patientId = serializers.PrimaryKeyRelatedField(source='patient', queryset=Patient.objects.all())
@@ -25,3 +25,18 @@ class WhatsappMessageSerializer(serializers.ModelSerializer):
         if not message_type:
             data['messageType'] = 'custom'
         return data
+
+
+#Messages history serializer
+class MessagesHistorySerializer(serializers.ModelSerializer):
+    messageId = serializers.PrimaryKeyRelatedField(source='id', read_only=True)
+    patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
+    appointmentId = serializers.PrimaryKeyRelatedField(source='appointment', read_only=True)
+    phone = serializers.CharField(source='patient.phone', read_only=True)
+    failureReason = serializers.CharField(source='errorMessage', read_only=True)
+    type = TranslatedChoiceField(source='messageType', choices=Message.MessageTypeChoices.choices, read_only=True)
+    
+    class Meta:
+        model = Message
+        fields = ['messageId', 'patientId', 'appointmentId', 'phone', 'message', 'type', 'status', 'failureReason', 'sentAt']
+    

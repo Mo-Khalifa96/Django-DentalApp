@@ -28,15 +28,14 @@ class PatientVisitSerializer(serializers.ModelSerializer):
         model = Visit
         fields = ['id', 'doctorId', 'doctorName', 'patientName', 'date', 'type', 'procedures', 'currency', 
                   'cost', 'paid', 'notes', 'xray', 'xrayUploads', 'xrayUrls', 'createdAt']
-        read_only_fields = ['id', 'patientName', 'doctorName', 'xrayUrls', 'createdAt']
-        extra_kwargs = {
-            'currency': {'required': False}, 'xray': {'default': False},
-        }
+        read_only_fields = ['id', 'patientName', 'doctorName', 'currency', 'cost', 'paid',
+                            'xrayUrls', 'createdAt']
+        extra_kwargs = {'xray': {'default': False}}
 
     @extend_schema_field(serializers.ListField(child=serializers.URLField()))
     def get_xrayUrls(self, obj):
         request = self.context.get('request')
-        xrays = obj.patient.patient_xrays.all()
+        xrays = obj.visit_xrays.all()
         if request:
             return [request.build_absolute_uri(xray.image.url) for xray in xrays]
         return [xray.image.url for xray in xrays]
@@ -54,7 +53,7 @@ class PatientVisitSerializer(serializers.ModelSerializer):
                 patient.doctor if getattr(patient, 'doctor_id', None) else
                 request.user if getattr(request.user, 'role', None) in ('admin', 'dentist')
                 else None
-                )
+            )
 
         #fetch xray uploads before creating visit
         xray_images = validated_data.pop('xrayUploads', [])
@@ -75,7 +74,7 @@ class PatientVisitSerializer(serializers.ModelSerializer):
             visit.save(update_fields=['xray'])
 
             xrays_to_upload = [
-                XRay(patient=patient, image=image)
+                XRay(patient=patient, visit=visit, image=image)
                  for image in xray_images
             ]
             

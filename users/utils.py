@@ -54,7 +54,7 @@ def _build_permissions_lookup(permissions_dict):
 
     #Output would look like this:
         # 'dashboard': {
-        #   'view': 'view.calender',
+        #   'view': 'view.calendar',
         #   'view': 'view.clinicalAnalytics',
         #   'view': 'view.financialAnalytics',
         # },

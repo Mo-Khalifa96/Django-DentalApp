@@ -40,7 +40,11 @@ class BillSerializer(serializers.ModelSerializer):
                   'total', 'currency', 'status', 'createdBy', 'createdAt', 'updatedAt', 'isDeleted']
 
 
-    @extend_schema_field(serializers.CharField)
+    @extend_schema_field(
+        serializers.ChoiceField(
+            choices=[(choice,choice) for choice in STATUS_LABELS]
+        )
+    )
     def get_status(self, obj):
         value = getattr(obj, 'status', None)
         return str(STATUS_LABELS.get(value, value)) if value else None
@@ -96,7 +100,7 @@ class CreateBillSerializer(ValidateBranchMixin, serializers.ModelSerializer):
         #assign user's name to 'createdBy' field
         data['createdBy'] = user.name
 
-        #perpare errors dict
+        #prepare errors dict
         errors = {}
 
         #validate treatment 

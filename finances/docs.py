@@ -65,7 +65,7 @@ list_bills_schema = extend_schema_serializer(
                 },
                 'metadata': {
                     'userPermissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
@@ -159,7 +159,7 @@ list_bills_schema = extend_schema_serializer(
                 },
                 'metadata': {
                     'userPermissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
@@ -218,7 +218,7 @@ retrieve_bills_schema = extend_schema_serializer(
                 },
                 'metadata': {
                     'userPermissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
@@ -275,7 +275,7 @@ retrieve_bills_schema = extend_schema_serializer(
                 },
                 'metadata': {
                     'userPermissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
@@ -411,7 +411,7 @@ list_transactions_schema = extend_schema_serializer(
                 },
                 'metadata': {
                     'userPermissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
@@ -456,6 +456,7 @@ list_transactions_schema = extend_schema_serializer(
                         'amount': '250.00',
                         'currency': 'USD',
                         'method': 'Card',
+                        'status': 'Completed',
                         'note': '',
                         'createdBy': 'Dr. Layla Hassan',
                         'isDeleted': False,
@@ -474,9 +475,10 @@ list_transactions_schema = extend_schema_serializer(
                         'amount': '300.00',
                         'currency': 'USD',
                         'method': 'Cash',
+                        'status': 'Refunded',
                         'note': '',
                         'createdBy': 'Dr. Layla Hassan',
-                        'isDeleted': False,
+                        'isDeleted': True,
                     },
                 ],
                 'pagination': {
@@ -493,7 +495,7 @@ list_transactions_schema = extend_schema_serializer(
                 },
                 'metadata': {
                     'userPermissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
@@ -650,7 +652,7 @@ list_invoices_schema = extend_schema_serializer(
                 },
                 'metadata': {
                     'userPermissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
@@ -768,7 +770,7 @@ list_invoices_schema = extend_schema_serializer(
                 },
                 'metadata': {
                     'userPermissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
@@ -842,7 +844,7 @@ retrieve_invoice_schema = extend_schema_serializer(
                 },
                 'metadata': {
                     'userPermissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,
@@ -914,7 +916,7 @@ retrieve_invoice_schema = extend_schema_serializer(
                 },
                 'metadata': {
                     'userPermissions': {
-                        'view.calender': True,
+                        'view.calendar': True,
                         'view.waitingRoom': True,
                         'view.patients': True,
                         'view.appointments': True,

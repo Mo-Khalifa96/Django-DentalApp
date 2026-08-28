@@ -127,7 +127,7 @@ def patient_factory():
         defaults = {
             'name': f'Patient {index}',
             'age': 30,
-            'gender': 'Male',
+            'gender': 'male',
             'email': f'patient{index}@example.com',
             'countryCode': '20',
             'phone': f'0101234{index:04d}',
@@ -279,6 +279,13 @@ def png_file():
         content_type='image/png',
     )
 
+@pytest.fixture
+def pdf_file():
+    return SimpleUploadedFile(
+        'document.pdf',
+        b'%PDF-1.4 fake pdf content for testing',
+        content_type='application/pdf',
+    )
 
 @pytest.fixture
 def inventory_factory():

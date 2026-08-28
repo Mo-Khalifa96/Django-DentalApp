@@ -108,13 +108,13 @@ def setup_scheduled_tasks():
 
 
     #WEEKLY SCHEDULES
-    #Schedule weekly task to update patient insurance details
+    #Schedule weekly task to delete cancelled appointments
     weekly_schedule, created = Schedule.objects.get_or_create(
-        name='Update Patient Insurance Details Task',
+        name='Cleanup Cancelled Appointments Task',
         defaults={
-            'func': 'patients.tasks.update_patient_insurance_details_task',
+            'func': 'utils.cleanup_tasks.cleanup_cancelled_appointments',
             'schedule_type': Schedule.WEEKLY,
-            'next_run': default_first_run + timedelta(days=7, minutes=15),  #runs every week 2:15 AM
+            'next_run': default_first_run + timedelta(days=7, minutes=20),  #runs every week 2:20 AM
             'repeats': -1})
     
     if created:
@@ -124,24 +124,8 @@ def setup_scheduled_tasks():
 
     ####
 
-    #Schedule weekly task to delete cancelled appointments
-    weekly_schedule2, created = Schedule.objects.get_or_create(
-        name='Cleanup Cancelled Appointments Task',
-        defaults={
-            'func': 'utils.cleanup_tasks.cleanup_cancelled_appointments',
-            'schedule_type': Schedule.WEEKLY,
-            'next_run': default_first_run + timedelta(days=7, minutes=20),  #runs every week 2:20 AM
-            'repeats': -1})
-    
-    if created:
-        logger.info(f"Created cleanup task #7: {weekly_schedule2.name}")
-    else:
-        logger.info(f"Task #7 already exists: {weekly_schedule2.name}")
-
-    ####
-
     #Schedule weekly task to clean up waiting room
-    weekly_schedule3, created = Schedule.objects.get_or_create(
+    weekly_schedule2, created = Schedule.objects.get_or_create(
         name='Cleanup Waiting Room Task',
         defaults={
             'func': 'utils.cleanup_tasks.cleanup_waiting_room',
@@ -150,14 +134,14 @@ def setup_scheduled_tasks():
             'repeats': -1})
     
     if created:
-        logger.info(f"Created cleanup task #8: {weekly_schedule3.name}")
+        logger.info(f"Created cleanup task #7: {weekly_schedule2.name}")
     else:
-        logger.info(f"Task #8 already exists: {weekly_schedule3.name}")
+        logger.info(f"Task #7 already exists: {weekly_schedule2.name}")
 
     ####
     
     #Schedule weekly task to delete old whatsapp messages
-    weekly_schedule4, created = Schedule.objects.get_or_create(
+    weekly_schedule3, created = Schedule.objects.get_or_create(
         name='Cleanup Whatsapp Messages Task',
         defaults={
             'func': 'utils.cleanup_tasks.cleanup_whatsapp_messages',
@@ -166,14 +150,14 @@ def setup_scheduled_tasks():
             'repeats': -1})
     
     if created:
-        logger.info(f"Created cleanup task #9: {weekly_schedule4.name}")
+        logger.info(f"Created cleanup task #8: {weekly_schedule3.name}")
     else:
-        logger.info(f"Task #9 already exists: {weekly_schedule4.name}")
+        logger.info(f"Task #8 already exists: {weekly_schedule3.name}")
     
     ####
 
     #Schedule weekly task to delete past schedules
-    weekly_schedule5, created = Schedule.objects.get_or_create(
+    weekly_schedule4, created = Schedule.objects.get_or_create(
         name='Weekly Cleanup Past Schedules',
         defaults={
             'func': 'utils.cleanup_tasks.cleanup_past_schedules',
@@ -182,8 +166,27 @@ def setup_scheduled_tasks():
             'repeats': -1})
 
     if created:
-        logger.info(f"Created cleanup task #10: {weekly_schedule5.name}")
+        logger.info(f"Created cleanup task #9: {weekly_schedule4.name}")
     else:
-        logger.info(f"Task #10 already exists: {weekly_schedule5.name}")
+        logger.info(f"Task #9 already exists: {weekly_schedule4.name}")
 
 
+    #################
+
+
+    #DAILY TASKS
+    #Schedule daily task to update patient insurance details
+    daily_schedule, created = Schedule.objects.get_or_create(
+        name='Update Patient Insurance Details Task',
+        defaults={
+            'func': 'patients.tasks.update_patient_insurance_details_task',
+            'schedule_type': Schedule.DAILY,
+            'next_run': default_first_run + timedelta(hours=23, minutes=1),  #runs every day at 1:01 AM
+            'repeats': -1})
+    
+    if created:
+        logger.info(f"Created cleanup task #10: {daily_schedule.name}")
+    else:
+        logger.info(f"Task #10 already exists: {daily_schedule.name}")
+
+    ####

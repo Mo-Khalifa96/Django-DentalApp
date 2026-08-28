@@ -32,9 +32,8 @@ class BranchManager(models.Manager):
         if user.role == 'admin':
             branch.delete()
         else:
-            #Set is_deleted flag to True 
+            #Set is_deleted flag to True and save
             branch.is_deleted = True
-            #save changes
             branch.save()
         return True 
 
@@ -106,15 +105,22 @@ class WaitingRoom(models.Model):
         DONE = 'done', _('Done')
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    #Many-to-One Relation to appointment and branch (one appointment, one branch, many waiting room objects)
-    appointment = models.ForeignKey('patients.Appointment', related_name='appointment_rooms', on_delete=models.CASCADE, null=True, db_index=True)
+    #Many-to-One Relation to appointment, patient, and branch (one appointment, one patient, one branch, many waiting room objects)
+    appointment = models.ForeignKey('patients.Appointment', related_name='appointment_rooms', on_delete=models.CASCADE, blank=True, null=True, db_index=True)
+    patient = models.ForeignKey('patients.Patient', related_name='patient_rooms', on_delete=models.CASCADE, blank=True, null=True, db_index=True)
     branch = models.ForeignKey(Branch, related_name='branch_rooms', on_delete=models.CASCADE, blank=True, null=True, db_index=True) 
     #Other fields
     room = models.CharField(max_length=120, blank=True, null=True)  #use branch rooms for choices
+    isWalkIn = models.BooleanField(blank=True, null=True, default=None)
     status = models.CharField(max_length=25, choices=StatusChoices.choices, blank=True, null=True)
     arrivedAt = models.DateTimeField(blank=True, null=True)
     startedAt = models.DateTimeField(blank=True, null=True)
     completedAt = models.DateTimeField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    
+    #Snapshot fields
+    doctorId = models.CharField(max_length=120, blank=True, null=True)
+    doctorName = models.CharField(max_length=255, blank=True, null=True)
 
     #Objects after filtering by manager
     objects = WaitingRoomManager()
@@ -127,8 +133,8 @@ class WaitingRoom(models.Model):
         verbose_name_plural = 'WaitingRoom'
         ordering = ['-arrivedAt']
 
-    def __str__(self):
-        return f'[{self.arrivedAt}] {self.appointment.patient.name} -- {self.status}'
+    # def __str__(self):
+    #     return f'[{self.arrivedAt}] {self.appointment.patient.name} -- {self.status}'
 
 
     @transaction.atomic
@@ -141,18 +147,20 @@ class WaitingRoom(models.Model):
             #record arrival time on creation
             self.arrivedAt = timezone.localtime(timezone.now())
 
-        if self.status == self.StatusChoices.IN_CHAIR:
-            self.startedAt = timezone.localtime(timezone.now())
-        elif self.status == self.StatusChoices.DONE:
-            self.completedAt = timezone.localtime(timezone.now())
-            #also update appointment status
-            self.appointment.status = 'completed'
-            self.appointment.endTime = self.completedAt.time()
-            self.appointment.save(update_fields=['status', 'endTime', 'updatedAt'])
+        # if self.status == self.StatusChoices.IN_CHAIR and not self.startedAt:
+        #     self.startedAt = timezone.localtime(timezone.now())
+        # elif self.status == self.StatusChoices.DONE and not self.completedAt:
+        #     self.completedAt = timezone.localtime(timezone.now())
 
-            #set patient's next appointment to null
-            self.appointment.patient.nextAppointment = None 
-            self.appointment.patient.save(update_fields=['nextAppointment', 'updatedAt'])
+        #     #also update appointment-related details (if not a walk-in)
+        #     if self.appointment:
+        #         self.appointment.status = 'completed'
+        #         self.appointment.endTime = self.completedAt.time()
+        #         self.appointment.save(update_fields=['status', 'endTime', 'updatedAt'])
+
+        #         #set patient's next appointment to null
+        #         self.appointment.patient.nextAppointment = None 
+        #         self.appointment.patient.save(update_fields=['nextAppointment', 'updatedAt'])
         
         #save changes 
         super().save(*args, **kwargs)
@@ -281,6 +289,7 @@ class Lab(models.Model):
     phone = models.CharField(max_length=50, validators=[validate_phone_number])
     address = models.CharField(max_length=500)
     contactPerson = models.CharField(max_length=255)
+    turnaroundDays = models.PositiveIntegerField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     #Many-to-One relationship to the Branch model (i.e., many labs, one branch)
     branch = models.ForeignKey(Branch, related_name='branch_labs', blank=True,
@@ -365,15 +374,17 @@ class LabOrder(models.Model):
                 self.status = self.OrderStatusChoices.SENT
             if not self.sentDate:
                 self.sentDate = timezone.localtime(timezone.now()).date()
-            self.labName = self.lab.name
-            self.procedureName = self.procedure.name
-            self.patientName = self.patient.name
 
         if self.status == self.OrderStatusChoices.RECEIVED:
             self.receivedDate = timezone.localtime(timezone.now()).date()
         elif self.status == self.OrderStatusChoices.DELIVERED:
             self.deliveredDate = timezone.localtime(timezone.now()).date()
         
+        #snapshot fields (on create and update)
+        self.labName = self.lab.name
+        self.procedureName = self.procedure.name
+        self.patientName = self.patient.name
+
         #save changes 
         super().save(*args, **kwargs)
 
@@ -416,7 +427,12 @@ class SterilizationLog(models.Model):
     time = models.TimeField(blank=True, null=True)
     operator = models.CharField(max_length=255, blank=True, null=True)
     cycleType = models.CharField(max_length=50, choices=CycleTypeChoices.choices)
+    cycleNumber = models.CharField(blank=True, null=True)
     instrumentSets = ArrayField(models.CharField(max_length=50, choices=InstrumentSetsChoices.choices), default=list)
+    autoclaveType = models.CharField(blank=True, null=True)
+    temp = models.PositiveIntegerField(blank=True, null=True)
+    pressure = models.CharField(blank=True, null=True)
+    duration = models.PositiveIntegerField(blank=True, null=True)
     result = models.CharField(max_length=50, choices=SterilizationResultChoices.choices, blank=True, null=True)
     sealedAt = models.DateField(blank=True, null=True)
     shelfLifeDays = models.PositiveIntegerField(blank=True, null=True)
