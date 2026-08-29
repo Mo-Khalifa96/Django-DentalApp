@@ -162,7 +162,7 @@ class RetrieveDentalChartOptionsAPIView(generics.GenericAPIView):
 @extend_schema(
     tags=['Patients'],
     responses={200: None},
-    summary='Optional endpoint for document uploads.',
+    summary='Optional endpoint for document uploads',
     description=(
         'This is an optional endpoint for uploading individual documents in case you struggled with multipart requests for data + file uploads.'
         'It takes a patient ID to link each upload to its respective patient (so a patients need to be created first before document uploads).'

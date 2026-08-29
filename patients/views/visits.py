@@ -138,7 +138,7 @@ class RetrieveVisitsOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIV
 @extend_schema(
     tags=['Visit History'],
     responses={200: None},
-    summary='Optional endpoint for x-ray image uploads.',
+    summary='Optional endpoint for x-ray image uploads',
     description=(
         'This is an optional endpoint for uploading individual x-ray images in case you struggled with multipart requests for data + file uploads.'
         'It takes a visit ID to link each upload to its respective visit (so a visit needs to be created first before image uploads).'
@@ -158,7 +158,7 @@ class UploadXRayAPIView(generics.GenericAPIView):
 
         visit = get_object_or_404(
             Visit.objects.select_related('patient').only('id', 'patient'),
-            id=self.kwargs.get('visitId')
+            id=self.kwargs['visitId']
         )
         context['visit'] = visit
         return context
