@@ -335,7 +335,7 @@ class PatientDocument(models.Model):
     #Many-to-One relationship to the Patient model (i.e., many documents, one patient)
     patient = models.ForeignKey(Patient, related_name='patient_documents', on_delete=models.CASCADE, db_index=True)
     document = models.FileField(upload_to='documents/', validators=file_validators)
-    fileName = models.CharField(max_length=125)
+    fileName = models.CharField(max_length=125, blank=True, null=True)
     type = models.CharField(max_length=50, choices=DocumentTypeChoices.choices, blank=True, null=True)
     contentType = models.CharField(max_length=50, blank=True, null=True) 
     sizeBytes = models.IntegerField(blank=True, null=True)

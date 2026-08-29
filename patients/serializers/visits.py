@@ -163,3 +163,26 @@ class VisitOptionsSerializer(serializers.Serializer):
             for choice in Procedure.ProcedureCategory
         ]
 
+
+#Other
+#Serializer for individual x-ray uploads
+class UploadXRaySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = XRay
+        fields = ['image']
+        extra_kwargs = {'image': {'required': True}}
+    
+    @transaction.atomic
+    def create(self, validated_data):
+        #get visit from context
+        visit = self.context.get('visit')
+
+        #create xray instance
+        xray = XRay.objects.create(
+            visit_id=visit.id,
+            patient_id=visit.patient_id, 
+            image=validated_data['image']
+        )
+        
+        return xray
+    

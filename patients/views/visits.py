@@ -16,7 +16,8 @@ from patients.models import Patient, Visit, PatientRecall
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
-from patients.serializers.visits import PatientVisitSerializer, VisitOptionsSerializer
+from patients.serializers.visits import PatientVisitSerializer, UploadXRaySerializer, VisitOptionsSerializer
+
 
 #PATIENT VISITS API VIEWS 
 #List/Create patient visits API view 
@@ -130,3 +131,39 @@ class RetrieveVisitsOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIV
 
     def get(self, request, *args, **kwargs):
         return Response(self.get_serializer(instance={}).data, status=status.HTTP_200_OK)
+
+
+#Other
+#API view for individual document uploads
+@extend_schema(
+    tags=['Visit History'],
+    responses={200: None},
+    summary='Optional endpoint for x-ray image uploads.',
+    description=(
+        'This is an optional endpoint for uploading individual x-ray images in case you struggled with multipart requests for data + file uploads.'
+        'It takes a visit ID to link each upload to its respective visit (so a visit needs to be created first before image uploads).'
+    )
+
+)
+class UploadXRayAPIView(generics.GenericAPIView):
+    queryset = Visit.objects.all()
+    serializer_class = UploadXRaySerializer
+    permission_classes = [IsAuthenticated]
+    lookup_url_kwarg = 'visitId'
+    lookup_field = 'id'
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+
+        visit = get_object_or_404(
+            Visit.objects.select_related('patient').only('id', 'patient'),
+            id=self.kwargs.get('visitId')
+        )
+        context['visit'] = visit
+        return context
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(status=status.HTTP_200_OK)

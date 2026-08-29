@@ -2,6 +2,7 @@ from utils.base_views import *
 from patients.models import Patient
 from rest_framework import status, generics
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 from patients.filters import PatientsFilter
 from users.utils import get_required_permission
 from utils.filters import CustomOrderingFilter
@@ -17,7 +18,8 @@ from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
 from patients.serializers.patients import (ListPatientSerializer, RetrievePatientSerializer, 
                                            CreatePatientSerializer, FullUpdatePatientSerializer,
                                            PartialUpdatePatientSerializer, DentalChartSerializer, 
-                                           PatientsOptionsSerializer, DentalChartOptionsSerializer)
+                                           UploadDocumentSerializer, PatientsOptionsSerializer, 
+                                           DentalChartOptionsSerializer)
 
 
 #PATIENTS API VIEWS
@@ -145,7 +147,7 @@ class RetrieveUpdateDentalChartAPIView(RetrieveUpdateAPIView):
         super().initial(request, *args, **kwargs)
 
 
-#API View for serving optional choices data 
+#API view for serving optional choices data 
 @extend_schema(tags=['Dental Chart'])
 class RetrieveDentalChartOptionsAPIView(generics.GenericAPIView):
     serializer_class = DentalChartOptionsSerializer
@@ -153,4 +155,36 @@ class RetrieveDentalChartOptionsAPIView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         return Response(self.get_serializer(instance={}).data, status=status.HTTP_200_OK)
+
+
+#Other
+#API view for individual document uploads
+@extend_schema(
+    tags=['Patients'],
+    responses={200: None},
+    summary='Optional endpoint for document uploads.',
+    description=(
+        'This is an optional endpoint for uploading individual documents in case you struggled with multipart requests for data + file uploads.'
+        'It takes a patient ID to link each upload to its respective patient (so a patients need to be created first before document uploads).'
+    )
+)
+class UploadDocumentAPIView(generics.GenericAPIView):
+    queryset = Patient.objects.all()
+    serializer_class = UploadDocumentSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_url_kwarg = 'id'
+    lookup_field = 'id'
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        patient = get_object_or_404(Patient.objects.only('id'), id=self.kwargs['id'])
+        context['patient_id'] = patient.id
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(status=status.HTTP_200_OK)
+
 

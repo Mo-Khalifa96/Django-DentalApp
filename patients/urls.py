@@ -1,5 +1,5 @@
 from django.urls import path
-from patients.views.visits import ListCreateVisitsAPIView, RetrieveVisitsOptionsAPIView
+from patients.views.visits import ListCreateVisitsAPIView, UploadXRayAPIView, RetrieveVisitsOptionsAPIView
 from patients.views.patient_recalls import (ListCreatePatientRecallsAPIView, UpdateDeletePatientRecallAPIView, 
                                             RetrievePatientRecallsOptionsAPIView)
 from patients.views.appointments import (ListCreateAppointmentsAPIView, RetrieveUpdateCancelAppointmentAPIView, 
@@ -7,8 +7,8 @@ from patients.views.appointments import (ListCreateAppointmentsAPIView, Retrieve
 from patients.views.treatments import (ListCreateTreatmentPlansAPIView, RetrieveUpdateDeleteTreatmentPlanAPIView,
                                       LookupTreatmentPlanAPIView, RetrieveTreatmentPlansOptionsAPIView)
 from patients.views.patients import (ListCreatePatientsAPIView, RetrieveUpdateDeletePatientAPIView,
-                                     RetrieveUpdateDentalChartAPIView, RetrievePatientsOptionsAPIView, 
-                                     RetrieveDentalChartOptionsAPIView)
+                                     RetrieveUpdateDentalChartAPIView, UploadDocumentAPIView,
+                                     RetrievePatientsOptionsAPIView, RetrieveDentalChartOptionsAPIView)
 from patients.views.patient_insurance import (ListPatientCoveragePlansAPIView, CreateRetrieveUpdatePatientCoverageAPIView,
                                               RetrievePatientCoverageOptionsAPIView)
 
@@ -18,6 +18,8 @@ urlpatterns = [
     path('patients/', ListCreatePatientsAPIView.as_view(), name='list_create_patients'),
     path('patients/<uuid:id>/', RetrieveUpdateDeletePatientAPIView.as_view(), name='retrieve_update_delete_patient'),
     path('patients/options/', RetrievePatientsOptionsAPIView.as_view(), name='patients_options'),
+    #url for document uploads (optional)
+    path('patients/<uuid:id>/documents/upload/', UploadDocumentAPIView.as_view(), name='upload_patient_document'),
     
     #Patient dental chart urls
     path('patients/<uuid:id>/dental-chart/', RetrieveUpdateDentalChartAPIView.as_view(), name='retrieve_update_dentalchart'),
@@ -26,6 +28,8 @@ urlpatterns = [
     #Patient Visits urls
     path('patients/<uuid:id>/visits/', ListCreateVisitsAPIView.as_view(), name='list_create_visits'),
     path('patients/visits/options/', RetrieveVisitsOptionsAPIView.as_view(), name='visits_options'),
+    #url for xray uploads (optional)
+    path('patients/visits/<uuid:visitId>/xrays/upload/', UploadXRayAPIView.as_view(), name='upload_xray_image'),
 
     #Appointments urls 
     path('appointments/', ListCreateAppointmentsAPIView.as_view(), name='list_create_appointments'),

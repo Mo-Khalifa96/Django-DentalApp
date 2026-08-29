@@ -324,7 +324,7 @@ create_patient_schema = extend_schema_serializer(
                     "status": "active", 
                     "documents": [
                         {
-                            'document': 'https://dentaltech.com/media/documents/medical_history.pdf',
+                            'document': 'https://dtbackend.site/media/documents/medical_history.pdf',
                             'fileName': 'medical_history.pdf',
                             'type': 'medical_history',
                             'notes': None,
@@ -334,7 +334,7 @@ create_patient_schema = extend_schema_serializer(
                             'uploadedAt': "2026-04-24T23:33:54.610Z",
                         },
                         {
-                            'document': 'https://dentaltech.com/media/documents/national_id_scan.pdf',
+                            'document': 'https://dtbackend.site/media/documents/national_id_scan.pdf',
                             'fileName': 'national_id_scan.pdf',
                             'type': 'id_document',
                             'notes': 'Driver\'s license',
@@ -455,7 +455,7 @@ full_update_patient_schema = extend_schema_serializer(
                     'status': 'active',
                     'documents': [
                         {
-                            'document': 'https://dentaltech.com/media/documents/medical_history.pdf',
+                            'document': 'https://dtbackend.site/media/documents/medical_history.pdf',
                             'fileName': 'medical_history.pdf',
                             'type': 'medical_history',
                             'notes': None,
@@ -465,7 +465,7 @@ full_update_patient_schema = extend_schema_serializer(
                             'uploadedAt': "2026-05-24T17:32:03.201Z"
                         },
                         {
-                            'document': 'https://dentaltech.com/media/documents/clinic_form.pdf',
+                            'document': 'https://dtbackend.site/media/documents/clinic_form.pdf',
                             'fileName': 'clinical_form.pdf',
                             'type': 'other',
                             'notes': None,
@@ -530,7 +530,7 @@ partial_update_patient_schema = extend_schema_serializer(
                     'status': 'active',
                     'documents': [
                         {
-                            'document': 'https://dentaltech.com/media/documents/medical_history.pdf',
+                            'document': 'https://dtbackend.site/media/documents/medical_history.pdf',
                             'fileName': 'medical_history.pdf',
                             'type': 'medical_history',
                             'notes': None,
@@ -540,7 +540,7 @@ partial_update_patient_schema = extend_schema_serializer(
                             'uploadedAt': "2026-05-24T17:32:03.201Z"
                         },
                         {
-                            'document': 'https://dentaltech.com/media/documents/clinic_form.pdf',
+                            'document': 'https://dtbackend.site/media/documents/clinic_form.pdf',
                             'fileName': 'clinic_form.pdf',
                             'type': 'other',
                             'notes': None,

@@ -175,7 +175,7 @@ retrieve_user_schema = extend_schema_serializer(
                         '4b003dd4-f654-4ac3-8dc4-07bd2c7bd7f3',
                         '908be626-8934-4093-a93f-1541d50ceb29'
                     ],
-                    'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
+                    'avatar': 'https://dtbackend.site/media/user_avatars/example_img.jpg',
                     'permissions': {
                         'view.calendar': True,
                         'view.clinicalAnalytics': True,
@@ -289,7 +289,7 @@ retrieve_user_schema = extend_schema_serializer(
                         '4b003dd4-f654-4ac3-8dc4-07bd2c7bd7f3',
                         '908be626-8934-4093-a93f-1541d50ceb29'
                     ],
-                    'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
+                    'avatar': 'https://dtbackend.site/media/user_avatars/example_img.jpg',
                     'isActive': True,
                     'createdAt': '2026-04-24T23:33:54.610Z',
                 },
@@ -340,7 +340,7 @@ update_user_schema = extend_schema_serializer(
                         '4b003dd4-f654-4ac3-8dc4-07bd2c7bd7f3',
                         '908be626-8934-4093-a93f-1541d50ceb29'
                     ],
-                'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
+                'avatar': 'https://dtbackend.site/media/user_avatars/example_img.jpg',
                 'permissions': {
                     'view.calendar': True,
                     'view.clinicalAnalytics': True,
@@ -423,7 +423,7 @@ update_user_schema = extend_schema_serializer(
                 'newPassword2': 'newpassword123',
                 'name': 'Dr. Layla Hassan',
                 'specialization': 'General Dentistry',
-                'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
+                'avatar': 'https://dtbackend.site/media/user_avatars/example_img.jpg',
             }
         ),
         OpenApiExample(
@@ -442,7 +442,7 @@ update_user_schema = extend_schema_serializer(
                         '4b003dd4-f654-4ac3-8dc4-07bd2c7bd7f3',
                         '908be626-8934-4093-a93f-1541d50ceb29'
                     ],
-                    'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
+                    'avatar': 'https://dtbackend.site/media/user_avatars/example_img.jpg',
                     'permissions': {
                         'view.calendar': True,
                         'view.clinicalAnalytics': True,
@@ -532,7 +532,7 @@ update_user_schema = extend_schema_serializer(
                         '4b003dd4-f654-4ac3-8dc4-07bd2c7bd7f3',
                         '908be626-8934-4093-a93f-1541d50ceb29'
                     ],
-                    'avatar': 'https://dentaltech.com/media/user_avatars/example_img.jpg',
+                    'avatar': 'https://dtbackend.site/media/user_avatars/example_img.jpg',
                     'updatedAt': '2026-04-24T23:33:54.610Z',
                 }
             }

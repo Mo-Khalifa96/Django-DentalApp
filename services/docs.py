@@ -45,7 +45,7 @@ def get_message_history_schema():
                             "hasPrevious": False
                         },
                         "links": {
-                            "next": "https://dentaltech.com/api/whatsapp/2fa85f64-5717-4562-b3fc-2c963f66afb1/?cursor=cD00ODY%3D",
+                            "next": "https://dtbackend.site/api/whatsapp/2fa85f64-5717-4562-b3fc-2c963f66afb1/?cursor=cD00ODY%3D",
                             "previous": None
                         },
                         "metadata": {

@@ -510,3 +510,28 @@ class NewPatientSerializer(serializers.ModelSerializer):
         model = Patient
         fields = ['id', 'name', 'age', 'gender', 'countryCode', 'phone', 'createdAt']
         read_only_fields = ['id', 'createdAt']
+
+
+#Serializer for individual document uploads
+class UploadDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PatientDocument
+        fields = ['document']
+        extra_kwargs = {'document': {'required': True}}
+    
+    @transaction.atomic
+    def create(self, validated_data):
+        #get patient id from context
+        patient_id = self.context.get('patient_id')
+        uploaded_document = validated_data['document'] 
+
+        #create document upload instance
+        document = PatientDocument.objects.create(
+            patient_id=patient_id, 
+            document=uploaded_document,
+            fileName=uploaded_document.name,
+            contentType=uploaded_document.content_type,
+            sizeBytes=uploaded_document.size
+        )
+        return document
+    

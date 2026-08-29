@@ -60,8 +60,8 @@ list_bills_schema = extend_schema_serializer(
                     'hasPrev': False,
                 },
                 'links': {
-                    'next': 'https://djsys.site/api/bills/?page=3',
-                    'previous': 'https://djsys.site/api/bills/?page=1'
+                    'next': 'https://dtbackend.site/api/bills/?page=3',
+                    'previous': 'https://dtbackend.site/api/bills/?page=1'
                 },
                 'metadata': {
                     'userPermissions': {
@@ -154,8 +154,8 @@ list_bills_schema = extend_schema_serializer(
                     'hasPrev': False,
                 },
                 'links': {
-                    'next': 'https://djsys.site/api/bills/?page=3',
-                    'previous': 'https://djsys.site/api/bills/?page=1'
+                    'next': 'https://dtbackend.site/api/bills/?page=3',
+                    'previous': 'https://dtbackend.site/api/bills/?page=1'
                 },
                 'metadata': {
                     'userPermissions': {
@@ -406,8 +406,8 @@ list_transactions_schema = extend_schema_serializer(
                     'hasPrev': False,
                 },
                 'links': {
-                    'next': 'https://djsys.site/api/transactions/?page=3',
-                    'previous': 'https://djsys.site/api/transactions/?page=1'
+                    'next': 'https://dtbackend.site/api/transactions/?page=3',
+                    'previous': 'https://dtbackend.site/api/transactions/?page=1'
                 },
                 'metadata': {
                     'userPermissions': {
@@ -490,8 +490,8 @@ list_transactions_schema = extend_schema_serializer(
                     'hasPrev': False,
                 },
                 'links': {
-                    'next': 'https://djsys.site/api/transactions/?page=3',
-                    'previous': 'https://djsys.site/api/transactions/?page=1'
+                    'next': 'https://dtbackend.site/api/transactions/?page=3',
+                    'previous': 'https://dtbackend.site/api/transactions/?page=1'
                 },
                 'metadata': {
                     'userPermissions': {
@@ -647,8 +647,8 @@ list_invoices_schema = extend_schema_serializer(
                     'hasPrev': False,
                 },
                 'links': {
-                    'next': 'https://djsys.site/api/invoices/?page=3',
-                    'previous': 'https://djsys.site/api/invoices/?page=1'
+                    'next': 'https://dtbackend.site/api/invoices/?page=3',
+                    'previous': 'https://dtbackend.site/api/invoices/?page=1'
                 },
                 'metadata': {
                     'userPermissions': {
@@ -765,8 +765,8 @@ list_invoices_schema = extend_schema_serializer(
                     'hasPrev': False,
                 },
                 'links': {
-                    'next': 'https://djsys.site/api/invoices/?page=3',
-                    'previous': 'https://djsys.site/api/invoices/?page=1'
+                    'next': 'https://dtbackend.site/api/invoices/?page=3',
+                    'previous': 'https://dtbackend.site/api/invoices/?page=1'
                 },
                 'metadata': {
                     'userPermissions': {

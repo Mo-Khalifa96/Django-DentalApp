@@ -258,7 +258,7 @@ if settings.DEBUG:
                     continue 
                 
                 #paths to exclude
-                is_excluded = any([pattern in path for pattern in ['/roles/', '/permissions/', '/options/']]) # False if '/auth/me/' in path else any([pattern in path for pattern in ['/auth/', '/roles/', '/permissions/', '/options/']])
+                is_excluded = any([pattern in path for pattern in ['/roles/', '/permissions/', '/upload/', '/options/']]) # False if '/auth/me/' in path else any([pattern in path for pattern in ['/auth/', '/roles/', '/permissions/', '/options/']])
                 if is_excluded:
                     continue
 
