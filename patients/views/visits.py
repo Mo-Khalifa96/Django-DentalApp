@@ -14,7 +14,7 @@ from users.permissions import PatientDataPermissions
 from rest_framework.permissions import IsAuthenticated
 from patients.models import Patient, Visit, PatientRecall
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
 from patients.serializers.visits import PatientVisitSerializer, UploadXRaySerializer, VisitOptionsSerializer
 
@@ -149,6 +149,7 @@ class UploadXRayAPIView(generics.GenericAPIView):
     queryset = Visit.objects.all()
     serializer_class = UploadXRaySerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     lookup_url_kwarg = 'visitId'
     lookup_field = 'id'
 

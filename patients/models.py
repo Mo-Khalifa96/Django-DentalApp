@@ -56,7 +56,6 @@ class PatientsManager(models.Manager):
                 doc.document.delete(save=False)
             documents.delete()
 
-
 #PATIENTS MODEL 
 class Patient(models.Model):
     class GenderChoices(models.TextChoices):
@@ -320,7 +319,6 @@ class PatientDocumentsManager(models.Manager):
     #Overriding get_query to filter out soft-deleted patients's data
     def get_queryset(self): 
         return super().get_queryset().filter(patient__is_deleted=False)
-
 
 #Patient documents model for document uploads
 class PatientDocument(models.Model):

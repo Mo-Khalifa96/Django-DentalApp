@@ -12,8 +12,8 @@ from patients.docs import get_dentalchart_schema
 from users.permissions import PatientDataPermissions
 from rest_framework.permissions import IsAuthenticated
 from nested_multipart_parser.drf import DrfNestedParser
-from rest_framework.parsers import FormParser, JSONParser
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
 from patients.serializers.patients import (ListPatientSerializer, RetrievePatientSerializer, 
                                            CreatePatientSerializer, FullUpdatePatientSerializer,
@@ -172,6 +172,7 @@ class UploadDocumentAPIView(generics.GenericAPIView):
     queryset = Patient.objects.all()
     serializer_class = UploadDocumentSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     lookup_url_kwarg = 'id'
     lookup_field = 'id'
 
