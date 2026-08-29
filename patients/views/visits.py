@@ -137,7 +137,7 @@ class RetrieveVisitsOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIV
 #API view for individual document uploads
 @extend_schema(
     tags=['Visit History'],
-    responses={200: None},
+    responses={201: None},
     summary='Optional endpoint for x-ray image uploads',
     description=(
         'This is an optional endpoint for uploading individual x-ray images in case you struggled with multipart requests for data + file uploads.'
@@ -167,4 +167,4 @@ class UploadXRayAPIView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_201_CREATED)

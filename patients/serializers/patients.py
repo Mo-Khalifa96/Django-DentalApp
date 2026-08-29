@@ -100,7 +100,7 @@ class CreatePatientSerializer(ValidateBranchMixin, serializers.ModelSerializer):
                     document=doc['document'],
                     type=doc.get('type'),
                     fileName=doc['document'].name,
-                    contentType=doc['document'].content_type,
+                    contentType=getattr(doc['document'], 'content_type', None),
                     sizeBytes=doc['document'].size,
                     notes=doc.get('notes'),
                     uploadedBy=user.name,
@@ -229,7 +229,7 @@ class FullUpdatePatientSerializer(serializers.ModelSerializer):
                     document=doc['document'],
                     type=doc.get('type'),
                     fileName=doc['document'].name,
-                    contentType=doc['document'].content_type,
+                    contentType=getattr(doc['document'], 'content_type', None),
                     sizeBytes=doc['document'].size,
                     notes=doc.get('notes'),
                     uploadedBy=user.name,
@@ -530,7 +530,7 @@ class UploadDocumentSerializer(serializers.ModelSerializer):
             patient_id=patient_id, 
             document=uploaded_document,
             fileName=uploaded_document.name,
-            contentType=uploaded_document.content_type,
+            contentType=getattr(uploaded_document, 'content_type', None),
             sizeBytes=uploaded_document.size
         )
         return document

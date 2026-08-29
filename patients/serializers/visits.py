@@ -183,6 +183,9 @@ class UploadXRaySerializer(serializers.ModelSerializer):
             patient_id=visit.patient_id, 
             image=validated_data['image']
         )
-        
+
+        visit.xray = True
+        visit.save(update_fields=['xray'])
+    
         return xray
     
