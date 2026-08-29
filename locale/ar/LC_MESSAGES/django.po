@@ -395,7 +395,7 @@ msgstr "تم الرفض"
 #, fuzzy
 #| msgid "Expired"
 msgid "Expiring"
-msgstr "منتهي"
+msgstr "سينتهي قريباً"
 
 #: patients/models.py:668
 msgid "Expired"
