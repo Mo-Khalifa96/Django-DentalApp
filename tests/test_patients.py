@@ -19,6 +19,19 @@ def _patient_url(patient_id):
 def _dentalchart_url(patient_id):
     return reverse('retrieve_update_dentalchart', kwargs={'id': patient_id})
 
+def _upload_document_url(patient_id):
+    return reverse('upload_patient_document', kwargs={'id': patient_id})
+
+def _new_pdf(name='document.pdf'):
+    '''Creates a fresh SimpleUploadedFile on each call.'''
+    
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    return SimpleUploadedFile(
+        name,
+        b'%PDF-1.4 fake pdf content for testing',
+        content_type='application/pdf',
+    )
+
 def _create_payload(**overrides):
     base = {
         'name':        'Test Patient',
@@ -31,16 +44,6 @@ def _create_payload(**overrides):
     }
     base.update(overrides)
     return base
-
-def _new_pdf(name='document.pdf'):
-    '''Creates a fresh SimpleUploadedFile on each call.'''
-    
-    from django.core.files.uploadedfile import SimpleUploadedFile
-    return SimpleUploadedFile(
-        name,
-        b'%PDF-1.4 fake pdf content for testing',
-        content_type='application/pdf',
-    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -995,6 +998,123 @@ class TestRetrieveUpdateDeletePatientAPIView:
         patient = patient_factory()
         response = api_client.delete(_patient_url(patient.id))
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# POST  /patients/<id>/documents/upload/
+# ══════════════════════════════════════════════════════════════════════════════
+
+@pytest.mark.django_db
+class TestUploadDocumentAPIView:
+
+    def test_authenticated_user_can_upload_document(
+        self, api_client, admin_user, patient_factory, pdf_file
+    ):
+        patient = patient_factory()
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _upload_document_url(patient.id), {'document': pdf_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert PatientDocument.objects.filter(patient=patient).count() == 1
+
+    def test_upload_requests_return_201_created_without_a_response_body(
+        self, api_client, admin_user, patient_factory, pdf_file
+    ):
+        patient = patient_factory()
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _upload_document_url(patient.id), {'document': pdf_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert not response.data
+
+    def test_upload_captures_filename_content_type_and_size(
+        self, api_client, admin_user, patient_factory, pdf_file
+    ):
+        patient = patient_factory()
+        api_client.force_authenticate(user=admin_user)
+        api_client.post(
+            _upload_document_url(patient.id), {'document': pdf_file}, format='multipart'
+        )
+        doc = PatientDocument.objects.get(patient=patient)
+        assert doc.fileName == pdf_file.name
+        assert doc.contentType == 'application/pdf'
+        assert doc.sizeBytes == pdf_file.size
+
+    def test_upload_for_nonexistent_patient_returns_404(
+        self, api_client, admin_user, pdf_file
+    ):
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _upload_document_url(uuid.uuid4()), {'document': pdf_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_upload_for_soft_deleted_patient_returns_404(
+        self, api_client, admin_user, patient_factory, pdf_file
+    ):
+        """get_serializer_context() looks the patient up via Patient.objects
+        (the filtered manager), so a soft-deleted patient 404s correctly."""
+        patient = patient_factory()
+        patient.is_deleted = True
+        patient.save(update_fields=['is_deleted'])
+
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _upload_document_url(patient.id), {'document': pdf_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_upload_rejects_disallowed_file_extension(
+        self, api_client, admin_user, patient_factory
+    ):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        patient = patient_factory()
+        bad_file = SimpleUploadedFile(
+            'malware.exe', b'not a real document', content_type='application/octet-stream'
+        )
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _upload_document_url(patient.id), {'document': bad_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_upload_rejects_oversized_file(
+        self, api_client, admin_user, patient_factory
+    ):
+        """validate_file_size: PatientDocument.document is capped at 10 MB."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        patient = patient_factory()
+        oversized = SimpleUploadedFile(
+            'huge.pdf', b'0' * (10 * 1024 * 1024 + 1), content_type='application/pdf'
+        )
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _upload_document_url(patient.id), {'document': oversized}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_upload_without_document_returns_400(
+        self, api_client, admin_user, patient_factory
+    ):
+        patient = patient_factory()
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _upload_document_url(patient.id), {}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_unauthenticated_cannot_upload_document(
+        self, api_client, patient_factory, pdf_file
+    ):
+        patient = patient_factory()
+        response = api_client.post(
+            _upload_document_url(patient.id), {'document': pdf_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 # ══════════════════════════════════════════════════════════════════════════════

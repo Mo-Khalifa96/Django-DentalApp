@@ -16,6 +16,9 @@ from patients.models import Visit, XRay, PatientRecall
 def _list_url(patient_id):
     return reverse('list_create_visits', kwargs={'id': patient_id})
 
+def _upload_xray_url(visit_id):
+    return reverse('upload_xray_image', kwargs={'visitId': visit_id})
+
 def _create_payload(**overrides):
     base = {
         'date':       timezone.localdate().isoformat(),
@@ -716,6 +719,131 @@ class TestListCreateVisitsAPIView:
         assert PatientRecall.objects.filter(
             patient=patient, type='checkup', status='pending'
         ).count() == 1
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# POST  /patients/visits/<visitId>/xrays/upload/ 
+# ══════════════════════════════════════════════════════════════════════════════
+
+@pytest.mark.django_db
+class TestUploadXRayAPIView:
+
+    def test_authenticated_user_can_upload_xray(
+        self, api_client, admin_user, dentist_user, patient_factory, visit_factory, png_file
+    ):
+        patient = patient_factory(doctor=dentist_user)
+        visit = visit_factory(patient=patient, doctor=dentist_user)
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _upload_xray_url(visit.id), {'image': png_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert XRay.objects.filter(visit=visit, patient=patient).count() == 1
+
+    def test_upload_sets_visit_xray_flag_true(
+        self, api_client, admin_user, dentist_user, patient_factory, visit_factory, png_file
+    ):
+        patient = patient_factory(doctor=dentist_user)
+        visit = visit_factory(patient=patient, doctor=dentist_user)
+        assert visit.xray is False
+
+        api_client.force_authenticate(user=admin_user)
+        api_client.post(_upload_xray_url(visit.id), {'image': png_file}, format='multipart')
+
+        visit.refresh_from_db()
+        assert visit.xray is True
+
+    def test_upload_response_has_no_body(
+        self, api_client, admin_user, dentist_user, patient_factory, visit_factory, png_file
+    ):
+        patient = patient_factory(doctor=dentist_user)
+        visit = visit_factory(patient=patient, doctor=dentist_user)
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _upload_xray_url(visit.id), {'image': png_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert not response.data
+
+    def test_upload_for_nonexistent_visit_returns_404(
+        self, api_client, admin_user, png_file
+    ):
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _upload_xray_url(uuid.uuid4()), {'image': png_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_upload_for_visit_of_soft_deleted_patient_returns_404(
+        self, api_client, admin_user, dentist_user, patient_factory, visit_factory, png_file
+    ):
+        """
+        get_serializer_context() looks the visit up via Visit.objects (the
+        filtered manager, which excludes visits of soft-deleted patients),
+        so this should return 404 not found.
+        """
+        patient = patient_factory(doctor=dentist_user)
+        visit = visit_factory(patient=patient, doctor=dentist_user)
+        patient.is_deleted = True
+        patient.save(update_fields=['is_deleted'])
+
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _upload_xray_url(visit.id), {'image': png_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_upload_rejects_disallowed_file_extension(
+        self, api_client, admin_user, dentist_user, patient_factory, visit_factory
+    ):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        patient = patient_factory(doctor=dentist_user)
+        visit = visit_factory(patient=patient, doctor=dentist_user)
+        bad_file = SimpleUploadedFile(
+            'malware.exe', b'not a real image', content_type='application/octet-stream'
+        )
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _upload_xray_url(visit.id), {'image': bad_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_upload_rejects_oversized_image(
+        self, api_client, admin_user, dentist_user, patient_factory, visit_factory
+    ):
+        """validate_image_size: XRay.image is capped at 5 MB."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        patient = patient_factory(doctor=dentist_user)
+        visit = visit_factory(patient=patient, doctor=dentist_user)
+        oversized = SimpleUploadedFile(
+            'huge.png', b'0' * (5 * 1024 * 1024 + 1), content_type='image/png'
+        )
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            _upload_xray_url(visit.id), {'image': oversized}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_upload_without_image_returns_400(
+        self, api_client, admin_user, dentist_user, patient_factory, visit_factory
+    ):
+        patient = patient_factory(doctor=dentist_user)
+        visit = visit_factory(patient=patient, doctor=dentist_user)
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(_upload_xray_url(visit.id), {}, format='multipart')
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_unauthenticated_cannot_upload_xray(
+        self, api_client, dentist_user, patient_factory, visit_factory, png_file
+    ):
+        patient = patient_factory(doctor=dentist_user)
+        visit = visit_factory(patient=patient, doctor=dentist_user)
+        response = api_client.post(
+            _upload_xray_url(visit.id), {'image': png_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 # ══════════════════════════════════════════════════════════════════════════════
