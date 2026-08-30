@@ -148,7 +148,8 @@ class RetrieveVisitsOptionsAPIView(BranchToSerializerMixin, generics.GenericAPIV
 class UploadXRayAPIView(generics.GenericAPIView):
     queryset = Visit.objects.all()
     serializer_class = UploadXRaySerializer
-    permission_classes = [IsAuthenticated]
+    required_permission = 'create.visit'
+    permission_classes = [PatientDataPermissions]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
     lookup_url_kwarg = 'visitId'
     lookup_field = 'id'
@@ -157,9 +158,14 @@ class UploadXRayAPIView(generics.GenericAPIView):
         context = super().get_serializer_context()
 
         visit = get_object_or_404(
-            Visit.objects.select_related('patient').only('id', 'patient'),
+            Visit.objects.select_related('patient')\
+              .only('id', 'patient', 'patient__doctor'), 
             id=self.kwargs['visitId']
         )
+        
+        #check object permission 
+        self.check_object_permissions(self.request, visit.patient)
+
         context['visit'] = visit
         return context
 

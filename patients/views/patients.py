@@ -171,14 +171,19 @@ class RetrieveDentalChartOptionsAPIView(generics.GenericAPIView):
 class UploadDocumentAPIView(generics.GenericAPIView):
     queryset = Patient.objects.all()
     serializer_class = UploadDocumentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [PatientDataPermissions]
+    required_permission = 'create.patient'
     parser_classes = [JSONParser, MultiPartParser, FormParser]
     lookup_url_kwarg = 'id'
     lookup_field = 'id'
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        patient = get_object_or_404(Patient.objects.only('id'), id=self.kwargs['id'])
+        patient = get_object_or_404(Patient.objects.only('id', 'doctor'), id=self.kwargs['id'])
+
+        #check object permission
+        self.check_object_permissions(self.request, patient)
+
         context['patient_id'] = patient.id
         return context
     

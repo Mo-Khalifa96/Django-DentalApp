@@ -1116,6 +1116,32 @@ class TestUploadDocumentAPIView:
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+    def test_user_without_create_patient_permission_cannot_upload_document(
+        self, api_client, assistant_user, patient_factory, pdf_file
+    ):
+        patient = patient_factory()
+        api_client.force_authenticate(user=assistant_user)
+        response = api_client.post(
+            _upload_document_url(patient.id), {'document': pdf_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_user_outside_patients_branch_cannot_upload_document(
+        self, api_client, user_factory, patient_factory, branch_factory, pdf_file
+    ):
+        """has_object_permission blocks uploads by users outside the patient's branch."""
+        b1 = branch_factory()
+        b2 = branch_factory()
+        user = user_factory(role='receptionist')  # has update.patient
+        user.branches.set([b1])
+        patient = patient_factory(branch=b2)
+
+        api_client.force_authenticate(user=user)
+        response = api_client.post(
+            _upload_document_url(patient.id), {'document': pdf_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # GET  /patients/options/

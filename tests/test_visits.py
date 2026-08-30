@@ -845,6 +845,31 @@ class TestUploadXRayAPIView:
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+    def test_user_without_create_visit_permission_cannot_upload_xray(
+        self, api_client, receptionist_user, dentist_user, patient_factory, visit_factory, png_file
+    ):
+        """receptionist lacks create.visit by default → blocked at has_permission."""
+        patient = patient_factory(doctor=dentist_user)
+        visit = visit_factory(patient=patient, doctor=dentist_user)
+        api_client.force_authenticate(user=receptionist_user)
+        response = api_client.post(
+            _upload_xray_url(visit.id), {'image': png_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+    def test_dentist_not_assigned_to_patient_cannot_upload_xray(
+        self, api_client, dentist_user, other_dentist_user, patient_factory, visit_factory, png_file
+    ):
+        """object-level check: dentist must be the visit's patient's current doctor."""
+        patient = patient_factory(doctor=other_dentist_user)
+        visit = visit_factory(patient=patient, doctor=other_dentist_user)
+        api_client.force_authenticate(user=dentist_user)
+        response = api_client.post(
+            _upload_xray_url(visit.id), {'image': png_file}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # GET  /patients/visits/options/
