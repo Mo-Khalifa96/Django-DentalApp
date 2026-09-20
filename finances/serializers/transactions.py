@@ -12,17 +12,19 @@ from finances.docs import list_transactions_schema, transactions_options_schema
 @list_transactions_schema
 class TransactionSerializer(serializers.ModelSerializer):
     billId = serializers.PrimaryKeyRelatedField(source='bill', read_only=True)
-    visitId = serializers.PrimaryKeyRelatedField(source='visit', read_only=True)
     patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
+    visitId = serializers.PrimaryKeyRelatedField(source='visit', read_only=True)
+    installmentPlanId = serializers.PrimaryKeyRelatedField(source='bill.installmentPlan', read_only=True)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     method = TranslatedChoiceField(choices=Transaction.PaymentMethodChoices.choices, read_only=True)
+    type = TranslatedChoiceField(choices=Transaction.TransactionTypeChoices.choices, read_only=True)
     status = TranslatedChoiceField(choices=Transaction.TransactionStatusChoices.choices, read_only=True)
 
     class Meta:
         model = Transaction
         fields = ['id', 'billId', 'billDescription', 'patientId', 'patientName', 'visitId', 'treatmentTitle', 
-                  'branchId', 'branchName', 'date', 'amount', 'currency', 'method', 'status', 'note', 'createdBy', 
-                  'isDeleted']
+                  'installmentPlanId', 'branchId', 'branchName', 'date', 'amount', 'currency', 'method', 'type', 
+                  'status', 'note', 'createdBy', 'isDeleted']
 
     def get_fields(self):
         fields = super().get_fields()
@@ -42,32 +44,40 @@ class TransactionSerializer(serializers.ModelSerializer):
 #Create transaction serializer 
 class CreateTransactionSerializer(TransactionSerializer):
     billId = serializers.PrimaryKeyRelatedField(source='bill', queryset=Bill.objects.all())
-    visitId = serializers.PrimaryKeyRelatedField(source='visit', queryset=Visit.objects.all())
     patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
+    visitId = serializers.PrimaryKeyRelatedField(source='visit', queryset=Visit.objects.all())
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     method = TranslatedChoiceField(choices=Transaction.PaymentMethodChoices.choices, 
                                    required=False, allow_blank=True, allow_null=True)
     class Meta(TransactionSerializer.Meta):
         fields = ['id', 'billId', 'patientId', 'patientName', 'visitId', 'branchId', 
-                  'date', 'amount', 'currency', 'method', 'note']
-        read_only_fields = ['id', 'patientId', 'patientName','branchId']
+                  'date', 'amount', 'currency', 'method', 'type', 'note']
+        read_only_fields = ['id', 'patientId', 'patientName', 'type', 'branchId']
 
     def validate(self, data):
-        #Get request user 
+        bill = data.get('bill')
+        visit = data.get('visit')
+        amount = data.get('amount')
+        method = data.get('method', 'cash')
+
+        #if insurance payment, validate insurance is still active
+        coverage = bill.patient.patient_insurance
+        if coverage and method == Transaction.PaymentMethodChoices.INSURANCE:
+            coverage.validate_coverage_for_transaction(transaction_amount=amount)
+                    
+        #Auto-fill other data
+        #get request user
         user = self.context.get('request').user
         
         #assign user's name to 'createdBy' field
-        data['createdBy'] = user.name
-        
-        bill = data.get('bill')
-        visit = data.get('visit')
+        data['createdBy'] = user.name        
         data['patient'] = bill.patient or visit.patient
         data['branch'] = bill.branch or data['patient'].branch
         
         return data
 
 
-#Update transaction serializer
+#Update transaction serializer -- PATCH only
 class UpdateTransactionSerializer(TransactionSerializer):
     method = TranslatedChoiceField(choices=Transaction.PaymentMethodChoices.choices,
                                    required=False, allow_blank=False, allow_null=False)
@@ -75,10 +85,25 @@ class UpdateTransactionSerializer(TransactionSerializer):
                                    required=False, allow_blank=False, allow_null=False)
     
     class Meta(TransactionSerializer.Meta):
-        fields = ['id', 'billId', 'visitId', 'patientId', 'patientName', 'branchId', 
-                  'date', 'amount', 'currency', 'method', 'status', 'note']
-        read_only_fields = ['id', 'billId', 'visitId', 'patientId', 'patientName', 'branchId']
-                
+        fields = ['id', 'billId', 'date', 'amount', 'currency', 'method', 'type', 'status', 'note']
+        read_only_fields = ['id', 'billId', 'type']
+
+    def validate(self, data):
+        #get current bill
+        bill = self.instance.bill
+        
+        #validate insurance is active and can cover transaction costs
+        if 'amount' in data or 'method' in data:
+            amount = data.get('amount', self.instance.amount)
+            method = data.get('method') or self.instance.method
+
+            coverage = bill.patient.patient_insurance
+            if coverage and method == Transaction.PaymentMethodChoices.INSURANCE\
+             and amount and amount != self.instance.amount:
+                updated_amount = amount - self.instance.amount
+                coverage.validate_coverage_for_transaction(transaction_amount=updated_amount)
+            
+        return data
 
 
 #Transactions options serializer
@@ -89,6 +114,8 @@ class TransactionsOptionsSerializer(serializers.Serializer):
     patientChoices = serializers.SerializerMethodField()
     patientVisitChoices = serializers.SerializerMethodField()
     paymentMethodChoices = serializers.SerializerMethodField()
+    transactionTypeChoices = serializers.SerializerMethodField()
+    transactionStatusChoices = serializers.SerializerMethodField()
 
     @extend_schema_field(
         serializers.ListField(
@@ -171,5 +198,25 @@ class TransactionsOptionsSerializer(serializers.Serializer):
         return [
             {'value': choice.value, 'label': str(choice.label)}
             for choice in Transaction.PaymentMethodChoices
+        ]
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.DictField(child=serializers.CharField(allow_blank=True, allow_null=True))
+    ))
+    def get_transactionTypeChoices(self, obj):
+        return [
+            {'value': choice.value, 'label': str(choice.label)}
+            for choice in Transaction.TransactionTypeChoices
+        ]
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.DictField(child=serializers.CharField(allow_blank=True, allow_null=True))
+    ))
+    def get_transactionStatusChoices(self, obj):
+        return [
+            {'value': choice.value, 'label': str(choice.label)}
+            for choice in Transaction.TransactionStatusChoices
         ]
 

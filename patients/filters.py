@@ -3,8 +3,10 @@ from clinic.models import Branch
 from utils.filters import BaseFilterSet
 from finances.models import InsuranceProvider
 from django.db.models import Q, Func, Value, CharField
-from patients.models import Patient, Visit, Appointment, TreatmentPlan, PatientCoverage, PatientRecall
-from django_filters.rest_framework import (FilterSet, CharFilter, ChoiceFilter, ModelChoiceFilter, DateFilter, BooleanFilter)
+from django_filters.rest_framework import (FilterSet, CharFilter, ChoiceFilter, ModelChoiceFilter, 
+                                           DateFilter, BooleanFilter)
+from patients.models import (Patient, Visit, Appointment, TreatmentPlan, PatientCoverage, 
+                             PatientRecall, InboundReferral, OutboundReferral)
 
 
 #FILTERSETS 
@@ -121,3 +123,42 @@ class PatientRecallsFilter(FilterSet):
     class Meta:
         model = PatientRecall
         fields = []
+
+
+#Referrals
+#Inbound referrals filter
+class InboundReferralsFilter(BaseFilterSet):
+    branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
+    referredByUserId = ModelChoiceFilter(field_name='referredByUser', queryset=User.objects.filter(role__in=['admin', 'dentist', 'assistant']))
+    speciality = ChoiceFilter(choices=InboundReferral.SpecialityChoices.choices)
+
+    class Meta:
+        model = InboundReferral
+        fields = []
+
+
+#Outbound referrals filter
+class OutboundReferralsFilter(BaseFilterSet):
+    branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
+    referredToUserId = ModelChoiceFilter(field_name='referredToUser', queryset=User.objects.filter(role__in=['admin', 'dentist', 'assistant']))
+    referredToEntityId = ModelChoiceFilter(field_name='referredToEntity', queryset=InboundReferral.objects.all())
+    status = ChoiceFilter(choices=OutboundReferral.ReferralStatusChoices.choices)
+
+    class Meta:
+        model = OutboundReferral
+        fields = []
+
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     #get branch filter 
+    #     branch_filter = self.get_branch_filter()
+    #     if branch_filter is None:
+    #         self.filters['referredToEntityId'].field.choices = []
+    #         return
+
+    #     #filter by branch (if provided)
+    #     #Get inbound referrers ids list (scooped by user's own branch)
+    #     referrers_ids = InboundReferral.objects.filter(**branch_filter).values_list('id', flat=True)
+     
+    #     #populated filter fields with the obtained choices
+    #     self.filters['referredToEntityId'].field.choices = [(ref_id, ref_id) for ref_id in referrers_ids if ref_id]

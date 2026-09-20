@@ -1,15 +1,11 @@
 from utils.base_views import *
-from clinic.models import Branch
-from utils.validators import validate_uuid
 from rest_framework import status, generics
 from rest_framework.response import Response
 from finances.models import InsuranceProvider
 from utils.filters import CustomOrderingFilter
 from rest_framework.filters import SearchFilter
 from users.utils import get_required_permission
-from utils.mixins import BranchToSerializerMixin
 from users.permissions import SystemUserPermissions
-from rest_framework.exceptions import ValidationError
 from finances.filters import InsuranceProvidersFilter
 from django.utils.translation import gettext_lazy as _
 from rest_framework.permissions import IsAuthenticated

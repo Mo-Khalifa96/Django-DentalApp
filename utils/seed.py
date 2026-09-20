@@ -568,7 +568,7 @@ def seed_treatment_plans(patients, doctors, procedures, num_plans=60):
             sessions=sum(item['session'] for item in treatment_items),
             status=random.choices(statuses, weights=status_weights)[0],
             title=faker.text(max_nb_chars=70) if random.random() < 0.85 else None,
-            installmentMonths=num_installments
+            # installmentMonths=num_installments
         )
         plan.save()
 

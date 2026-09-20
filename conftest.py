@@ -229,7 +229,6 @@ def treatment_plan_factory():
             status=overrides.pop('status', 'active'),
             currency=overrides.pop('currency', '$'),
             totalCost=overrides.pop('totalCost', '0.00'),
-            installmentMonths=overrides.pop('installmentMonths', None),
             sessions=overrides.pop('sessions', None),
             **overrides,
         )

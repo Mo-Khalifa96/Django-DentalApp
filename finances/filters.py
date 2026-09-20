@@ -2,7 +2,7 @@ from django.db.models import F,Q
 from clinic.models import Branch
 from patients.models import Patient
 from utils.filters import BaseFilterSet
-from finances.models import Bill, Transaction, Invoice, InsuranceProvider
+from finances.models import Bill, Transaction, Invoice, InstallmentPlan, InsuranceProvider
 from django_filters.rest_framework import (FilterSet, CharFilter, ChoiceFilter, ModelChoiceFilter, 
                                            BooleanFilter, DateFilter)
 
@@ -12,8 +12,9 @@ from django_filters.rest_framework import (FilterSet, CharFilter, ChoiceFilter, 
 class BillsFilter(FilterSet):  #BaseFilterSet
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
     patientId = ModelChoiceFilter(field_name='patient', queryset=Patient.objects.all())
-    status = ChoiceFilter(choices=[('unpaid', 'unpaid'), ('partial', 'partial'), ('paid', 'paid')])
+    status = ChoiceFilter(choices=Bill.BillStatusChoices.choices)
     date = DateFilter(field_name='createdAt', lookup_expr='date')
+    hasInstallmentPlan = BooleanFilter(method='filter_byInstPlan')
     isDeleted = BooleanFilter(method='filter_deleted')
 
     class Meta:
@@ -25,6 +26,13 @@ class BillsFilter(FilterSet):  #BaseFilterSet
             return queryset.filter(isDeleted=False)
         elif value == True:
             return queryset.filter(isDeleted=True)
+        return queryset
+    
+    def filter_byInstPlan(self, queryset, name, value):
+        if value == False:
+            return queryset.filter(hasInstallmentPlan=False)
+        elif value == True:
+            return queryset.filter(hasInstallmentPlan=True)
         return queryset
 
     # def __init__(self, *args, **kwargs):
@@ -46,6 +54,7 @@ class TransactionsFilter(FilterSet):
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
     patientId = ModelChoiceFilter(field_name='patient', queryset=Patient.objects.all())
     date = DateFilter(field_name='date', lookup_expr='exact')
+    type = ChoiceFilter(choices=Transaction.TransactionTypeChoices.choices)
     isDeleted = BooleanFilter(method='filter_deleted')
 
     def filter_deleted(self, queryset, name, value):
@@ -58,7 +67,6 @@ class TransactionsFilter(FilterSet):
     class Meta:
         model = Transaction
         fields = []
-
 
 
 #Invoices filter
@@ -80,6 +88,18 @@ class InvoicesFilter(FilterSet):
 
     class Meta:
         model = Invoice
+        fields = []
+
+
+#Installments filter
+class InstallmentsFilter(FilterSet):
+    branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
+    status = ChoiceFilter(choices=InstallmentPlan.InstallmentPlanStatusChoices.choices)
+    installmentMonths = ChoiceFilter(choices=InstallmentPlan.InstallmentMonthsChoices.choices)
+    paidAt = DateFilter(field_name='installments__paidAt', lookup_expr='date')
+
+    class Meta:
+        model = InstallmentPlan
         fields = []
 
 

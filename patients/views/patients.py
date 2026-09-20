@@ -1,4 +1,6 @@
 from utils.base_views import *
+from decimal import Decimal
+from finances.models import Bill
 from patients.models import Patient
 from rest_framework import status, generics
 from rest_framework.response import Response
@@ -12,9 +14,11 @@ from patients.docs import get_dentalchart_schema
 from users.permissions import PatientDataPermissions
 from rest_framework.permissions import IsAuthenticated
 from nested_multipart_parser.drf import DrfNestedParser
+from django.db.models.functions import Coalesce, Greatest
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
+from django.db.models import F, Sum, Value, Subquery, OuterRef, DecimalField, ExpressionWrapper
 from patients.serializers.patients import (ListPatientSerializer, RetrievePatientSerializer, 
                                            CreatePatientSerializer, FullUpdatePatientSerializer,
                                            PartialUpdatePatientSerializer, DentalChartSerializer, 
@@ -40,17 +44,35 @@ class ListCreatePatientsAPIView(FilterListCreateAPIView):
         self.required_permission = get_required_permission('patients', request, self)
         super().initial(request, *args, **kwargs)
 
-
     def get_queryset(self):
         user = self.request.user
         if self.request.method == 'POST':
             return Patient.objects.select_related('patient_dentalchart', 'patient_insurance')\
                     .prefetch_related('patient_documents').all()
         
+        #Create a patient outstanding balance subquery 
+        outstanding_subquery = Bill.objects.filter(patient_id=OuterRef('id'))\
+            .order_by().values('patient_id').annotate(
+                total_outstanding=Sum(
+                    ExpressionWrapper(
+                        F('totalAmount') - Coalesce(F('totalPaid'), Decimal('0')),   #accounts for `totalPaid == None`
+                        output_field=DecimalField()
+                    )
+                )
+            ).values('total_outstanding')
+
         #Fetch patients data 
         patients = Patient.objects.select_related(
                 'patient_insurance', 'branch', 'doctor'
-            ).all()
+            ).annotate(
+                outstandingBalance=Greatest(
+                    Coalesce(
+                        Subquery(outstanding_subquery, output_field=DecimalField()),
+                        Value(Decimal('0'), output_field=DecimalField())
+                    ),
+                    Value(Decimal('0'), output_field=DecimalField())
+                )
+            )
 
         #Filter queryset for list view by role
         if getattr(user, 'role', None) == 'admin':

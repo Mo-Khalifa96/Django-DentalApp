@@ -15,8 +15,8 @@ from rest_framework.exceptions import ValidationError
 from users.permissions import PatientDataPermissions
 from django.utils.translation import gettext_lazy as _
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import F, Q, Case, When, Value, CharField
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import F, Q, Case, When, Value, CharField, BooleanField
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
 from finances.serializers.bills import (BillSerializer, CreateBillSerializer,
                                         RetrieveBillSerializer, UpdateBillSerializer,
@@ -29,9 +29,9 @@ from finances.serializers.bills import (BillSerializer, CreateBillSerializer,
 @extend_schema(tags=['Payments and Billing'])
 class ListCreateBillsAPIView(FilterListCreateAPIView):
     permission_classes = [PatientDataPermissions]
-    ordering = ['branchName', '-updatedAt']
-    ordering_fields = ['patientName', 'branchName', 'subtotal', 'totalAmount', 'status', 
-                       'createdAt', 'updatedAt', 'createdBy']
+    ordering = ['-updatedAt']
+    ordering_fields = ['patientName', 'branchName', 'subtotal', 'totalAmount', 'totalPaid', 
+                       'status', 'createdAt', 'updatedAt', 'createdBy']
     search_fields = ['description', 'patientName', 'branchName']
     filterset_class = BillsFilter
     filter_backends = [DjangoFilterBackend, SearchFilter, CustomOrderingFilter]
@@ -45,27 +45,34 @@ class ListCreateBillsAPIView(FilterListCreateAPIView):
         super().initial(request, *args, **kwargs)
 
     def get_queryset(self):
-        #get current user
-        user = self.request.user 
 
-        status_annotation = {
+        #queryset annotations
+        annotations = {
             'status': Case(
                         When(Q(totalPaid=0) | Q(totalPaid__isnull=True), then=Value('unpaid')),
                         When(totalAmount__gt=F('totalPaid'), then=Value('partial')),
                         When(totalAmount__lte=F('totalPaid'), then=Value('paid')),
                         output_field=CharField(),
-                    )
-            }
+            ),
+            'hasInstallmentPlan': Case(
+                When(installmentPlan__isnull=False, then=Value(True)),
+                When(installmentPlan__isnull=True, then=Value(False)),
+                output_field=BooleanField()
+            )
+        }
+
+        #get current user
+        user = self.request.user 
 
         #admin gets all objects
         if getattr(user, 'role', None) == 'admin':
             return Bill.all_objects.prefetch_related('visits')\
-             .select_related('patient', 'treatment', 'branch').all().annotate(**status_annotation)
+             .select_related('patient', 'treatment', 'branch').all().annotate(**annotations)
 
 
         #fetch bills data normally for non-admins
         bills = Bill.objects.prefetch_related('visits')\
-            .select_related('patient', 'treatment', 'branch').all().annotate(**status_annotation)
+            .select_related('patient', 'treatment', 'branch').all().annotate(**annotations)
 
         #return on post
         if self.request.method == 'POST':
@@ -98,15 +105,40 @@ class RetrieveUpdateDeleteBillAPIView(RetrieveUpdateDeleteAPIView):
         super().initial(request, *args, **kwargs)
 
     def get_queryset(self):
-        #admin gets all objects
-        user = self.request.user 
-        if getattr(user, 'role', None) == 'admin':
-            return Bill.all_objects.prefetch_related('visits')\
-            .select_related('patient', 'treatment', 'branch').all()
-        else:
-            return Bill.objects.prefetch_related('visits')\
-            .select_related('patient', 'treatment', 'branch').all()
+        #queryset annotations
+        annotations = {
+            'status': Case(
+                        When(Q(totalPaid=0) | Q(totalPaid__isnull=True), then=Value('unpaid')),
+                        When(totalAmount__gt=F('totalPaid'), then=Value('partial')),
+                        When(totalAmount__lte=F('totalPaid'), then=Value('paid')),
+                        output_field=CharField(),
+            ),
+            'hasInstallmentPlan': Case(
+                When(installmentPlan__isnull=False, then=Value(True)),
+                When(installmentPlan__isnull=True, then=Value(False)),
+                output_field=BooleanField()
+            )
+        }
 
+        #admin gets all objects
+        user = self.request.user
+        req_method = self.request.method
+        if getattr(user, 'role', None) == 'admin':
+            bills = Bill.all_objects.prefetch_related('visits')\
+            .select_related('patient', 'treatment', 'branch').all()
+            if req_method == 'GET':
+                return bills.annotate(**annotations)  #annotate for retrieve view
+            elif req_method in ('PUT', 'PATCH'):
+                return bills.exclude(installmentPlan__isnull=False)
+            return bills
+        else:
+            bills = Bill.objects.prefetch_related('visits')\
+            .select_related('patient', 'treatment', 'branch').all()
+            if req_method == 'GET':
+                return bills.annotate(**annotations)
+            elif req_method in ('PUT', 'PATCH'):
+                return bills.exclude(installmentPlan__isnull=False)
+            return bills
 
     def get_serializer_class(self):
         if self.request.method in ('PUT', 'PATCH'):

@@ -144,6 +144,8 @@ class PatientDataPermissions(SystemUserPermissions):
             return obj.doctor == request.user 
         elif hasattr(obj, 'patient') and obj.patient:
             return obj.patient.doctor == request.user
+        elif hasattr(obj, 'treatment') and obj.treatment:
+            return obj.treatment.doctor == request.user
         else:
             #fallback to has_permission() check
             # logger.warning(

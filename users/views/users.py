@@ -555,6 +555,26 @@ class PermissionsAPIView(GenericAPIView):
                 'module': 'Patient Recalls'
             },
             {
+                'key': 'view.referrals',
+                'label': 'View referrals list',
+                'module': 'Referrals'
+            },
+            {
+                'key': 'create.referral',
+                'label': 'Create new referral',
+                'module': 'Referrals'
+            },
+            {
+                'key': 'update.referral',
+                'label': 'Update referral',
+                'module': 'Referrals'
+            },
+            {
+                'key': 'delete.referral',
+                'label': 'Delete referral',
+                'module': 'Referrals'
+            },
+            {
                 'key': 'view.doctorSchedules',
                 'label': 'View doctor schedules',
                 'module': 'Doctor Schedules'

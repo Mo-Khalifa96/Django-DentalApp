@@ -1,5 +1,6 @@
 import logging
 from decimal import Decimal
+from django.utils import timezone
 from django.db import transaction 
 from rest_framework import serializers
 from patients.utils import TEETH_CHOICES
@@ -8,6 +9,7 @@ from utils.mixins import UserPermissionsMixin
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 from patients.docs import treatmentplans_options_schema
+from finances.models import InstallmentPlan, Installment
 from patients.models import TreatmentPlan, TreatmentPlanItem
 from services.translation.serializers import TranslatedChoiceField
 
@@ -35,12 +37,11 @@ class TreatmentPlanSerializer(UserPermissionsMixin, serializers.ModelSerializer)
     items = TreatmentPlanItemsSerializer(many=True, source='treatment_items', required=True, allow_empty=False)
     status = TranslatedChoiceField(choices=TreatmentPlan.TreatmentStatusChoices.choices,
                                    required=False, allow_blank=True, allow_null=True)
-    installmentMonths = TranslatedChoiceField(choices=TreatmentPlan.InstallmentMonthsChoices.choices, 
-                                              required=False, allow_blank=True, allow_null=True)
+    
     class Meta:
         model = TreatmentPlan
         fields = ['id', 'patientId', 'title', 'status', 'items', 'currency', 'totalCost', 
-                  'installmentMonths', 'sessions', 'createdAt']
+                  'sessions', 'createdAt']
         read_only_fields = ['id', 'patientId', 'createdAt']
 
 
@@ -48,7 +49,7 @@ class TreatmentPlanSerializer(UserPermissionsMixin, serializers.ModelSerializer)
 class CreateTreatmentPlanSerializer(TreatmentPlanSerializer):
     class Meta(TreatmentPlanSerializer.Meta):
         fields = ['id', 'patientId', 'title', 'status', 'items', 'currency', 'totalCost', 
-                  'installmentMonths', 'sessions', 'createdAt']
+                  'sessions', 'createdAt']
         read_only_fields = ['id', 'patientId', 'createdAt']
 
     
@@ -114,14 +115,12 @@ class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
     items = TreatmentPlanItemsSerializer(many=True, source='treatment_items', required=False, allow_empty=False)
     status = TranslatedChoiceField(choices=TreatmentPlan.TreatmentStatusChoices.choices,
                                    required=False, allow_blank=False, allow_null=False)
-    installmentMonths = TranslatedChoiceField(choices=TreatmentPlan.InstallmentMonthsChoices.choices, 
-                                              required=False, allow_blank=False, allow_null=False)
 
     class Meta(TreatmentPlanSerializer.Meta):
-        fields = ['id', 'patientId', 'title', 'status', 'items', 'totalCost', 'installmentMonths', 'sessions']
+        fields = ['id', 'patientId', 'title', 'status', 'items', 'totalCost', 'sessions']
         read_only_fields = ['id', 'patientId']
         extra_kwargs = {field: {'required': False} for field in 
-            ('title', 'status', 'items', 'totalCost', 'installmentMonths', 'sessions')
+            ('title', 'status', 'items', 'totalCost', 'sessions')
             }
 
     def validate(self, data):
@@ -175,34 +174,79 @@ class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
                  for item in updated_items
               ]
             )
+
+        
+        #preserve old cost before updating for later checks
+        totalCost_old = instance.totalCost
         
         #Update remaining fields
         for field, value in validated_data.items():
             setattr(instance, field, value)   #i.e. instance.field = value
 
-        #update instance
+        #Fetch installment plan for updates
+        plan = getattr(instance, 'installment_plan', None)
+
+        #Check if treatment cost changed to change installment plan's totalAmount accordingly
+        totalCost_new = validated_data.get('totalCost')
+        cost_changed = totalCost_new is not None and totalCost_new != totalCost_old
+        if cost_changed and plan:
+            cost_difference = round(totalCost_new - totalCost_old, 2)
+            plan.totalAmount = Decimal(str(plan.totalAmount + cost_difference))
+            #update installment plan's total
+            plan_update_fields = ['totalAmount', 'updatedAt']
+    
+            #update amount per installment on the plan  #TODO -- move to a signal instead
+            remaining_installments = plan.installments.filter(type='installment', paidAt__isnull=True)
+            total_remaining = plan.totalAmount - (plan.totalPaid or Decimal('0')) #- (plan.downPayment or Decimal('0'))
+            if remaining_installments:
+                amount_per_installment = Decimal(str(total_remaining / len(remaining_installments)))
+                remaining_installments.update(amount=amount_per_installment)
+            else:
+                if cost_difference > 0:
+                    #add new installment with remaining
+                    #update installment months
+                    plan.installmentMonths = plan.installmentMonths+1
+                    plan_update_fields.append('installmentMonths')
+                    
+                    #Create new installment with remaining amount
+                    Installment.objects.create(
+                        installmentPlan=plan,
+                        amount=total_remaining,
+                        sequence=(plan.installmentMonths+1),
+                        dueDate=timezone.localdate(timezone.now()),
+                        type='installment'
+                    )
+            
+            #update installment plan
+            plan.save(update_fields=plan_update_fields)
+
+        #update treatment instance
         instance.save(update_fields=list(validated_data.keys()))
+        
+        #update the amount on the associated bill too -- let the bill update after the treatment
+        if cost_changed:
+            if plan and plan.active_bill:
+                plan.active_bill.totalAmount = plan.totalAmount
+                plan.active_bill.save(update_fields=['totalAmount', 'treatmentTitle', 'procedures', 'updatedAt'])
+            else:
+                treatment_bill = instance.treatment_bills.filter(treatment_id=instance.id).first()
+                if treatment_bill:
+                    treatment_bill.totalAmount = instance.totalAmount
+                    treatment_bill.save(update_fields=['totalAmount', 'treatmentTitle', 'procedures', 'updatedAt'])
+
         return instance
 
 
 #Treatment plans options serializer
 @treatmentplans_options_schema
 class TreatmentPlanOptionsSerializer(serializers.Serializer):
-    installmentOptions = serializers.SerializerMethodField()
     treatmentStatusChoices = serializers.SerializerMethodField()
     procedureChoices = serializers.SerializerMethodField()
-    itemStatusChoices = serializers.SerializerMethodField()
     validToothNumbers = serializers.SerializerMethodField()
-
-    @extend_schema_field(
-        serializers.ListField(
-            child=serializers.DictField(child=serializers.CharField())
-    ))
-    def get_installmentOptions(self, obj):
-        return [
-            {'value': choice.value, 'label': str(choice.label)}
-             for choice in TreatmentPlan.InstallmentMonthsChoices
-        ]
+    itemStatusChoices = serializers.SerializerMethodField()
+    installmentMonthsChoices = serializers.SerializerMethodField()
+    installmentPlanStatusChoices = serializers.SerializerMethodField()
+    installmentStatusChoices = serializers.SerializerMethodField()
 
     @extend_schema_field(
         serializers.ListField(
@@ -234,6 +278,16 @@ class TreatmentPlanOptionsSerializer(serializers.Serializer):
         serializers.ListField(
             child=serializers.DictField(child=serializers.CharField())
     ))
+    def get_validToothNumbers(self, obj):
+        return [
+            {'value': tooth[0], 'label': tooth[1]}
+             for tooth in TEETH_CHOICES
+        ]
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.DictField(child=serializers.CharField())
+    ))
     def get_itemStatusChoices(self, obj):
         return [
             {'value': choice.value, 'label': str(choice.label)}
@@ -244,9 +298,28 @@ class TreatmentPlanOptionsSerializer(serializers.Serializer):
         serializers.ListField(
             child=serializers.DictField(child=serializers.CharField())
     ))
-    def get_validToothNumbers(self, obj):
+    def get_installmentMonthsChoices(self, obj):
         return [
-            {'value': tooth[0], 'label': tooth[1]}
-             for tooth in TEETH_CHOICES
+            {'value': choice.value, 'label': str(choice.label)}
+             for choice in InstallmentPlan.InstallmentMonthsChoices
         ]
 
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.DictField(child=serializers.CharField())
+    ))
+    def get_installmentPlanStatusChoices(self, obj):
+        return [
+            {'value': choice.value, 'label': str(choice.label)}
+             for choice in InstallmentPlan.InstallmentPlanStatusChoices
+        ]
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.DictField(child=serializers.CharField())
+    ))
+    def get_installmentStatusChoices (self, obj):
+        return [
+            {'value': choice.value, 'label': str(choice.label)}
+             for choice in Installment.InstallmentStatusChoices
+        ]

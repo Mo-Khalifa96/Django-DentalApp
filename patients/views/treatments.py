@@ -77,13 +77,15 @@ class RetrieveUpdateDeleteTreatmentPlanAPIView(RetrieveUpdateDeleteAPIView):
         try:
             if self.kwargs.get('id'):
                 obj = TreatmentPlan.objects.prefetch_related('treatment_items').get(
-                    id=self.kwargs['treatmentId'],
+                    id=self.kwargs.get('treatmentId'),
                     patient_id=self.kwargs['id'],
                 )
-            else:
+            elif self.kwargs.get('treatmentId'):
                 obj = TreatmentPlan.objects.prefetch_related('treatment_items').get(
                     id=self.kwargs['treatmentId']
                 )
+            else:
+                raise Http404
         except (TreatmentPlan.DoesNotExist, Http404):
             raise NotFound(_('The requested treatment plan was not found or does not exist.'))
         

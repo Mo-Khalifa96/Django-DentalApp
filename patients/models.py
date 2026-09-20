@@ -2,6 +2,7 @@ import uuid
 from decimal import Decimal
 from django.db.models import Q
 from django.utils import timezone
+from rest_framework import serializers
 from django.db import models, transaction
 from patients.utils import normalize_phone_number
 from utils.exceptions import AppointmentConflictError
@@ -99,6 +100,9 @@ class Patient(models.Model):
     nextAppointment = models.DateField(blank=True, null=True)
     status = models.CharField(max_length=50, choices=StatusChoices.choices, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
+    referredByName = models.CharField(max_length=300, blank=True, null=True)
+    referredBy = models.ForeignKey('patients.InboundReferral', related_name='referred_patients',
+                                on_delete=models.SET_NULL, null=True, blank=True, db_index=True)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
     
@@ -153,10 +157,15 @@ class Patient(models.Model):
         if self.doctor:
             #assign current doctor's name
             self.doctorName = self.doctor.name
-
+        
             #fallback condition for branch identification
             # if not self.branch:
             #     self.branch = self.doctor.branch
+
+        if self.referredBy:
+            self.referredByName = self.referredBy.name
+        else:
+            self.referredByName = None
 
         #save patient to database 
         super().save(*args, **kwargs)
@@ -170,7 +179,7 @@ class Patient(models.Model):
             #create empty insurance coverage record
             provider = provider or None
             PatientCoverage.objects.create(patient=self, provider=provider)
-    
+
 
 #Dental Chart manager
 class DentalChartManager(models.Manager):
@@ -401,7 +410,6 @@ class Appointment(models.Model):
     #to access all objects
     all_objects = models.Manager()
 
-
     class Meta:
         db_table = 'Appointments'
         verbose_name_plural = 'Appointments'
@@ -495,12 +503,6 @@ class TreatmentPlan(models.Model):
         COMPLETED = 'completed', _('completed')
         CANCELLED = 'cancelled', _('cancelled')
     
-    class InstallmentMonthsChoices(models.IntegerChoices):
-        FULL_PAYMENT = 1, _('Full payment')
-        THREE_MONTHS = 3, _('3 months')
-        SIX_MONTHS = 6, _('6 months')
-        TWELVE_MONTHS = 12, _('12 months')
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     #Many-to-One relationship to the User model (i.e., many treatments, one doctor)
     doctor = models.ForeignKey('users.User', related_name='doctor_treatmentplans', on_delete=models.SET_NULL, null=True, db_index=True)
@@ -512,7 +514,7 @@ class TreatmentPlan(models.Model):
     status = models.CharField(max_length=50, choices=TreatmentStatusChoices.choices, blank=True, null=True)
     currency = models.CharField(max_length=5, blank=True, null=True)
     totalCost = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
-    installmentMonths = models.PositiveSmallIntegerField(choices=InstallmentMonthsChoices.choices, blank=True, null=True)
+    # installmentMonths = models.PositiveSmallIntegerField(choices=InstallmentMonthsChoices.choices, blank=True, null=True)
     sessions = models.PositiveSmallIntegerField(blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
     
@@ -581,7 +583,7 @@ class PatientRecallsManager(models.Manager):
     def get_queryset(self): 
         return super().get_queryset().filter(patient__is_deleted=False) 
 
-#PATIENT RECALL MODEL 
+#PATIENT RECALLS MODEL 
 class PatientRecall(models.Model):
     class RecallTypeChoices(models.TextChoices):
         CHECKUP = 'checkup', _('Checkup')
@@ -600,7 +602,7 @@ class PatientRecall(models.Model):
     #Many-to-One relationship to the Patient model (i.e., many recalls, one patient)
     patient = models.ForeignKey(Patient, related_name='patient_recalls', on_delete=models.CASCADE, db_index=True)
     #Many-to-One relationship to the Branch model (i.e., many recalls, one branch)
-    branch = models.ForeignKey('clinic.Branch', related_name='branch_patient_recalls', on_delete=models.CASCADE, blank=True, null=True, db_index=True)
+    branch = models.ForeignKey('clinic.Branch', related_name='branch_patient_recalls', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)  #Changed cascade to set_null
     #other fields
     phone = models.CharField(max_length=50, blank=True, null=True, validators=[validate_phone_number])
     type = models.CharField(max_length=50, choices=RecallTypeChoices.choices)
@@ -664,12 +666,13 @@ class PatientCoverage(models.Model):
         ACTIVE = 'active', _context('insurance_status', 'Active')
         EXPIRING = 'expiring', _('Expiring')
         EXPIRED = 'expired', _('Expired')
+        LIMIT_REACHED = 'limit_reached', _('Limit Reached')
         NONE = 'none', _('None')
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     #One-to-One relationship to the Patient model (i.e. one patient, one insurance)
     patient = models.OneToOneField(Patient, related_name='patient_insurance', on_delete=models.CASCADE, db_index=True)
-    #Many-to-One relationships to InsuranceProvider (i.e., coverages, one provider)
+    #Many-to-One relationships to InsuranceProvider (i.e., many coverages, one provider)
     provider = models.ForeignKey('finances.InsuranceProvider', related_name='provider_coverages', 
                   on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
     providerName = models.CharField(max_length=300, blank=True, null=True)
@@ -678,6 +681,7 @@ class PatientCoverage(models.Model):
     annualMax = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], blank=True, null=True)
     usedYTD = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], blank=True, null=True)
     deductibleMet = models.BooleanField(blank=True, null=True)
+    coveragePercent = models.IntegerField(blank=True, null=True)
     currency = models.CharField(max_length=5, blank=True, null=True)
     
     effectiveFrom = models.DateField(null=True, blank=True)
@@ -707,15 +711,212 @@ class PatientCoverage(models.Model):
 
     @transaction.atomic
     def save(self, *args, **kwargs):
-        #handle annualMax
+        #handle provider-related information
         if self.provider:
             self.providerName = self.provider.name
+
+            #determine annual max from provider
             if not self.annualMax and self.provider.annualMax:
                 self.annualMax = self.provider.annualMax
+
+            #determine coverage percent
+            if not self.coveragePercent:
+                self.coveragePercent = self.provider.coveragePercent
+
+            #determine if deducible is met
+            if not self.deductibleMet:
+                self.deductibleMet = self.deductibleMet if (self.coveragePercent != 100) else True
+
+            #check if the allowance has been used up 
+            if isinstance(self.usedYTD, Decimal) and isinstance(self.annualMax, Decimal)\
+             and self.usedYTD >= self.annualMax:
+                self.eligibilityStatus = 'limit_reached'
+                self.eligibilityChecked = timezone.localdate(timezone.now())
+
+        #handle null usedYTD
+        if self.usedYTD in (None, ''):
+            self.usedYTD = Decimal('0')
 
         #handle status
         if not self.eligibilityStatus:
             self.eligibilityStatus = self.EligibilityStatusChoices.NONE
+
         
         #save changes 
+        super().save(*args, **kwargs)
+
+    def validate_coverage_for_transaction(self, transaction_amount):
+        '''Validates patient insurance can coverage transaction costs.'''
+
+        #validate if patient has a provider
+        if not self.provider: #or (coverage.providerName and not (isinstance(coverage.annualMax, Decimal) or isinstance(coverage.usedYTD, Decimal))):
+            raise serializers.ValidationError({'method': _(f'The current patient is not associated with any known insurance provider. ' #or has an outdated coverage plan. '
+                                                           f'Either update their insurance details or change the transaction method to complete the transaction.')})
+
+        #validate if insurance coverage still active
+        if self.eligibilityStatus == PatientCoverage.EligibilityStatusChoices.EXPIRED:
+            raise serializers.ValidationError({'method': _(f"The current patient's insurance coverage is expired. "
+                                                           f"Either update their insurance details or change the transaction method to complete the transaction.")})
+        elif self.eligibilityStatus == PatientCoverage.EligibilityStatusChoices.LIMIT_REACHED:
+            raise serializers.ValidationError({'method': _(f"The current patient's insurance coverage has reached the maximum allowance from their insurer. "
+                                                           f"Either update their insurance details or change the transaction method to complete the transaction.")})
+
+        #validate if deductible required for insurance benefits is met
+        elif isinstance(self.coveragePercent, int) and (self.coveragePercent < 100 ) and (self.deductibleMet == False):
+            raise serializers.ValidationError({'method': _(f"The current patient didn't meet the minimum deductible amount required to activate their insurance coverage. "
+                                                           f"Either update their insurance details or change the transaction method to complete the transaction.")})
+
+        #validate the transaction amount doesn't exceed the coverage's annual max
+        if isinstance(self.annualMax, Decimal) and isinstance(self.usedYTD, Decimal)\
+            and (self.usedYTD + transaction_amount > self.annualMax):
+            raise serializers.ValidationError({'method': _(f"The transaction amount exceeds the maximum allowed by the patient's insurance coverage ({self.annualMax})"
+                                                           f"given their yearly usage to date ({self.usedYTD}). "
+                                                           f"Either divide the payment into different transactions and/or change the transaction method to complete the transaction.")})
+    
+        return True
+        
+
+#REFERRALS
+#Inbound Referrals Manager -- linked to branch since patients are referred to this branch/clinic
+class InboundReferralsManager(models.Manager):
+    #Overriding get_query to filter out soft-deleted branches
+    def get_queryset(self): 
+        return super().get_queryset().filter(
+                models.Q(branch__isnull=True) | models.Q(branch__is_deleted=False),
+                isDeleted=False
+            )
+
+    @transaction.atomic
+    def delete_referral(self, user, referral):
+        '''Custom method to soft-delete referrals.'''
+        if user.role == 'admin':
+            referral.delete()   #Patient.referredBy falls back to SET_NULL
+        else:
+            referral.isDeleted = True
+            referral.save(update_fields=['isDeleted'])
+        return True
+
+#INBOUND REFERRALS MODEL  -- patients referred from outside source to clinic
+class InboundReferral(models.Model):
+    class SpecialityChoices(models.TextChoices):
+        GENERAL = 'general', _('General')
+        ORTHODONTICS = 'orthodontics', _('Orthodontics')
+        ORAL_SURGERY =  'oral_surgery', _('Oral Surgery') 
+        ENDODONTICS = 'endodontics', _('Endodontics')
+        PERIODONTICS = 'periodontics', _('Periodontics') 
+        PROSTHODONTICS = 'prosthodontics', _('Prosthodontics') 
+        PEDIATRIC = 'pediatric', _('Pediatric') 
+        RADIOLOGY = 'radiology', _('Radiology') 
+        OTHER = 'other', _('Other')
+
+    #model fields
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    #Many-to-One relationship to the User and Branch models (i.e., many inbound-referrals, one doctor, one branch)
+    referredByUser = models.ForeignKey('users.User', related_name='doctor_outbound_referrals', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
+    branch = models.ForeignKey('clinic.Branch', related_name='branch_inbound_referrals',   #NOTE: this is the RECEIVING branch
+                               blank=True, null=True, on_delete=models.SET_NULL, db_index=True) 
+    name = models.CharField(max_length=300, null=True)  #NULL for auto-assignment
+    clinic = models.CharField(max_length=255, blank=True, null=True)
+    speciality = models.CharField(max_length=32, choices=SpecialityChoices.choices)
+    phone = models.CharField(max_length=50, blank=True, null=True, validators=[validate_phone_number])
+    email = models.EmailField(unique=False, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    isDeleted = models.BooleanField(default=False)
+
+    #Objects after filtering by manager
+    objects = InboundReferralsManager()
+    
+    #to access all objects
+    all_objects = models.Manager()
+
+    class Meta: 
+        db_table = 'InboundReferrals'
+        verbose_name_plural = 'InboundReferrals'
+        ordering = ['branch__name', 'name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['referredByUser', 'branch'],   #On user as referral source per branch
+                condition=models.Q(referredByUser__isnull=False),
+                name='unique_referredByUser_per_branch'
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.name} ({self.speciality})'
+
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        #handle name and email auto-assignment (on create & update)
+        if self.referredByUser:
+            self.name = self.referredByUser.name
+            self.email = self.referredByUser.email
+            self.clinic = None
+
+        #save changes 
+        super().save(*args, **kwargs)
+
+
+#Outbound Referrals Manager -- linked to patient since they concern the clinic's current patients
+class OutboundReferralsManager(models.Manager):
+    #Overriding get_query to filter out soft-deleted patients
+    def get_queryset(self): 
+        return super().get_queryset().filter(patient__is_deleted=False) 
+
+#OUTBOUND REFERRALS MODEL -- patients referred from clinic to outside source
+class OutboundReferral(models.Model):
+    class ReferralStatusChoices(models.TextChoices):
+        SENT = 'sent', _('Sent')
+        SCHEDULED = 'scheduled', _('Scheduled')
+        COMPLETED = 'completed', _('Completed')
+        DECLINED = 'declined', _('Declined')
+    
+    #model fields
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    #Many-to-One relationship to Branch, Patient, User, InboundReferral models (i.e., many outbound-referrals, one branch, one patient, one doctor, one referral)
+    branch = models.ForeignKey('clinic.Branch', related_name='branch_outbound_referrals', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)  #Changed cascade to set_null
+    patient = models.ForeignKey(Patient, related_name='patient_outbound_referrals', on_delete=models.CASCADE, db_index=True)
+    referredToUser = models.ForeignKey('users.User', related_name='doctor_inbound_referrals', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
+    referredToEntity = models.ForeignKey(InboundReferral, related_name='entity_outbound_referrals', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
+    name = models.CharField(max_length=300, null=True)
+    status =  models.CharField(max_length=25, choices=ReferralStatusChoices.choices, blank=True, null=True)
+    outcome = models.TextField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    #Objects after filtering by manager
+    objects = OutboundReferralsManager()
+    
+    #to access all objects
+    all_objects = models.Manager()
+
+    class Meta: 
+        db_table = 'OutboundReferrals'
+        verbose_name_plural = 'OutboundReferrals'
+        ordering = ['branch__name', '-updatedAt']
+        constraints = [
+         models.CheckConstraint(
+            #both fields CANNOT be set (not NULL) at the same time -- either one or the other or neither
+            condition=~(Q(referredToUser__isnull=False) & Q(referredToEntity__isnull=False)),
+            name='outbound_referral_single_target'
+         )
+        ]
+
+    def __str__(self):
+        return f'{self.patient.name} referred to {self.name}'
+
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        #Auto-assign status on create (if not provided)
+        if self._state.adding and not self.status:
+            self.status = self.ReferralStatusChoices.SENT
+        
+        #handle name assignment (create & update)
+        if self.referredToUser:
+            self.name = self.referredToUser.name
+        elif self.referredToEntity:
+            self.name = self.referredToEntity.name
+
+        #save changes
         super().save(*args, **kwargs)

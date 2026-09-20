@@ -11,34 +11,56 @@ from clinic.docs import dashboard_stats_schema, dashboard_options_schema
 
 
 #DASHBOARD SERIALIZERS 
+#Revenue serializer -- Nested serializer
+class ClinicRevenueSerializer(serializers.Serializer):
+    billedInPeriod = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    collectedInPeriod = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    totalOutstanding = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)  #total not paid (irrespective of time period)
+    collectedByMethod = serializers.DictField(
+        child=serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True),
+     allow_null=True)
+    # currency = serializers.CharField(allow_blank=True, allow_null=True)
+
+
 #Dashboard Statistics serializer
 @dashboard_stats_schema
 class DashboardStatisticsSerializer(UserPermissionsMixin, serializers.Serializer):
     patientsTotal = serializers.IntegerField(allow_null=True)  #total patients (irrespective of time period) 
-    patientsNew = serializers.IntegerField(allow_null=True)   #monthly by default -- is newPatientsThisMonth
-    appointmentsCount = serializers.IntegerField(allow_null=True)  #monthly by default -- total appointments
-    appointmentsCompleted = serializers.IntegerField(allow_null=True)  #monthly by default -- total appointments completed
-    revenue = serializers.FloatField(allow_null=True)  #monthly by default -- taken from 'Transactions' model
-    outstanding = serializers.FloatField(allow_null=True)  #total not paid (irrespective of time period) -- taken from Bills model
-    # currency = serializers.CharField(allow_blank=True, allow_null=True)
+    patientsNew = serializers.IntegerField(allow_null=True)   #monthly by default
+    appointmentsCount = serializers.IntegerField(allow_null=True)   #today by default -- total appointments count
+    appointmentsCompleted = serializers.IntegerField(allow_null=True)  #today by default -- total appointments completed
+    appointmentsCancelled = serializers.IntegerField(allow_null=True)  #today by default -- total appointments cancelled
+    appointmentsNoShow = serializers.IntegerField(allow_null=True)     #today by default -- total appointments where patient didn't show up
+    revenue = ClinicRevenueSerializer(many=False, allow_null=True)
+    waitingRoom = serializers.DictField(child=serializers.IntegerField(allow_null=True), allow_null=True) #today only -- standardized filtering
+    recalls = serializers.DictField(child=serializers.IntegerField(allow_null=True), allow_null=True)  #custom -- standardized filtering
+    inventory = serializers.DictField(child=serializers.IntegerField(allow_null=True), allow_null=True)  #current state -- standardized filtering
 
-    def get_fields(self):
-        fields = super().get_fields()
-        request = self.context.get('request')
-        #Revenue and outstanding removed for users without permission
-        # if getattr(user, 'role', None) in ('dentist', 'receptionist', 'assistant'):
-        if request and getattr(request.user, 'role', None) != 'admin' and\
-         'view.financialAnalytics' not in getattr(request.user, 'userPermissions', []):
-            fields.pop('revenue', None)
-            fields.pop('outstanding', None)
-            # fields.pop('currency', None)
-        return fields
+    # def get_fields(self):    #TODO - must arrange with the frontend whether to omit or return null
+    #     fields = super().get_fields()
+    #     request = self.context.get('request')
+    #     #Revenue and outstanding removed for users without permission
+    #     # if getattr(user, 'role', None) in ('dentist', 'receptionist', 'assistant'):
+    #     if request and getattr(request.user, 'role', None) != 'admin' and\
+    #      'view.financialAnalytics' not in getattr(request.user, 'userPermissions', []):
+    #         fields.pop('revenue', None)
+    #         # fields.pop('currency', None)
+    #     return fields
+
 
 #serializer for validating query parameters to dashboard/stats/
 class DashboardQueryParamSerializer(serializers.Serializer):
+    DATE_RANGE_CHOICES = [
+        ('today', 'today'), 
+        ('week', 'week'), 
+        ('month', 'month'),
+        ('quarter', 'quarter'),
+        ('year', 'year')
+    ]
+
     branchId = serializers.UUIDField(required=False, allow_null=True)
-    dateRange = serializers.ChoiceField(choices=(('today', 'today'), ('week', 'week'), ('month', 'month')),
-                                        required=False, allow_blank=True, allow_null=True)
+    dateRange = serializers.ChoiceField(choices=DATE_RANGE_CHOICES, required=False, 
+                                        allow_blank=True, allow_null=True)
     
     def validate(self, data):
         request = self.context.get('request')

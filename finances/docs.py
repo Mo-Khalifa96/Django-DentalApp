@@ -17,16 +17,19 @@ list_bills_schema = extend_schema_serializer(
                         'id': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
                         'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
                         'patientName': 'Ahmed Khaled',
-                        'treatmentId': 'b2c3d4e5-2345-6789-bcde-2345678901bc',
+                        'treatmentId': None,
                         'visitIds': [
                             'c3d4e5f6-3456-7890-cdef-3456789012cd',
                             'd4e5f6a7-4567-8901-defa-4567890123de',
                         ],
+                        'installmentPlanId': None,
+                        'hasInstallmentPlan': False,
                         'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
                         'description': 'Full mouth rehabilitation - Session 1',
                         'discount': '150.00',
                         'subtotal': '2350.00',
                         'total': '2200.00',
+                        'totalPaid': '1000.00',
                         'currency': 'USD',
                         'status': 'partial',
                         'createdAt': '2026-04-24T23:33:54.610Z',
@@ -36,15 +39,16 @@ list_bills_schema = extend_schema_serializer(
                         'id': '4gb96g75-6828-5673-c4gd-3d4f66bgb7g7',
                         'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
                         'patientName': 'Ahmed Khaled',
-                        'treatmentId': None,
-                        'visitIds': [
-                            'e5f6a7b8-5678-9012-efab-5678901234ef',
-                        ],
+                        'treatmentId': 'b2c3d4e5-2345-6789-bcde-2345678901bc',
+                        'visitIds': None,
+                        'installmentPlanId': 'a2d4a22e-4421-8726-aefd-12389be2f',
+                        'hasInstallmentPlan': True,
                         'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
                         'description': 'Routine checkup and scaling',
                         'discount': '0.00',
-                        'subtotal': '300.00',
-                        'total': '300.00',
+                        'subtotal': '3000.00',
+                        'total': '3000.00',
+                        'totaPaid': '0.00',
                         'currency': 'USD',
                         'status': 'unpaid',
                         'createdAt': '2026-05-01T09:00:00.000Z',
@@ -79,6 +83,7 @@ list_bills_schema = extend_schema_serializer(
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': True,
+                        'view.referrals': False,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': False,
                         'view.settings': False,
@@ -101,12 +106,14 @@ list_bills_schema = extend_schema_serializer(
                         'id': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
                         'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
                         'patientName': 'Ahmed Khaled',
-                        'treatmentId': 'b2c3d4e5-2345-6789-bcde-2345678901bc',
-                        'treatmentTitle': 'Full Mouth Rehabilitation',
+                        'treatmentId': None,
+                        'treatmentTitle': None,
                         'visitIds': [
                             'c3d4e5f6-3456-7890-cdef-3456789012cd',
                             'd4e5f6a7-4567-8901-defa-4567890123de',
                         ],
+                        'installmentPlanId': None,
+                        'hasInstallmentPlan': False,
                         'procedures': ['Root Canal Treatment', 'Dental Crown (Ceramic)'],
                         'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
                         'branchName': 'Main Branch',
@@ -114,6 +121,7 @@ list_bills_schema = extend_schema_serializer(
                         'discount': '150.00',
                         'subtotal': '2350.00',
                         'total': '2200.00',
+                        'totalPaid': '1000.00',
                         'currency': 'USD',
                         'status': 'partial',
                         'createdBy': 'Dr. Layla Hassan',
@@ -125,18 +133,19 @@ list_bills_schema = extend_schema_serializer(
                         'id': '4gb96g75-6828-5673-c4gd-3d4f66bgb7g7',
                         'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
                         'patientName': 'Ahmed Khaled',
-                        'treatmentId': None,
-                        'treatmentTitle': None,
-                        'visitIds': [
-                            'e5f6a7b8-5678-9012-efab-5678901234ef',
-                        ],
+                        'treatmentId': 'b2c3d4e5-2345-6789-bcde-2345678901bc',
+                        'treatmentTitle': 'Full Mouth Rehabilitation',
+                        'visitIds': None,
+                        'installmentPlanId': 'a2d4a22e-4421-8726-aefd-12389be2f',
+                        'hasInstallmentPlan': True,
                         'procedures': [],
                         'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
                         'branchName': 'Main Branch',
                         'description': 'Routine checkup and scaling',
                         'discount': '0.00',
-                        'subtotal': '300.00',
-                        'total': '300.00',
+                        'subtotal': '3000.00',
+                        'total': '3000.00',
+                        'totaPaid': '0.00',
                         'currency': 'USD',
                         'status': 'unpaid',
                         'createdBy': 'Dr. Layla Hassan',
@@ -173,6 +182,7 @@ list_bills_schema = extend_schema_serializer(
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': True,
+                        'view.referrals': True,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': True,
                         'view.settings': True,
@@ -201,16 +211,19 @@ retrieve_bills_schema = extend_schema_serializer(
                     'id': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
                     'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
                     'patientName': 'Ahmed Khaled',
-                    'treatmentId': 'b2c3d4e5-2345-6789-bcde-2345678901bc',
+                    'treatmentId': None,
                     'visitIds': [
                         'c3d4e5f6-3456-7890-cdef-3456789012cd',
                         'd4e5f6a7-4567-8901-defa-4567890123de',
                     ],
+                    'installmentPlanId': None,
+                    'hasInstallmentPlan': False,
                     'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
                     'description': 'Full mouth rehabilitation - Session 1',
                     'discount': '150.00',
                     'subtotal': '2350.00',
                     'total': '2200.00',
+                    'totalPaid': '1000.00',
                     'currency': 'USD',
                     'status': 'partial',
                     'createdAt': '2026-04-24T23:33:54.610Z',
@@ -232,6 +245,7 @@ retrieve_bills_schema = extend_schema_serializer(
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': True,
+                        'view.referrals': False,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': False,
                         'view.settings': False,
@@ -253,12 +267,14 @@ retrieve_bills_schema = extend_schema_serializer(
                     'id': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
                     'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
                     'patientName': 'Ahmed Khaled',
-                    'treatmentId': 'b2c3d4e5-2345-6789-bcde-2345678901bc',
-                    'treatmentTitle': 'Full Mouth Rehabilitation',
+                    'treatmentId': None,
+                    'treatmentTitle': None,
                     'visitIds': [
                         'c3d4e5f6-3456-7890-cdef-3456789012cd',
                         'd4e5f6a7-4567-8901-defa-4567890123de',
                     ],
+                    'installmentPlanId': None,
+                    'hasInstallmentPlan': False,
                     'procedures': ['Root Canal Treatment', 'Dental Crown (Ceramic)'],
                     'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
                     'branchName': 'Main Branch',
@@ -266,6 +282,7 @@ retrieve_bills_schema = extend_schema_serializer(
                     'discount': '150.00',
                     'subtotal': '2350.00',
                     'total': '2200.00',
+                    'totalPaid': '1000.00',
                     'currency': 'USD',
                     'status': 'partial',
                     'createdBy': 'Dr. Layla Hassan',
@@ -289,6 +306,7 @@ retrieve_bills_schema = extend_schema_serializer(
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': True,
+                        'view.referrals': True,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': True,
                         'view.settings': True,
@@ -299,29 +317,9 @@ retrieve_bills_schema = extend_schema_serializer(
                     }
                 }
             }
-        ),
+        )
     ]
 )
-
-
-        # OpenApiExample(
-        #     name='Create Bill Request',
-        #     request_only=True,
-        #     description='Payload for creating a new bill.',
-        #     value={
-        #         'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
-        #         'treatmentId': 'b2c3d4e5-2345-6789-bcde-2345678901bc',
-        #         'visitIds': [
-        #             'c3d4e5f6-3456-7890-cdef-3456789012cd',
-        #         ],
-        #         'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
-        #         'description': 'Full mouth rehabilitation - Session 1',
-        #         'discount': '150.00',
-        #         'subtotal': '2350.00',
-        #         'total': '2200.00',
-        #         'currency': 'USD',
-        #     }
-        # ),
 
 
 #Schema for bills options serializer
@@ -353,6 +351,11 @@ bills_options_schema = extend_schema_serializer(
                     {'visitId': '41f1c0fd-3b69-4289-9a8a-83eb205702c3'},
                     {'visitId': 'ea0b1f0f-df7e-4a0a-9bb6-67ecfa1ecef4'},
                 ],
+                'billStatusChoices': [
+                    {'value': 'unpaid', 'label': 'unpaid'},
+                    {'value': 'partial', 'label': 'partial'},
+                    {'value': 'paid', 'label': 'paid'},
+                ]
             }
         )
     ]
@@ -375,12 +378,14 @@ list_transactions_schema = extend_schema_serializer(
                         'billId': 'd4e5f6a7-4567-8901-defa-4567890123de',
                         'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
                         'patientName': 'Ahmed Khaled',
-                        'visitId': 'c3d4e5f6-3456-7890-cdef-3456789012cd',
+                        'visitId': None,
+                        'installmentPlanId': 'ac61b8a2-1278-9881-acfb-4042920114ef',
                         'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
                         'date': '2026-04-24',
                         'amount': '250.00',
                         'currency': 'USD',
-                        'method': 'Card',
+                        'method': 'card',
+                        'type': 'installment',
                         'note': '',
                     },
                     {
@@ -389,11 +394,13 @@ list_transactions_schema = extend_schema_serializer(
                         'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
                         'patientName': 'Khaled Ahmed',
                         'visitId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
+                        'installmentPlanId': None,
                         'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
                         'date': '2026-05-01',
                         'amount': '300.00',
                         'currency': 'USD',
-                        'method': 'Cash',
+                        'method': 'cash',
+                        'type': 'visit_fee',
                         'note': '',
                     },
                 ],
@@ -425,6 +432,7 @@ list_transactions_schema = extend_schema_serializer(
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': True,
+                        'view.referrals': False,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': False,
                         'view.settings': False,
@@ -448,15 +456,17 @@ list_transactions_schema = extend_schema_serializer(
                         'billDescription': 'Full mouth rehabilitation - Session 1',
                         'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
                         'patientName': 'Ahmed Khaled',
-                        'visitId': 'c3d4e5f6-3456-7890-cdef-3456789012cd',
+                        'visitId': None,
                         'treatmentTitle': 'Full Mouth Rehabilitation',
+                        'installmentPlanId': 'ac61b8a2-1278-9881-acfb-4042920114ef',
                         'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
                         'branchName': 'Main Branch',
                         'date': '2026-04-24',
                         'amount': '250.00',
                         'currency': 'USD',
-                        'method': 'Card',
-                        'status': 'Completed',
+                        'method': 'card',
+                        'type': 'installment',
+                        'status': 'completed',
                         'note': '',
                         'createdBy': 'Dr. Layla Hassan',
                         'isDeleted': False,
@@ -469,12 +479,14 @@ list_transactions_schema = extend_schema_serializer(
                         'patientName': 'Khaled Ahmed',
                         'visitId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
                         'treatmentTitle': None,
+                        'installmentPlanId': None,
                         'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
                         'branchName': 'Main Branch',
                         'date': '2026-05-01',
                         'amount': '300.00',
                         'currency': 'USD',
-                        'method': 'Cash',
+                        'method': 'cash',
+                        'type': 'visit_fee',
                         'status': 'Refunded',
                         'note': '',
                         'createdBy': 'Dr. Layla Hassan',
@@ -509,6 +521,7 @@ list_transactions_schema = extend_schema_serializer(
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': True,
+                        'view.referrals': True,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': False,
                         'view.settings': True,
@@ -518,7 +531,7 @@ list_transactions_schema = extend_schema_serializer(
                     }
                 }
             }
-        ),
+        )
     ]
 )
 
@@ -559,6 +572,16 @@ transactions_options_schema = extend_schema_serializer(
                     {'value': 'insurance', 'label': 'Insurance'},
                     {'value': 'mobile_wallent', 'label': 'Mobile wallet'}
                 ],
+                'transactionTypeChoices': [
+                    {'value': 'treatment_payment', 'label': 'Treatment payment'},
+                    {'value': 'installment', 'label': 'Installment'},
+                    {'value': 'visit_fee', 'label': 'Visit fee'},
+                    {'value': 'other', 'label': 'Other'},
+                ],
+                'transactionStatusChoices': [
+                    {'value': 'completed', 'label': 'Completed'},
+                    {'value': 'refunded', 'label': 'Refunded'}
+                ]
             }
         )
     ]
@@ -666,6 +689,7 @@ list_invoices_schema = extend_schema_serializer(
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': True,
+                        'view.referrals': False,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': False,
                         'view.settings': False,
@@ -784,6 +808,7 @@ list_invoices_schema = extend_schema_serializer(
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': True,
+                        'view.referrals': True,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': True,
                         'view.settings': True,
@@ -858,6 +883,7 @@ retrieve_invoice_schema = extend_schema_serializer(
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': True,
+                        'view.referrals': False,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': False,
                         'view.settings': False,
@@ -930,6 +956,7 @@ retrieve_invoice_schema = extend_schema_serializer(
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': True,
+                        'view.referrals': True,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': True,
                         'view.settings': True,
@@ -986,6 +1013,74 @@ invoices_options_schema = extend_schema_serializer(
         )
     ]
 ) 
+
+
+#Schema for installments options serializer 
+#Schema for invoices options serializer
+installments_options_schema = extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            name='Response',
+            description=(
+                'Assign `branchId` to filter patient and installment plan choices by branch, '
+                'assign `doctorId` to patient and installment plan choices by `dentist` user, '
+                'and assign `installmentPlanId` to retrieve the pending installments for an installment plan for payments. '
+                'Empty query parameters return all choices across the system.'
+            ),
+            response_only=True,
+            value={
+                'branchChoices': [
+                    {'branchId': '9ca1d622-94af-4ea5-b87a-bf9f6611d6ab', 'name': 'Main Branch'},
+                    {'branchId': '8ef5c0eb-ab95-4d13-a1b4-04f634534587', 'name': 'Heliopolis Branch'},
+                ],
+                'patientChoices': [
+                    {'patientId': '41f1c0fd-3b69-4289-9a8a-83eb205702c3', 'name': 'Ahmed Khaled'},
+                    {'patientId': 'ea0b1f0f-df7e-4a0a-9bb6-67ecfa1ecef4', 'name': 'Khaled Ahmed'},
+                ],
+                'patientPendingInstallments': [
+                    {'id': '41f1c0fd-3b69-4289-9a8a-83eb205702c3', 'amount': '200.00', 'sequence': 0, 'dueDate': '2026-09-6', 'type': 'down_payment'},
+                    {'id': 'ea0b1f0f-df7e-4a0a-9bb6-67ecfa1ecef4', 'amount': '800.00', 'sequence': 1, 'dueDate':'2026-09-15', 'type': 'installment'},
+                    {'id': '3fa85f64-5717-4562-b3fc-2c963f66afa6', 'amount': '800.00', 'sequence': 2, 'dueDate':'2026-10-15', 'type': 'installment'},
+                    {'id': '4gb96g75-6828-5673-c4gd-3d4f66bgb7g7', 'amount': '800.00', 'sequence': 3, 'dueDate':'2026-11-15', 'type': 'installment'}
+                ],
+                'InstallmentPlanStatusChoices': [
+                    {'value': 'pending', 'label': 'Pending'},
+                    {'value': 'partial', 'label': 'Partial'},
+                    {'value': 'completed', 'label': 'Completed'},
+                ],
+                'installmentMonthsChoices': [
+                    {'value': 1, 'label': 'Full payment'},
+                    {'value': 3, 'label': '3 months'},
+                    {'value': 6, 'label': '6 months'},
+                    {'value': 12, 'label': '12 months'},
+                ],
+                'installmentTypeChoices': [
+                    {'value': 'down_payment', 'label': 'Down payment'},
+                    {'value': 'installment', 'label': 'Installment'},
+                ],
+                'installmentStatusChoices': [
+                    {'value': 'pending', 'label': 'Pending'},
+                    {'value': 'partial', 'label': 'Partial'},
+                    {'value': 'overdue', 'label': 'Overdue'},
+                ],
+                'paymentMethodChoices': [
+                    {'value': 'cash', 'label': 'Cash'},
+                    {'value': 'card', 'label': 'Card'},
+                    {'value': 'bank_transfer', 'label': 'Bank transfer'},
+                    {'value': 'insurance', 'label': 'Insurance'},
+                    {'value': 'mobile_wallent', 'label': 'Mobile wallet'}
+                ],
+                'transactionTypeChoices': [
+                    {'value': 'treatment_payment', 'label': 'Treatment payment'},
+                    {'value': 'installment', 'label': 'Installment'},
+                    {'value': 'visit_fee', 'label': 'Visit fee'},
+                    {'value': 'other', 'label': 'Other'},
+                ]
+            }
+        )
+    ]
+) 
+
 
 
 #Schema for insurance providers options serializer

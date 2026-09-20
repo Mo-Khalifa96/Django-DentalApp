@@ -230,17 +230,24 @@ class User(AbstractBaseUser, PermissionsMixin):
 
         #Transactions permissions
         'transactions': (
-            'view.transactions',  #admin/accountant/doctor(if patient)
-            'create.transaction', #all except assistant (unless bills are created for labs)
-            'delete.transaction'  #admin/accountant/doctor(if patient) -- admin views them
+            'view.transactions',  #all except assistant (unless bills are created for labs?)
+            'create.transaction', #all except assistant --> TODO: extends to `reversals`
+            'delete.transaction'  #admin/accountant/doctor (if patient) -- admin views them
         ),
 
         #Invoices permissions
         'invoices': (
-            'view.invoices',  #admin/accountant/doctor(if patient)
+            'view.invoices',  #all except assistant (unless bills are created for labs)
             'create.invoice', #all except assistant (unless bills are created for labs)
             'update.invoice', #admin/accountant/doctor(if patient)
             'delete.invoice' #admin/accountant/doctor(if patient) -- admin views them
+        ),
+
+        'installments': (
+            'view.installments',
+            'create.installments',
+            'update.installments',
+            'delete.installments'
         ),
 
         #Insurance permissions
@@ -265,6 +272,14 @@ class User(AbstractBaseUser, PermissionsMixin):
             'create.recall',
             'update.recall',
             'delete.recall'
+        ),
+        
+        #Referrals permissions
+        'referrals': (
+            'view.referrals',
+            'create.referral',
+            'update.referral',
+            'delete.referral'
         ),
 
         #Doctor schedules permissions
@@ -291,10 +306,12 @@ class User(AbstractBaseUser, PermissionsMixin):
             'view.bills',
             'view.transactions',
             'view.invoices',
+            'view.installments',
             'view.insuranceProviders',
             'view.doctorSchedules',
             'view.sterilizationLogs',
             'view.recalls',
+            'view.referrals',
             'view.clinicalAnalytics',
             'view.financialAnalytics',
             'view.settings',
@@ -316,19 +333,19 @@ class User(AbstractBaseUser, PermissionsMixin):
         
         'dentist': [
             perm for perm in USER_PERMISSIONS 
-            if perm not in ('view.financialAnalytics', 'view.waitingRoom', 
-                            'send.whatsappMessage')
+            if perm not in ('view.financialAnalytics')
         ], 
 
         #NOTE - view.patientDetail extends to detal-chart detail view
-        #     - update.patient extends to dental-chart update view
+        #     - update.patient extends to dental-chart and periochart update view
 
         'receptionist': [
             'view.calendar', 'view.waitingRoom', 'view.patients', 'create.patient', 'update.patient', 
             'view.appointments', 'view.appointmentDetail', 'create.appointment', 'update.appointment', 
             'delete.appointment', 'view.recalls', 'create.recall', 'update.recall', 'delete.recall', 
-            'send.whatsappMessage', 'view.insuranceProviders', 'create.bill', 'create.transaction', 
-            'create.invoice', 'view.patientInsurance', 'update.patientInsurance', 'view.doctorSchedules', 
+            'send.whatsappMessage', 'view.insuranceProviders', 'view.bills', 'create.bill', 
+            'view.transactions', 'create.transaction', 'view.invoices', 'create.invoice', 
+            'view.patientInsurance', 'update.patientInsurance', 'view.doctorSchedules', 
             'view.clinicalAnalytics', 'view.settings'
         ],
         
@@ -344,9 +361,10 @@ class User(AbstractBaseUser, PermissionsMixin):
             'view.bills', 'create.bill', 'update.bill', 'delete.bill',
             'view.transactions', 'create.transaction', 'delete.transaction',
             'view.invoices', 'create.invoice', 'update.invoice', 'delete.invoice',
+            'view.installments', 'create.installments', 'update.installments',
             'view.labOrders', 'view.labOrderDetail', 'view.doctorSchedules', 
             'view.insuranceProviders', 'create.insuranceProvider', 'view.patientInsurance', 
-            'update.patientInsurance', 'view.clinicalAnalytics', 'view.financialAnalytics', 
+            'update.patientInsurance', 'view.clinicalAnalytics', 'view.financialAnalytics',
             'view.settings'
         ]
     }

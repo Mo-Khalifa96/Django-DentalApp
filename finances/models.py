@@ -46,7 +46,6 @@ class ClinicalTaxConfig(models.Model):
         return f'{self.clinicName} -- {self.taxId or self.commercialReg}'
 
 
-
 #Bills Manager (allows soft deleting)
 class BillManager(models.Manager):
     #Overriding get_query to filter out soft-deleted bills
@@ -71,12 +70,19 @@ class BillManager(models.Manager):
 
 #BILLS MODEL
 class Bill(models.Model):
+    class BillStatusChoices(models.TextChoices):
+        UNPAID = 'unpaid', _('unpaid')
+        PARTIAL = 'partial', _('partial')
+        PAID = 'paid', _('paid')
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     #Many-to-Many relationship to Visit (one bill, many visits OR many visits, one bill)
-    visits = models.ManyToManyField('patients.Visit', related_name='visit_bills', db_index=True)
+    visits = models.ManyToManyField('patients.Visit', related_name='visit_bills', blank=True, null=True, db_index=True)
     #Many-to-One relationships to Patient, TreatmentPlan, Branch (i.e., many bills, one patient/treatment/visit/branch)
     patient = models.ForeignKey('patients.Patient', related_name='patient_bills', on_delete=models.SET_NULL, null=True, db_index=True)
     treatment = models.ForeignKey('patients.TreatmentPlan', related_name='treatment_bills', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
+    #*NEW* -- Installment Plan (one bill, one installment plan) -- helps for deletion cascades
+    installmentPlan = models.ForeignKey('finances.installmentPlan', related_name='bill', on_delete=models.CASCADE, blank=True, null=True, db_index=True)
     branch =  models.ForeignKey('clinic.Branch', related_name='branch_bills', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
     
     #bill fields
@@ -86,6 +92,7 @@ class Bill(models.Model):
     totalAmount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], blank=True)
     totalPaid = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], blank=True, null=True)  #NOTE: backend only field
     currency = models.CharField(max_length=5, blank=True, null=True)
+    #status -- derived -- 'unpaid' | 'partial' | 'paid'
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
 
@@ -107,6 +114,14 @@ class Bill(models.Model):
         db_table = 'Bills'
         verbose_name_plural = 'Bills'
         ordering = ['branch__name', '-updatedAt']
+        #Enforce one-to-one relation between installment plan and undeleted bills
+        constraints = [
+            models.UniqueConstraint(
+                fields=['installmentPlan'],
+                condition=models.Q(isDeleted=False),
+                name='unique_active_bill_per_treatment_plan'
+            )
+        ]
 
     def __str__(self):
         return self.description
@@ -131,7 +146,7 @@ class Bill(models.Model):
     @classmethod
     def generate_invoice(cls, bill):   
         # #Generate invoice for bill
-        invoice = Invoice.objects\
+        invoice, _ = Invoice.objects\
             .update_or_create(
                 bill=bill,
                 defaults={
@@ -170,8 +185,7 @@ class Bill(models.Model):
         #         #bulk create invoice items 
         #         Invoice.objects.bulk_create(invoice_items)
                
-        return invoice[0]
-
+        return invoice
 
 
 #Transactions Manager 
@@ -204,16 +218,25 @@ class Transaction(models.Model):
         BANK_TRANSFER = 'bank_transfer', _('Bank transfer')
         INSURANCE = 'insurance', _('Insurance')
         MOBILE_WALLET = 'mobile_wallet', _('Mobile wallet')
+
+    class TransactionTypeChoices(models.TextChoices):
+        TREATMENT_PAYMENT = 'treatment_payment', _('Treatment payment')
+        INSTALLMENT = 'installment', _('Installment')
+        VISIT_FEE = 'visit_fee', _('Visit fee')
+        OTHER = 'other', _('Other')
     
     class TransactionStatusChoices(models.TextChoices):
         COMPLETED = 'completed', _('Completed')
         REFUNDED = 'refunded', _('Refunded')
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    #Many-to-One relationships to Bill, Patient, Visit, Branch (i.e., many transactions, one bill/patient/visit/branch)
+    #Many-to-One relationships to Bill, Patient, Visit, Treatment, & Branch (i.e., many transactions, one bill/patient/visit/treatment/branch)
     bill = models.ForeignKey(Bill, related_name='transactions', on_delete=models.SET_NULL, null=True, db_index=True)
     patient = models.ForeignKey('patients.Patient', related_name='patient_transactions', on_delete=models.SET_NULL, null=True, db_index=True)
-    visit = models.ForeignKey('patients.Visit', related_name='visit_transactions', on_delete=models.SET_NULL, null=True, db_index=True)
+    visit = models.ForeignKey('patients.Visit', related_name='visit_transactions', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
+    
+    #One-to-one relationship to Installment (one transaction, one installment)
+    # installment = models.OneToOneField('finances.Installment', related_name='installment_transaction', on_delete=models.SET_NULL, blank=True, null=True)
     branch =  models.ForeignKey('clinic.Branch', related_name='branch_transactions', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
 
     #transaction fields
@@ -222,6 +245,7 @@ class Transaction(models.Model):
     currency = models.CharField(max_length=5, blank=True, null=True)
     method = models.CharField(max_length=25, choices=PaymentMethodChoices.choices, blank=True, null=True)
     status = models.CharField(max_length=20, choices=TransactionStatusChoices.choices, blank=True, null=True)
+    type = models.CharField(max_length=50, choices=TransactionTypeChoices.choices, blank=True, null=True)
     note = models.CharField(max_length=500, blank=True, null=True)
 
     #snapshot fields to preserve fields when foreignkey is deleted (also will be shown to admin only)
@@ -237,7 +261,6 @@ class Transaction(models.Model):
     
     #to access all objects
     all_objects = models.Manager()
-
 
     class Meta: 
         db_table = 'Transactions'
@@ -255,19 +278,128 @@ class Transaction(models.Model):
 
             if not self.method:
                 self.method = self.PaymentMethodChoices.CASH
-            # self.date = self.date or self.visit.date
-            self.branchName = getattr(self.branch, 'name', None)
-            self.patientName = self.patient.name
+            
+            #auto--fill snashot fields
             self.billDescription = self.bill.description
-            self.treatmentTitle = self.bill.treatmentTitle
-        
-        #soft-delete refunded transactions (record still accessible by Admin only)
-        if self.status == self.TransactionStatusChoices.REFUNDED:
-            self.isDeleted = True
+            self.branchName = getattr(self.branch, 'name', None)
+            self.patientName = getattr(self.patient, 'name', None)
+            self.treatmentTitle = self.bill.treatmentTitle or self.treatmentTitle
 
+            #determine transaction type
+            if not self.type:
+                if self.visit and not self.bill.treatment:
+                    self.type = self.TransactionTypeChoices.VISIT_FEE
+                elif self.bill.treatment:
+                    self.type = self.TransactionTypeChoices.TREATMENT_PAYMENT
+                else:
+                    self.type = self.TransactionTypeChoices.OTHER   #for BillId only
+                        
+        #soft-delete refunded transactions (record still accessible by Admin only)
+        if self.status == self.TransactionStatusChoices.REFUNDED:  #TODO - up for change later
+            #soft-delete the transaction
+            self.isDeleted = True  #Refund effect cascades through signal!
+        
         #save changes 
         super().save(*args, **kwargs)
 
+
+#Installment Plans Manager
+class InstallmentPlansManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(treatmentPlan__patient__is_deleted=False)
+
+#INSTALLMENT PLAN MODEL 
+class InstallmentPlan(models.Model):
+    class InstallmentMonthsChoices(models.IntegerChoices):
+        FULL_PAYMENT = 1, _('Full payment')
+        THREE_MONTHS = 3, _('3 months')
+        SIX_MONTHS = 6, _('6 months')
+        TWELVE_MONTHS = 12, _('12 months')
+
+    class InstallmentPlanStatusChoices(models.TextChoices):
+        PENDING = 'pending', _('Pending')
+        PARTIAL = 'partial', _('Partial')
+        COMPLETED = 'completed', _('Completed')
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    #One-to-One relationship to TreatmentPlan (i.e., one treatment plan, one installment plan)
+    treatment = models.OneToOneField('patients.TreatmentPlan', related_name='installment_plan', on_delete=models.CASCADE, db_index=True)
+    #Many-to-One relationships to Bill, Patient, Visit, Treatment, & Branch (i.e., many transactions, one bill/patient/visit/treatment/branch)
+    branch =  models.ForeignKey('clinic.Branch', related_name='branch_installments', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)  #derived from patient
+    installmentMonths = models.PositiveSmallIntegerField(choices=InstallmentMonthsChoices.choices)
+    totalAmount = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True, validators=[MinValueValidator(Decimal('0'))])
+    totalPaid = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'), blank=True, null=True, validators=[MinValueValidator(Decimal('0'))])
+    currency = models.CharField(max_length=5, blank=True, null=True)
+    # status -- derived -- pending | partial | completed
+    startDate = models.DateField()
+    downPayment = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'), validators=[MinValueValidator(Decimal('0'))])
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    #Objects after filtering by manager
+    objects = InstallmentPlansManager()
+
+    #to access all objects
+    all_objects = models.Manager()
+    
+    class Meta:
+        db_table = 'InstallmentPlans'
+        verbose_name_plural = 'InstallmentPlans'
+        ordering = ['-updatedAt']
+
+    @property
+    def active_bill(self):
+        return self.bill.filter(isDeleted=False).first()
+
+    # def __str__(self):
+    #     return f'Installment plan for {self.treatment.patient.name} ({self.installmentMonths} months)'
+
+#Installments Manager
+class InstallmentsManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(installmentPlan__treatmentPlan__patient__is_deleted=False)
+
+#INSTALLMENTS MODEL 
+class Installment(models.Model):
+    class InstallmentTypeChoices(models.TextChoices):
+        DOWN_PAYMENT = 'down_payment', _('Down payment')
+        INSTALLMENT = 'installment', _('Installment')
+    
+    class InstallmentStatusChoices(models.TextChoices):
+        PENDING = 'pending', _('Pending')
+        PAID = 'paid', _('Paid')
+        OVERDUE = 'overdue', _('Overdue')
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    #Many-to-One relationship to InstallmentPlan (i.e., many installments, one plan)
+    installmentPlan = models.ForeignKey(InstallmentPlan, related_name='installments', on_delete=models.CASCADE, db_index=True)  #TODO - cannot delete if one installment is paid
+    #One-to-One relationship to Transaction (i.e., one installment, one transaction)
+    transaction = models.OneToOneField(Transaction, related_name='installment', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
+
+    #core fields
+    amount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
+    sequence = models.IntegerField()   #0 = down payment, 1..N = installments
+    dueDate = models.DateField()
+    type = models.CharField(max_length=25, choices=InstallmentTypeChoices.choices)
+    #status -- derived -- pending | paid | overdue
+    paidAt = models.DateTimeField(null=True, blank=True)
+
+    #Objects after filtering by manager
+    objects = InstallmentsManager()
+
+    #to access all objects
+    all_objects = models.Manager()
+
+    class Meta:
+        db_table = 'Installments'
+        verbose_name_plural = 'Installments'
+        ordering = ['installmentPlan', 'sequence']
+        constraints = [
+            models.UniqueConstraint(fields=['installmentPlan', 'sequence'], name='unique_installment_sequence')
+        ]
+
+    def __str__(self):
+        return f'Installment #{self.sequence} of plan #{self.installmentPlan_id} (due {self.dueDate})'
 
 
 #Invoices Manager
@@ -463,3 +595,8 @@ class InsuranceProvider(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.fullName:
+            self.fullName = self.name 
+        super().save(*args, **kwargs)

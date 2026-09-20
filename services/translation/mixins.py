@@ -48,7 +48,7 @@ FIELD_NAME_TRANSLATIONS = {
         'code': 'الرمز',
         'countryCode': 'رمز الدولة',
         'nationalId': 'الرقم القومي',
-        'patientNationalId': 'الرقم القومي للمريض',
+        'patientNationalId': 'الرقم القومي',
         'patientPhone': 'هاتف المريض',
         'is_newPatient': 'مريض جديد',
         'newPatientDetails': 'بيانات المريض الجديد',

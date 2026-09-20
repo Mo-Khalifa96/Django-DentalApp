@@ -4,6 +4,7 @@ from datetime import timedelta
 from django.utils import timezone
 from django.db import transaction
 from patients.models import PatientCoverage
+from django.db.models import F, Case, When, Value, BooleanField
 
 
 #Initiate logger 
@@ -21,11 +22,19 @@ def update_patient_insurance_details_task():
             today_date = today.date()
 
             #Update expiring coverages
+            coverages = PatientCoverage.objects.exclude(
+                eligibilityStatus__in=[
+                    PatientCoverage.EligibilityStatusChoices.EXPIRED,
+                    PatientCoverage.EligibilityStatusChoices.LIMIT_REACHED                    
+                ]
+            ).all()
+
             #get coverages whose 'effectiveTo' is within 30 days from today
-            expiring_coverages = PatientCoverage.objects.filter(
+            expiring_coverages = coverages.filter(
                 effectiveTo__isnull=False, effectiveTo__range=(today_date, today_date+timedelta(days=30))
              ).all()
             
+            #update selected coverages
             expiring_coverages.update(eligibilityStatus='expiring', 
                                       eligibilityChecked=today.date(),
                                       updatedAt=today
@@ -33,13 +42,25 @@ def update_patient_insurance_details_task():
             
             #Update expired coverages
             #get coverages past their 'effectiveTo' date
-            expired_coverages = PatientCoverage.objects.filter(
+            expired_coverages = coverages.filter(
                 effectiveTo__isnull=False, effectiveTo__lt=today.date()
              ).all()
             
             #update selected coverages
             expired_coverages.update(eligibilityStatus='expired', 
-                                       deductibleMet=False,
+                                     deductibleMet=None,
+                                     eligibilityChecked=today.date(),
+                                     updatedAt=today
+                                    )
+            
+            #Update maxed out coverages
+            maxed_out_coverages = coverages.filter(
+                annualMax__isnull=False, usedYTD__isnull=False, usedYTD__gte=F('annualMax'),
+            ).all()
+
+            #update selected coverages
+            maxed_out_coverages.update(eligibilityStatus='limit_reached',
+                                       deductibleMet=None,
                                        eligibilityChecked=today.date(),
                                        updatedAt=today
                                     )
@@ -61,8 +82,16 @@ def update_patient_insurance_usedYTD_task():
             #get coverages with a set provider
             coverages_to_update = PatientCoverage.objects.filter(provider__isnull=False).all()
 
-            #update selected coverages
-            coverages_to_update.update(usedYTD=Decimal('0'), deductibleMet=False, updatedAt=today)
+            #update selected coverages 
+            coverages_to_update.update(
+                updatedAt=today,
+                usedYTD=Decimal('0'), 
+                deductibleMet=Case(   #when coverage is 100%, deductible is always True
+                    When(coveragePercent=100, then=Value(True)),
+                    default=Value(False),
+                    output_field=BooleanField()
+                )
+            )
             
     except Exception as exc:
         logger.error(f"Error updating patient insurance usedYTD: {str(exc)}")

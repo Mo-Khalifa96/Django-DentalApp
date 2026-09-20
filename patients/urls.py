@@ -2,6 +2,8 @@ from django.urls import path
 from patients.views.visits import ListCreateVisitsAPIView, UploadXRayAPIView, RetrieveVisitsOptionsAPIView
 from patients.views.patient_recalls import (ListCreatePatientRecallsAPIView, UpdateDeletePatientRecallAPIView, 
                                             RetrievePatientRecallsOptionsAPIView)
+from patients.views.patient_insurance import (ListPatientCoveragePlansAPIView, CreateRetrieveUpdatePatientCoverageAPIView,
+                                              RetrievePatientCoverageOptionsAPIView)
 from patients.views.appointments import (ListCreateAppointmentsAPIView, RetrieveUpdateCancelAppointmentAPIView, 
                                          RetrieveAppointmentOptionsAPIView)
 from patients.views.treatments import (ListCreateTreatmentPlansAPIView, RetrieveUpdateDeleteTreatmentPlanAPIView,
@@ -9,8 +11,9 @@ from patients.views.treatments import (ListCreateTreatmentPlansAPIView, Retrieve
 from patients.views.patients import (ListCreatePatientsAPIView, RetrieveUpdateDeletePatientAPIView,
                                      RetrieveUpdateDentalChartAPIView, UploadDocumentAPIView,
                                      RetrievePatientsOptionsAPIView, RetrieveDentalChartOptionsAPIView)
-from patients.views.patient_insurance import (ListPatientCoveragePlansAPIView, CreateRetrieveUpdatePatientCoverageAPIView,
-                                              RetrievePatientCoverageOptionsAPIView)
+from patients.views.referrals import (ListCreateInboundReferralsAPIView, RetrieveUpdateDeleteInboundReferralAPIView,
+                                      ListOutboundReferralsAllAPIView, ListCreateOutboundReferralsAPIView,
+                                      RetrieveUpdateDeleteOutboundReferralsAPIView, RetrieveReferralsOptionsAPIView)
 
 #Url patterns
 urlpatterns = [
@@ -36,7 +39,7 @@ urlpatterns = [
     path('appointments/<uuid:id>/', RetrieveUpdateCancelAppointmentAPIView.as_view(), name='retrieve_update_cancel_appointment'),
     path('appointments/options/', RetrieveAppointmentOptionsAPIView.as_view(), name='appointments_options'),
 
-    #Treatment plans urls 
+    #Treatment plans urls
     path('patients/<uuid:id>/treatment-plans/', ListCreateTreatmentPlansAPIView.as_view(), name='list_create_treatments'),
     path('patients/<uuid:id>/treatment-plans/<uuid:treatmentId>/', 
             RetrieveUpdateDeleteTreatmentPlanAPIView.as_view(
@@ -56,4 +59,14 @@ urlpatterns = [
             http_method_names=['patch', 'delete', 'options']
         ), name='update_delete_patient_recall'),
     path('recalls/options/', RetrievePatientRecallsOptionsAPIView.as_view(), name='patient_recalls_options'),
+
+    #Referrals urls
+    path('referrals/', ListCreateInboundReferralsAPIView.as_view(), name='list_create_inbound_referrals'),
+    path('referrals/outbound/', ListOutboundReferralsAllAPIView.as_view(), name='list_outbound_referrals_all'),
+    path('referrals/<uuid:id>/', RetrieveUpdateDeleteInboundReferralAPIView.as_view(
+            http_method_names=['get', 'put', 'delete', 'options'],
+        ), name='retrieve_update_delete_inbound_referral'),
+    path('patients/<uuid:id>/referrals-out/', ListCreateOutboundReferralsAPIView.as_view(), name='list_create_outbound_referrals'),
+    path('patients/<uuid:id>/referrals-out/<uuid:referralId>/', RetrieveUpdateDeleteOutboundReferralsAPIView.as_view(), name='retrieve_update_delete_outbound_referral'),
+    path('referrals/options/', RetrieveReferralsOptionsAPIView.as_view(), name='referrals_options'),
 ]

@@ -10,8 +10,9 @@ if settings.DEBUG:
     from users.utils import category_patterns
 
     field_map = {'patient__name': 'patientName', 'doctor__name': 'doctorName', 
-                'procedure__name': 'procedureName', 'branch__name': 'branchName',
-                'patient_insurance__providerName': 'insurance', 'lab__name': 'labName',
+                 'treatment__patient__name': 'patientName', 'procedure__name': 'procedureName',
+                'branch__name': 'branchName', 'patient_insurance__providerName': 'insurance', 
+                'lab__name': 'labName', 'treatment__title': 'treatmentTitle', 
                 'treatment_items__procedureName': 'procedureName',
                 'invoice_items__description': 'itemDescription'}
     
@@ -490,6 +491,7 @@ if settings.DEBUG:
                                                 'view.doctorSchedules': {'type': 'boolean'},
                                                 'view.sterilizationLogs': {'type': 'boolean'},
                                                 'view.recalls': {'type': 'boolean'},
+                                                'view.referrals': {'type': 'boolean'},
                                                 'view.clinicalAnalytics': {'type': 'boolean'},
                                                 'view.financialAnalytics': {'type': 'boolean'},
                                                 'view.settings': {'type': 'boolean'}
@@ -704,6 +706,7 @@ if settings.DEBUG:
             }
         }
 
+        #TODO - account for new exceptions
         if '/appointments/' in path:
             error_codes['409'] = 'Appointment conflict'
             error_schema_dict['409'] = {
@@ -743,6 +746,7 @@ if settings.DEBUG:
                     }
                 }
             }
+            
         for code, description in error_codes.items():
             if code not in operation['responses']:
                 operation['responses'][code] = {

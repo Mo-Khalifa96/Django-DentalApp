@@ -285,6 +285,8 @@ create_patient_schema = extend_schema_serializer(
                 "allergies": ['Latex', 'Pencillin'], 
                 "insuranceProviderId": 'eae37601-3ab9-22f1-079b-ebca1ce8b221',  
                 "notes": '',
+                "referredById": 'ace26112-3ea8-22a1-877b-facc1ef22b50',
+                "branchId": 'ebe27408-2fb9-42b2-977a-fbaa1bf0a396',
                 "documents": [
                     {
                         'document': '<FileUpload>',
@@ -297,7 +299,6 @@ create_patient_schema = extend_schema_serializer(
                         'notes': 'Driver\'s license',
                     }
                 ],
-                "branchId": 'ebe27408-2fb9-42b2-977a-fbaa1bf0a396'
             }
         ), 
         OpenApiExample(
@@ -322,6 +323,9 @@ create_patient_schema = extend_schema_serializer(
                     "insuranceProviderId": 'eae37601-3ab9-22f1-079b-ebca1ce8b221', 
                     "notes": "",
                     "status": "active", 
+                    "referredById": 'ace26112-3ea8-22a1-877b-facc1ef22b50',
+                    "referredByName": 'Dr. Sherif Anwar',
+                    "branchId": 'ebe27408-2fb9-42b2-977a-fbaa1bf0a396',
                     "documents": [
                         {
                             'document': 'https://dtbackend.site/media/documents/medical_history.pdf',
@@ -344,7 +348,6 @@ create_patient_schema = extend_schema_serializer(
                             'uploadedAt': "2026-04-24T23:33:54.610Z",
                         }
                     ],
-                    "branchId": 'ebe27408-2fb9-42b2-977a-fbaa1bf0a396',
                     "createdAt": "2026-04-24T23:33:54.610Z",
                     "updatedAt": "2026-04-24T23:33:54.610Z"
                 }
@@ -418,6 +421,7 @@ full_update_patient_schema = extend_schema_serializer(
                 "insuranceProviderId": '1e22bd5e-6a01-122d-8c90-04c8665fbb23', 
                 'notes': '',
                 'status': 'active',
+                'referredById': 'ace26112-3ea8-22a1-877b-facc1ef22b50',
                 'documents': [
                     {
                         'document': '<FileUpload>',
@@ -453,6 +457,8 @@ full_update_patient_schema = extend_schema_serializer(
                     "insuranceProviderId": '1e22bd5e-6a01-122d-8c90-04c8665fbb23', 
                     'notes': '',
                     'status': 'active',
+                    'referredById': 'ace26112-3ea8-22a1-877b-facc1ef22b50',
+                    'referredByName': 'Dr. Sherif Anwar',
                     'documents': [
                         {
                             'document': 'https://dtbackend.site/media/documents/medical_history.pdf',
@@ -528,6 +534,8 @@ partial_update_patient_schema = extend_schema_serializer(
                     "insuranceProviderId": '1e22bd5e-6a01-122d-8c90-04c8665fbb23', 
                     'notes': '',
                     'status': 'active',
+                    'referredById': 'ace26112-3ea8-22a1-877b-facc1ef22b50',
+                    'referredByName': 'Dr. Sherif Anwar',
                     'documents': [
                         {
                             'document': 'https://dtbackend.site/media/documents/medical_history.pdf',
@@ -794,12 +802,6 @@ treatmentplans_options_schema = extend_schema_serializer(
                     {'branchId': '9ca1d622-94af-4ea5-b87a-bf9f6611d6ab', 'name': 'Main Branch'},
                     {'branchId': '8ef5c0eb-ab95-4d13-a1b4-04f634534587', 'name': 'Heliopolis Branch'},
                 ],
-                'installmentOptions': [
-                    {'value': 1, 'label': 'Full payment'},
-                    {'value': 3, 'label': '3 months'},
-                    {'value': 6, 'label': '6 months'},
-                    {'value': 12, 'label': '12 months'},
-                ],
                 'treatmentStatusChoices': [
                     {'value': 'active', 'label': 'active'},
                     {'value': 'completed', 'label': 'completed'},
@@ -810,17 +812,33 @@ treatmentplans_options_schema = extend_schema_serializer(
                     {"procedureId": "0994c96a-92fa-4451-b6e0-045c91ff050f", "name": "Dental Bridge (3-unit)"}, 
                     {"procedureId": "ed87388f-3037-47e1-86ea-b78a5d37e115", "name": "Dental Crown (Ceramic)"}
                 ],
-                'itemStatusChoices': [
-                    {'value': 'pending', 'label': 'pending'},
-                    {'value': 'in_progress', 'label': 'in progress'},
-                    {'value': 'completed', 'label': 'completed'},
-                ],
                 "validToothNumbers": [
                     {"value": "11", "label": "11"},
                     {"value": "12", "label": "12"},
                     {"value": "13", "label": "13"},
                     {"value": "n", "label": "n"},
                     {"value": "85", "label": "85"},
+                ],
+                'itemStatusChoices': [
+                    {'value': 'pending', 'label': 'pending'},
+                    {'value': 'in_progress', 'label': 'in progress'},
+                    {'value': 'completed', 'label': 'completed'},
+                ],
+                'installmentMonthsChoices': [
+                    {'value': 1, 'label': 'Full payment'},
+                    {'value': 3, 'label': '3 months'},
+                    {'value': 6, 'label': '6 months'},
+                    {'value': 12, 'label': '12 months'},
+                ],
+                'installmentPlanStatusChoices': [
+                    {'value': 'pending', 'label': 'Pending'},
+                    {'value': 'partial', 'label': 'Partial'},
+                    {'value': 'completed', 'label': 'Completed'},
+                ],
+                'installmentStatusChoices': [
+                    {'value': 'pending', 'label': 'Pending'},
+                    {'value': 'paid', 'label': 'Paid'},
+                    {'value': 'overdue', 'label': 'Overdue'},
                 ],
             }
         )
@@ -851,6 +869,7 @@ patient_insurance_options_schema = extend_schema_serializer(
                     {'value': 'active', 'label': 'Active'},
                     {'value': 'expired', 'label': 'Expired'},
                     {'value': 'expiring', 'label': 'Expiring'},
+                    {'value': 'limit_reached', 'label': 'Limit Reached'},
                     {'value': 'none', 'label': 'None'},
                 ],
             }
@@ -897,3 +916,54 @@ patient_recalls_options_schema = extend_schema_serializer(
         )
     ]
 )
+
+
+#Schema for referrals options serializer
+#Schema for procedure options serializer 
+referrals_options_schema = extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            name='Response',
+            response_only=True,
+            value={
+                'branchChoices': [
+                    {'branchId': '9ca1d622-94af-4ea5-b87a-bf9f6611d6ab', 'name': 'Main Branch'},
+                    {'branchId': '8ef5c0eb-ab95-4d13-a1b4-04f634534587', 'name': 'Heliopolis Branch'},
+                ],
+                'patientChoices': [
+                    {"patientId": "41f1c0fd-3b69-4289-9a8a-83eb205702c3", "name": "Sherif Zatona"},
+                    {"patientId": "ea0b1f0f-df7e-4a0a-9bb6-67ecfa1ecef4", "name": "Nelly Karim"},
+                    {"patientId": "5dc6201a-3ef7-4434-a108-223f5c8d3ba1", "name": "Saed Ashraf"}
+                ],
+                'doctorChoices': [
+                    {"doctorId": "8d9e0abc-7abb-4497-a2ed-19737c92a229", "name": "Layla Hassan"},
+                    {"doctorId": "ec4ebe94-c8a6-45d5-8cc6-675cef7bbafe", "name": "Ahmed Hassan"}, 
+                    {"doctorId": "0078af5e-7b68-4c29-9c81-04c8665fee68", "name": "Hassanen Hassan"}
+                ],
+                "referredToEntityChoices": [
+                    {"referredToEntityId": "373b6f45-a50b-496b-90bd-814cae5ed93d", "name": "Dr. Anwar clinic"}, 
+                    {"referredToEntityId": "0994c96a-92fa-4451-b6e0-045c91ff050f", "name": "Dr. Khaled Dental Clinic"}, 
+                    {"referredToEntityId": "ed87388f-3037-47e1-86ea-b78a5d37e115", "name": "Helioplis Dental Surgery Clinic"}
+                ],
+                "specialityChoices": [
+                    {"value": "general", "label": "General"},
+                    {"value": "orthodontics", "label": "Orthodontics"},
+                    {"value": "oral_surgery", "label": "Oral Surgery"},
+                    {"value": "endodontics", "label": "Endodontics"},
+                    {"value": "periodontics", "label": "Periodontics"},
+                    {"value": "prosthodontics", "label": "Prosthodontics"},
+                    {"value": "pediatric", "label": "Pediatric"},
+                    {"value": "radiology", "label": "Radiology"},
+                    {"value": "other", "label": "Other"}
+                ],
+                "outboundReferralStatusChoices": [
+                    {"value": "sent", "label": "Sent"},
+                    {"value": "scheduled", "label": "Scheduled"},
+                    {"value": "completed", "label": "Completed"},
+                    {"value": "declined", "label": "Declined"}
+                ]
+            }
+        )
+    ]
+
+) 

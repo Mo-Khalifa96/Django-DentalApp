@@ -17,6 +17,7 @@ category_patterns = {
     r'/lab-orders/': 'lab-orders',
     r'/labs/': 'labs',
     r'recalls': 'patient-recalls',
+    r'referrals': 'referrals',
     r'sterilization/': 'sterilization-logs',
 }
 
@@ -161,6 +162,13 @@ def _build_permissions_lookup(permissions_dict):
         #   'create': 'create.recall',
         #   'update': 'update.recall',
         #   'delete': 'delete.recall'
+        # },
+        #
+        # 'referrals': {
+        #   'view': 'view.referrals',
+        #   'create': 'create.referral',
+        #   'update': 'update.referral',
+        #   'delete': 'delete.referral'
         # },
         #
         # 'doctor-schedules': {

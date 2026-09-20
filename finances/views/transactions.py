@@ -1,6 +1,7 @@
 from utils.base_views import *
 from users.models import User
 from django.http import Http404
+from django.db import transaction
 from patients.models import Patient
 from finances.models import Transaction
 from utils.validators import validate_uuid
@@ -91,7 +92,7 @@ class UpdateDeleteTransactionAPIView(UpdateAPIView, DeleteAPIView):
             return Transaction.objects.select_related('bill').all()
 
     def get_permissions(self):
-        if self.request.method == 'PATCH':
+        if self.request.method == 'PATCH':  #TODO --> needs change
             return [AdminOnly()]
         return [PatientDataPermissions()]
 
@@ -100,9 +101,12 @@ class UpdateDeleteTransactionAPIView(UpdateAPIView, DeleteAPIView):
             return UpdateTransactionSerializer
         return TransactionSerializer
 
+
+    @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         #get bill object
         transaction = self.get_object()
+
         #soft delete bill and return response
         Transaction.objects.delete_transaction(user=request.user, transaction=transaction)
         return Response({}, status=status.HTTP_204_NO_CONTENT)

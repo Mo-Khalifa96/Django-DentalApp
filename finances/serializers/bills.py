@@ -6,8 +6,10 @@ from rest_framework import serializers
 from finances.models import Bill, Invoice
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
+from utils.exceptions import InstallmentBillExistsError
 from patients.models import Patient, TreatmentPlan, Visit
 from utils.mixins import UserPermissionsMixin, ValidateBranchMixin
+from services.translation.serializers import TranslatedChoiceField
 from finances.docs import list_bills_schema, retrieve_bills_schema, bills_options_schema
 
 
@@ -17,11 +19,11 @@ logger = logging.getLogger(__name__)
 #BILLS SERIALIZERS 
 
 #Bill status labels
-STATUS_LABELS = {
-    'unpaid': _('unpaid'),
-    'partial': _('partial'),
-    'paid': _('paid'),
-}
+# STATUS_LABELS = {
+#     'unpaid': _('unpaid'),
+#     'partial': _('partial'),
+#     'paid': _('paid')
+# }
 
 #Bills serializer
 @list_bills_schema
@@ -30,26 +32,29 @@ class BillSerializer(serializers.ModelSerializer):
     treatmentId = serializers.PrimaryKeyRelatedField(source='treatment', read_only=True)
     visitIds = serializers.PrimaryKeyRelatedField(many=True, source='visits', read_only=True)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
-    total = serializers.DecimalField(max_digits=10, decimal_places=2, source='totalAmount', read_only=True)
-    status = serializers.SerializerMethodField()
+    installmentPlanId = serializers.PrimaryKeyRelatedField(source='installmentPlan', read_only=True)
+    hasInstallmentPlan = serializers.BooleanField(read_only=True)
+    # status = serializers.SerializerMethodField()
+    status = TranslatedChoiceField(choices=Bill.BillStatusChoices.choices, read_only=True)
+    total = serializers.DecimalField(source='totalAmount', max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = Bill
-        fields = ['id', 'patientId', 'patientName', 'treatmentId', 'treatmentTitle', 'visitIds', 
-                  'procedures', 'branchId', 'branchName', 'description', 'discount', 'subtotal', 
-                  'total', 'currency', 'status', 'createdBy', 'createdAt', 'updatedAt', 'isDeleted']
+        fields = ['id', 'patientId', 'patientName', 'visitIds', 'treatmentId', 'treatmentTitle', 
+                  'installmentPlanId', 'hasInstallmentPlan', 'procedures', 'branchId', 'branchName', 
+                  'description', 'discount', 'subtotal', 'total', 'totalPaid', 'currency', 'status', 'createdBy', 
+                  'createdAt', 'updatedAt', 'isDeleted']
 
 
-    @extend_schema_field(
-        serializers.ChoiceField(
-            choices=[(choice,choice) for choice in STATUS_LABELS]
-        )
-    )
-    def get_status(self, obj):
-        value = getattr(obj, 'status', None)
-        return str(STATUS_LABELS.get(value, value)) if value else None
+    # @extend_schema_field(
+    #     serializers.ChoiceField(
+    #         choices=[(choice,choice) for choice in STATUS_LABELS]
+    #     )
+    # )
+    # def get_status(self, obj):
+    #     value = getattr(obj, 'status', None)
+    #     return str(STATUS_LABELS.get(value, value)) if value else None
     
-
     def get_fields(self):
         fields = super().get_fields()
         request = self.context.get('request')
@@ -103,27 +108,29 @@ class CreateBillSerializer(ValidateBranchMixin, serializers.ModelSerializer):
         #prepare errors dict
         errors = {}
 
-        #validate treatment 
-        if treatment:
-            #treatment must belong to the same patient
-            if treatment.patient_id != patient.id:
-                errors['treatmentId'] = []
-                errors.setdefault('treatmentId', []).append(
-                    _('Treatment plan does not belong to this patient.')
-                )
-            
-            #bill's total amount cannot be higher than treatment cost
-            if treatment.totalCost and treatment.installmentMonths == 1\
-                and round(subtotal,2) > round(treatment.totalCost,2):
-                errors['treatmentId'] = errors.get('treatmentId', [])
-                errors.setdefault('treatmentId', []).append(
-                    _('Total amount cannot be higher than treatment plan cost if a treatment plan with no installments is assigned.')
-                )
-
         #validate all visits belong to the same patient
         if any([visit for visit in visits if visit.patient_id != patient.id]):
             errors['visitIds'] = _('One or more visits do not belong to this patient.')
 
+        #treatment-related validations
+        if treatment:
+
+            #treatment must belong to the same patient
+            if treatment.patient_id != patient.id:
+                raise serializers.ValidationError({'treatmentId': _('Treatment plan does not belong to this patient.')})
+            
+            #check treatment has an installment plan with an existing bill
+            plan = getattr(treatment, 'installment_plan', None)
+            if plan and plan.active_bill:
+                raise InstallmentBillExistsError(detail={
+                        'detail': _('An installment bill already exists for this treatment plan.'),
+                        'billId': plan.active_bill.id
+                    }
+                )
+
+            #bill's total amount cannot be higher than treatment cost
+            if treatment.totalCost and round(subtotal,2) > round(treatment.totalCost,2):  #and getattr(plan, 'installmentMonths', 1) == 1
+                errors['treatmentId'] = _('Total amount cannot be higher than treatment plan cost.')
 
         #validate amount fields
         if discount > subtotal:
@@ -131,11 +138,11 @@ class CreateBillSerializer(ValidateBranchMixin, serializers.ModelSerializer):
 
         #handle total amount calculation
         recalculated_total = subtotal - discount
-        if totalAmount and (
-         round(totalAmount,2) != round(recalculated_total,2)
+        if totalAmount and (round(totalAmount,2) != round(recalculated_total,2)
          or abs(totalAmount - recalculated_total) > 0.01):
             logger.error(f'FRONTEND BUG: Bill total amount miscalculated. '
              f'Provided: {totalAmount}, Actual: {recalculated_total}')
+            
         #assign recalculated total anyway
         data['totalAmount'] = recalculated_total
 
@@ -200,23 +207,20 @@ class UpdateBillSerializer(serializers.ModelSerializer):
         #prepare errors dict
         errors = {}
 
-        #validate treatment 
-        if 'treatment' in data and treatment:
-            #treatment must belong to the same patient
-            if treatment.patient_id != self.instance.patient_id:
-                errors.setdefault('treatmentId', []).append(
-                    _('Treatment plan does not belong to this patient.')
-                )
-            #bill's total amount cannot be higher than treatment cost
-            if treatment.totalCost and treatment.installmentMonths == 1\
-                and round(subtotal,2) > round(treatment.totalCost,2):
-                errors.setdefault('treatmentId', []).append(
-                    _('Total amount cannot be higher than treatment plan cost if a treatment plan with no installments is assigned.')
-                )
-
         #validate all visits belong to the same patient
         if 'visits' in data and any([visit for visit in visits if visit.patient_id != self.instance.patient_id]):
             errors['visitIds'] = _('One or more visits do not belong to this patient.')
+
+        #treatment-related validations
+        if 'treatment' in data and treatment:
+            #treatment must belong to the same patient
+            if treatment.patient_id != self.instance.patient_id:
+                raise serializers.ValidationError({'treatmentId': _('Treatment plan does not belong to this patient.')})
+
+            #bill's total amount cannot be higher than treatment cost
+            # plan = getattr(treatment, 'installment_plan', None)
+            if treatment.totalCost and round(subtotal,2) > round(treatment.totalCost,2):  #and getattr(plan, 'installmentMonths', 1) == 1
+                errors['treatmentId'] = _('Total amount cannot be higher than treatment plan cost.')
 
         #validate amount fields
         if discount > subtotal:
@@ -224,11 +228,11 @@ class UpdateBillSerializer(serializers.ModelSerializer):
 
         #handle total amount calculation
         recalculated_total = subtotal - discount
-        if 'totalAmount' in data and (
-         round(totalAmount,2) != round(recalculated_total,2)
+        if 'totalAmount' in data and (round(totalAmount,2) != round(recalculated_total,2)
          or abs(totalAmount - recalculated_total) > 0.01):
             logger.error(f'FRONTEND BUG: Bill total amount miscalculated. '
              f'Provided: {totalAmount}, Actual: {recalculated_total}')
+        
         #assign recalculated total anyway
         data['totalAmount'] = recalculated_total
 
@@ -275,10 +279,10 @@ class AutogenerateInvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
         fields = ['id', 'invoiceNumber', 'patientId', 'patientName', 'patientNationalId', 'billId', 
-                # 'invoice_items', 
+                # 'items', 
                 'subtotal', 'discount', 'total', 'currency', 'status', 'issuedAt', 'branchId']
         read_only_fields = ['id', 'invoiceNumber', 'patientId', 'patientName', 'patientNationalId',
-            # 'invoice_items', 
+            # 'items', 
             'subtotal', 'discount', 'total', 'currency', 'status', 'issuedAt', 'branchId']
 
     @transaction.atomic
@@ -300,6 +304,7 @@ class BillsOptionsSerializer(serializers.Serializer):
     patientChoices = serializers.SerializerMethodField()
     patientTreatmentChoices = serializers.SerializerMethodField()
     patientVisitChoices = serializers.SerializerMethodField()
+    billStatusChoices = serializers.SerializerMethodField()
 
     @extend_schema_field(
         serializers.ListField(
@@ -366,6 +371,16 @@ class BillsOptionsSerializer(serializers.Serializer):
             {'visitId': visit_id} 
             for visit_id in Visit.objects.filter(**patient_filter)\
              .values_list('id', flat=True)
+        ]
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.DictField(child=serializers.CharField(allow_blank=True, allow_null=True))
+    ))
+    def get_billStatusChoices(self, obj):
+        return [
+            {'value': choice.value, 'label': str(choice.label)}
+            for choice in Bill.BillStatusChoices
         ]
 
 

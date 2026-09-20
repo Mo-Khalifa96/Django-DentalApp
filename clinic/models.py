@@ -105,10 +105,15 @@ class WaitingRoom(models.Model):
         DONE = 'done', _('Done')
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    #One-to-One relation to appointment (one appointment, one waiting room object)
+    appointment = models.OneToOneField('patients.Appointment', related_name='in_waiting_room', on_delete=models.CASCADE, blank=True, null=True, db_index=True)
+    
     #Many-to-One Relation to appointment, patient, and branch (one appointment, one patient, one branch, many waiting room objects)
-    appointment = models.ForeignKey('patients.Appointment', related_name='appointment_rooms', on_delete=models.CASCADE, blank=True, null=True, db_index=True)
+    # appointment = models.ForeignKey('patients.Appointment', related_name='appointment_rooms', on_delete=models.CASCADE, blank=True, null=True, db_index=True)
     patient = models.ForeignKey('patients.Patient', related_name='patient_rooms', on_delete=models.CASCADE, blank=True, null=True, db_index=True)
     branch = models.ForeignKey(Branch, related_name='branch_rooms', on_delete=models.CASCADE, blank=True, null=True, db_index=True) 
+    
     #Other fields
     room = models.CharField(max_length=120, blank=True, null=True)  #use branch rooms for choices
     isWalkIn = models.BooleanField(blank=True, null=True, default=None)

@@ -1,13 +1,16 @@
+from decimal import Decimal
 from clinic.models import Branch
 from django.db import transaction
 from rest_framework import serializers
 from patients.validators import FDI_PERMANENT
-from finances.models import InsuranceProvider
+from django.db.models.functions import Coalesce
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
-from patients.models import Patient, DentalChart, PatientDocument
 from utils.mixins import UserPermissionsMixin, ValidateBranchMixin
 from services.translation.serializers import TranslatedChoiceField
+from finances.models import Bill, InstallmentPlan, InsuranceProvider
+from patients.models import Patient, DentalChart, PatientDocument, InboundReferral
+from django.db.models import F, Sum, ExpressionWrapper, Exists, DecimalField, OuterRef
 from patients.docs import (create_patient_schema, full_update_patient_schema, partial_update_patient_schema,
                            patients_options_schema, dentalchart_options_schema)
 
@@ -31,6 +34,8 @@ class CreatePatientSerializer(ValidateBranchMixin, serializers.ModelSerializer):
     insurance = serializers.CharField(source='patient_insurance.providerName', default=None, read_only=True)
     insuranceProviderId = serializers.PrimaryKeyRelatedField(queryset=InsuranceProvider.objects.all(),
                                         required=False, default=None, allow_null=True, write_only=True)
+    referredById = serializers.PrimaryKeyRelatedField(source='referredBy', queryset=InboundReferral.objects.all(), 
+                                                      required=False, allow_null=True)
     documents = PatientDocumentsSerializer(many=True, source='patient_documents', required=False,
                                            allow_null=True, allow_empty=True)
     # documentUrls = serializers.SerializerMethodField()  #output only
@@ -39,8 +44,8 @@ class CreatePatientSerializer(ValidateBranchMixin, serializers.ModelSerializer):
         model = Patient
         fields = ['id', 'name', 'age', 'gender', 'countryCode', 'phone', 'email', 'address', 'nationalId',
                   'bloodType', 'allergies', 'insurance', 'insuranceProviderId', 'notes', 'status', 
-                  'documents', 'branchId', 'createdAt', 'updatedAt']
-        read_only_fields = ['id', 'insurance', 'status', 'createdAt', 'updatedAt']
+                  'referredById', 'referredByName', 'branchId', 'documents', 'createdAt', 'updatedAt']
+        read_only_fields = ['id', 'insurance', 'status', 'referredByName', 'createdAt', 'updatedAt']
 
 
     # @extend_schema_field(serializers.ListField(child=serializers.URLField()))
@@ -120,13 +125,14 @@ class ListPatientSerializer(serializers.ModelSerializer):
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     insurance = serializers.CharField(source='patient_insurance.providerName', read_only=True)
     insuranceId = serializers.CharField(source='patient_insurance.memberId', read_only=True)
+    outstandingBalance = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = Patient
         fields = ['id', 'name', 'age', 'gender', 'phone', 'email', 'address', 'nationalId', 'bloodType', 
-                  'allergies', 'insurance', 'insuranceId', 'lastVisit', 'nextAppointment', 'notes', 
-                  'status', 'branchId', 'createdAt', 'updatedAt']
-    
+                  'allergies', 'insurance', 'insuranceId', 'outstandingBalance', 'lastVisit', 'nextAppointment', 
+                  'notes', 'status', 'branchId', 'createdAt', 'updatedAt']
+
 
 #Serializer for retrieving patient details 
 class RetrievePatientSerializer(UserPermissionsMixin, serializers.ModelSerializer): 
@@ -134,18 +140,48 @@ class RetrievePatientSerializer(UserPermissionsMixin, serializers.ModelSerialize
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     insurance = serializers.CharField(source='patient_insurance.providerName', read_only=True)
     insuranceId = serializers.CharField(source='patient_insurance.memberId', read_only=True)
-    phone = serializers.SerializerMethodField()
+    referredById = serializers.PrimaryKeyRelatedField(source='referredBy', read_only=True)
     documents = PatientDocumentsSerializer(many=True, source='patient_documents', read_only=True)
-
+    outstandingBalance = serializers.SerializerMethodField()
+    phone = serializers.SerializerMethodField()
+    
     class Meta:
         model = Patient
         fields = ['id', 'name', 'age', 'gender', 'countryCode', 'phone', 'email', 'address', 'nationalId',
-                  'bloodType', 'allergies', 'insurance', 'insuranceId', 'lastVisit', 'nextAppointment', 
-                  'notes', 'status', 'documents', 'branchId', 'createdAt', 'updatedAt']
+                  'bloodType', 'allergies', 'insurance', 'insuranceId', 'outstandingBalance', 'lastVisit', 
+                  'nextAppointment', 'notes', 'status', 'referredById', 'referredByName', 'branchId', 
+                  'documents', 'createdAt', 'updatedAt']
     
     @extend_schema_field(serializers.CharField)
     def get_phone(self, obj):
         return '0' + obj.phone[len(obj.countryCode):]
+
+    @extend_schema_field(serializers.DecimalField(max_digits=10, decimal_places=2))
+    def get_outstandingBalance(self, obj):
+        #get outstanding from all bills
+        bills_outstanding = obj.patient_bills.filter(isDeleted=False)\
+            .annotate(
+                total_outstanding=ExpressionWrapper(
+                    F('totalAmount') - Coalesce(F('totalPaid'), Decimal('0')), 
+                    output_field=DecimalField())
+        ).values('total_outstanding')
+
+        #account for installment plans with no active bill generated
+        installments_outstanding = InstallmentPlan.objects.filter(treatment__patient=obj)\
+            .annotate(
+                has_active_bill=Exists(Bill.objects.filter(treatment_id=OuterRef('treatment_id')))
+            ).filter(has_active_bill=False).annotate(
+                total_outstanding=ExpressionWrapper(
+                    F('totalAmount') - Coalesce(F('totalPaid'), Decimal('0')), 
+                    output_field=DecimalField())
+        ).values('total_outstanding')
+
+        #sum them together with a single query
+        outstanding_balance = bills_outstanding.union(installments_outstanding, all=True)\
+            .aggregate(total=Coalesce(Sum('total_outstanding'), Decimal('0')))['total']
+        
+        return outstanding_balance if outstanding_balance > 0 else Decimal('0')
+
 
 #Serializer for PUT-only requests to update patient details with documents
 @full_update_patient_schema
@@ -154,6 +190,8 @@ class FullUpdatePatientSerializer(serializers.ModelSerializer):
     insurance = serializers.CharField(source='patient_insurance.providerName', default=None, read_only=True)
     insuranceProviderId = serializers.PrimaryKeyRelatedField(queryset=InsuranceProvider.objects.all(), 
                                                         required=False, allow_null=True, write_only=True)
+    referredById = serializers.PrimaryKeyRelatedField(source='referredBy', queryset=InboundReferral.objects.all(), 
+                                                      required=False, allow_null=True)
     documents = PatientDocumentsSerializer(many=True, source='patient_documents', required=False,
                                            allow_null=True, allow_empty=True)
 
@@ -161,8 +199,8 @@ class FullUpdatePatientSerializer(serializers.ModelSerializer):
         model = Patient
         fields = ['id', 'name', 'age', 'gender', 'countryCode', 'phone', 'email', 'address', 'nationalId', 
                   'bloodType', 'allergies', 'insurance', 'insuranceProviderId', 'notes', 'status', 
-                  'documents', 'updatedAt']
-        read_only_fields = ['id', 'insurance', 'updatedAt']
+                  'referredById', 'referredByName', 'documents', 'updatedAt']
+        read_only_fields = ['id', 'insurance', 'referredByName', 'updatedAt']
         # extra_kwargs = {field: {'required': False} for field in 
         #     ('name', 'age', 'gender', 'countryCode', 'phone', 'email', 'address', 'nationalId', 
         #      'bloodType', 'allergies', 'insuranceProviderId', 'notes', 'status')
@@ -251,14 +289,16 @@ class PartialUpdatePatientSerializer(serializers.ModelSerializer):
     insurance = serializers.CharField(source='patient_insurance.providerName', default=None, read_only=True)
     insuranceProviderId = serializers.PrimaryKeyRelatedField(queryset=InsuranceProvider.objects.all(), 
                                                         required=False, allow_null=True, write_only=True)
+    referredById = serializers.PrimaryKeyRelatedField(source='referredBy', queryset=InboundReferral.objects.all(),
+                                                      required=False, allow_null=True)
     documents = PatientDocumentsSerializer(many=True, source='patient_documents', read_only=True)   #read only
 
     class Meta:
         model = Patient
         fields = ['id', 'name', 'age', 'gender', 'countryCode', 'phone', 'email', 'address', 'nationalId', 
-                  'bloodType', 'allergies', 'insurance', 'insuranceProviderId', 'notes', 'status', 'documents',
-                  'updatedAt']
-        read_only_fields = ['id', 'insurance', 'documents', 'updatedAt']
+                  'bloodType', 'allergies', 'insurance', 'insuranceProviderId', 'notes', 'status', 
+                  'referredById', 'referredByName', 'documents', 'updatedAt']
+        read_only_fields = ['id', 'insurance', 'referredByName', 'documents', 'updatedAt']
 
     def validate(self, data):
         code, phone = data.get('countryCode'), data.get('phone')

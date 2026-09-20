@@ -20,9 +20,36 @@ dashboard_stats_schema = extend_schema_serializer(
                     'patientsNew': 12,
                     'appointmentsCount': 18,
                     'appointmentsCompleted': 11,
-                    'revenue': 47500.00,
-                    'outstanding': 8200.00,
-                    # 'currency': 'SAR',
+                    'appointmentsCancelled': 4,
+                    'appointmentsNoShow': 2,
+                    'revenue': {
+                        'billedInPeriod': '254500.00',
+                        'collectedInPeriod': '150200.00',
+                        'totalOutstanding': '104300.00',
+                        # 'currency': 'SAR',
+                        'collectedByMethod': {
+                            'cash': '60000.00', 
+                            'card': '48200.00',
+                            'mobile_wallet': '30000.00', 
+                            'bank_transfer': '11000.00',
+                            'insurance': '1000.00'
+                        }
+                    },
+                    'waitingRoom': {
+                        'waitin': 3,
+                        'inChair': 2,
+                        'doneToday': 11,
+                        'avgWaitMinutes': 14
+                    },
+                    'recalls': { 
+                        'overdue': 12, 
+                        'dueToday': 3, 
+                        'dueThisWeek': 9 
+                    },
+                    'inventory':   { 
+                        'lowStock': 6, 
+                        'criticalStock': 2 
+                    }
                 },
                 'metadata': {
                     'userPermissions': {
@@ -41,6 +68,7 @@ dashboard_stats_schema = extend_schema_serializer(
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': True,
+                        'view.referrals': True,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': True,
                         'view.settings': True
@@ -63,6 +91,24 @@ dashboard_stats_schema = extend_schema_serializer(
                     'patientsNew': 12,
                     'appointmentsCount': 18,
                     'appointmentsCompleted': 11,
+                    'appointmentsCancelled': 4,
+                    'appointmentsNoShow': 2,
+                    'revenue': None,
+                    'waitingRoom': {
+                        'waitin': 3,
+                        'inChair': 2,
+                        'doneToday': 11,
+                        'avgWaitMinutes': 14
+                    },
+                    'recalls': { 
+                        'overdue': 12, 
+                        'dueToday': 3, 
+                        'dueThisWeek': 9 
+                    },
+                    'inventory':   { 
+                        'lowStock': 6, 
+                        'criticalStock': 2 
+                    }
                 },
                 'metadata': {
                     'userPermissions': {
@@ -81,6 +127,7 @@ dashboard_stats_schema = extend_schema_serializer(
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': False,
+                        'view.referrals': False,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': False,
                         'view.settings': True
@@ -101,6 +148,24 @@ dashboard_stats_schema = extend_schema_serializer(
                     'patientsNew': None,
                     'appointmentsCount': None,
                     'appointmentsCompleted': None,
+                    'appointmentsCancelled': None,
+                    'appointmentsNoShow': None,
+                    'revenue': {
+                        'billedInPeriod': '254500.00',
+                        'collectedInPeriod': '150200.00',
+                        'totalOutstanding': '104300.00',
+                        # 'currency': 'SAR',
+                        'collectedByMethod': {
+                            'cash': '60000.00', 
+                            'card': '48200.00',
+                            'mobile_wallet': '30000.00', 
+                            'bank_transfer': '11000.00',
+                            'insurance': '1000.00'
+                        }
+                    },
+                    'waitingRoom': None,
+                    'recalls': None,
+                    'inventory': None,
                 },
                 'metadata': {
                     'userPermissions': {
@@ -119,6 +184,7 @@ dashboard_stats_schema = extend_schema_serializer(
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
                         'view.recalls': False,
+                        'view.referrals': False,
                         'view.clinicalAnalytics': True,
                         'view.financialAnalytics': False,
                         'view.settings': True

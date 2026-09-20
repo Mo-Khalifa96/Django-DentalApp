@@ -13,8 +13,9 @@ from patients.docs import patient_insurance_options_schema
 
 
 #Reference object to patient coverage fields
-COVERAGE_FIELDS = ('provider', 'providerName', 'memberId', 'annualMax', 'usedYTD', 'deductibleMet',
-                   'currency', 'effectiveFrom', 'effectiveTo', 'eligibilityChecked', 'eligibilityStatus')
+COVERAGE_FIELDS = ('provider', 'providerName', 'memberId', 'annualMax', 'usedYTD', 'coveragePercent', 
+                   'deductibleMet', 'currency', 'effectiveFrom', 'effectiveTo', 'eligibilityChecked', 
+                   'eligibilityStatus')
 
 
 #PATIENT INSURANCE COVERAGE SERIALIZERS 
@@ -28,8 +29,8 @@ class ListPatientCoverageSerializer(serializers.ModelSerializer):
     class Meta:
         model = PatientCoverage
         fields = ['id', 'patientId', 'patientName', 'providerId', 'providerName', 'memberId', 
-                  'annualMax', 'deductibleMet', 'usedYTD', 'effectiveFrom', 'effectiveTo', 
-                  'eligibilityChecked', 'eligibilityStatus', 'updatedAt']
+                  'annualMax', 'coveragePercent', 'deductibleMet', 'usedYTD', 'effectiveFrom', 
+                  'effectiveTo', 'eligibilityChecked', 'eligibilityStatus', 'updatedAt']
 
 
 #Create patient insurance coverage serializer
@@ -72,7 +73,7 @@ class CreatePatientCoverageSerializer(serializers.ModelSerializer):
         else:
             if not provider:
                 if new_provider_details:
-                    data['is_newProvider'] = True 
+                    data['is_newProvider'] = True
 
                     #try to identify current branch for new the provider
                     user = self.context.get('request').user
@@ -113,7 +114,7 @@ class CreatePatientCoverageSerializer(serializers.ModelSerializer):
 
             #override provider object to assign the new provider
             validated_data['provider'] = provider
-        
+
         
         #update with the validated data
         for field, value in validated_data.items():
@@ -136,9 +137,9 @@ class RetrieveUpdatePatientCoverageSerializer(UserPermissionsMixin, serializers.
     class Meta:
         model = PatientCoverage
         fields = ['id', 'patientName', 'patientId', 'providerName', 'providerId', 'is_newProvider', 
-                  'newProviderDetails', 'memberId', 'annualMax', 'usedYTD', 'deductibleMet', 'currency',
+                  'newProviderDetails', 'memberId', 'annualMax', 'usedYTD', 'coveragePercent', 'deductibleMet', 'currency',
                   'effectiveFrom', 'effectiveTo', 'eligibilityChecked', 'eligibilityStatus', 'updatedAt']
-        read_only_fields = ['id', 'patientName', 'patientId', 'providerName', 'updatedAt']
+        read_only_fields = ['id', 'patientName', 'patientId', 'providerName', 'coveragePercent', 'updatedAt']
         extra_kwargs = {
             'memberId': {'allow_null': False, 'allow_blank': False},
             'deductibleMet': {'required': False, 'default': False},
@@ -313,3 +314,4 @@ class PatientCoverageOptionsSerializer(serializers.Serializer):
             {'value': choice.value, 'label': str(choice.label)}
              for choice in PatientCoverage.EligibilityStatusChoices
         ]
+

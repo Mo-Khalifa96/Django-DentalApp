@@ -65,6 +65,7 @@ def get_message_history_schema():
                                 "view.doctorSchedules": True,
                                 "view.sterilizationLogs": False,
                                 "view.recalls": True,
+                                "view.referrals": True,
                                 "view.clinicalAnalytics": True,
                                 "view.financialAnalytics": True,
                                 "view.settings": True,
