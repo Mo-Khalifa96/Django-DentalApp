@@ -23,10 +23,7 @@ def update_patient_insurance_details_task():
 
             #Update expiring coverages
             coverages = PatientCoverage.objects.exclude(
-                eligibilityStatus__in=[
-                    PatientCoverage.EligibilityStatusChoices.EXPIRED,
-                    PatientCoverage.EligibilityStatusChoices.LIMIT_REACHED                    
-                ]
+                eligibilityStatus__in=['expired', 'limit_reached']
             ).all()
 
             #get coverages whose 'effectiveTo' is within 30 days from today

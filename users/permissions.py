@@ -31,6 +31,9 @@ class SystemBasePermission(BasePermission):
             
             elif hasattr(getattr(obj, 'doctor', None), 'branch_id'):
                 return request.user.branches.filter(id=obj.doctor.branch_id).exists()
+
+            elif hasattr(getattr(obj, 'treatment', None), 'patient__branch_id'):
+                return request.user.branches.filter(id=obj.treatment.patient__branch_id).exists()
         
         return True 
         
@@ -140,16 +143,24 @@ class PatientDataPermissions(SystemUserPermissions):
             #return branch permission for non-admins/dentists
             return super().has_object_permission(request, view, obj)
 
-        if hasattr(obj, 'doctor') and obj.doctor:
+        #check if it's the patient's doctor
+        if hasattr(obj, 'doctor') and obj.doctor:  #NOTE: skips if object has no doctor
             return obj.doctor == request.user 
-        elif hasattr(obj, 'patient') and obj.patient:
+        elif hasattr(obj, 'patient') and obj.patient and obj.patient.doctor:
             return obj.patient.doctor == request.user
-        elif hasattr(obj, 'treatment') and obj.treatment:
+        elif hasattr(obj, 'treatment') and obj.treatment and obj.treatment.doctor:
             return obj.treatment.doctor == request.user
         else:
-            #fallback to has_permission() check
-            # logger.warning(
-            #     f'Could not determine object permission for {obj}for request:\n',
-            #     f'{request}\n\nDefaulting to has_permission().')
+            # fallback to has_permission() check
+            logger.warning(
+                f'Could not determine object permission for {obj} for request:\n'
+                f'{request}\n\nDefaulting to has_permission().'
+            )
+            
             return self.has_permission(request, view)
 
+
+#Permission subclass for patient visits/perio-exams (removes doctor/branch restriction)
+class UnrestrictedObjectPermissions(SystemBasePermission):
+    def has_object_permission(self, request, view, obj):
+        return True     #no doctor/branch restrictions

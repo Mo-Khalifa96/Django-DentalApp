@@ -83,7 +83,7 @@ class TestListPatientCoveragePlansAPIView:
     def test_dentist_sees_only_own_patients_coverages(
         self, api_client, dentist_user, other_dentist_user, coverage_factory
     ):
-        c_own   = coverage_factory(doctor=dentist_user)
+        c_own = coverage_factory(doctor=dentist_user)
         c_other = coverage_factory(doctor=other_dentist_user)
 
         api_client.force_authenticate(user=dentist_user)
@@ -100,7 +100,7 @@ class TestListPatientCoveragePlansAPIView:
         b2 = branch_factory()
         receptionist_user.branches.set([b1])
 
-        c_own   = coverage_factory(branch=b1)
+        c_own = coverage_factory(branch=b1)
         c_other = coverage_factory(branch=b2)
 
         api_client.force_authenticate(user=receptionist_user)
@@ -114,7 +114,7 @@ class TestListPatientCoveragePlansAPIView:
         self, api_client, admin_user, coverage_factory
     ):
         coverage = coverage_factory()
-        patient  = coverage.patient
+        patient = coverage.patient
         patient.is_deleted = True
         patient.save(update_fields=['is_deleted'])
 
@@ -276,7 +276,7 @@ class TestFillInPatientCoverageAPIView:
     ):
         provider = insurance_provider_factory()
         coverage = coverage_factory()
-        payload  = _fill_payload(
+        payload = _fill_payload(
             provider,
             is_newProvider=True,
             newProviderDetails={'name': 'Conflict', 'tier': 'direct',
@@ -310,7 +310,7 @@ class TestFillInPatientCoverageAPIView:
     ):
         provider = insurance_provider_factory()
         coverage = coverage_factory()
-        payload  = _fill_payload(provider)
+        payload = _fill_payload(provider)
         payload.pop('memberId')
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
@@ -323,7 +323,7 @@ class TestFillInPatientCoverageAPIView:
     ):
         provider = insurance_provider_factory()
         coverage = coverage_factory()
-        payload  = _fill_payload(provider)
+        payload = _fill_payload(provider)
         payload.pop('eligibilityStatus')
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
@@ -389,8 +389,8 @@ class TestUpdatePatientCoverageAPIView:
     ):
         provider = insurance_provider_factory()
         coverage = coverage_factory()
-        coverage.provider          = provider
-        coverage.memberId          = 'MEM-PATCH'
+        coverage.provider = provider
+        coverage.memberId = 'MEM-PATCH'
         coverage.eligibilityStatus = 'active'
         coverage.save()
 
@@ -444,12 +444,12 @@ class TestUpdatePatientCoverageAPIView:
 
         provider = insurance_provider_factory()
         coverage = coverage_factory()
-        coverage.provider          = provider
-        coverage.memberId          = 'TO-CLEAR'
+        coverage.provider = provider
+        coverage.memberId = 'TO-CLEAR'
         coverage.eligibilityStatus = 'active'
-        coverage.annualMax         = Decimal('5000.00')
-        coverage.effectiveFrom     = date.today().replace(month=1, day=1)
-        coverage.effectiveTo       = date.today().replace(month=12, day=31)
+        coverage.annualMax = Decimal('5000.00')
+        coverage.effectiveFrom = date.today().replace(month=1, day=1)
+        coverage.effectiveTo = date.today().replace(month=12, day=31)
         coverage.save()
 
         api_client.force_authenticate(user=admin_user)
@@ -473,9 +473,9 @@ class TestUpdatePatientCoverageAPIView:
         
         old_provider = insurance_provider_factory(name='Old Insurer')
         new_provider = insurance_provider_factory(name='New Insurer')
-        coverage     = coverage_factory()
-        coverage.provider          = old_provider
-        coverage.memberId          = 'OLD-MEM'
+        coverage = coverage_factory()
+        coverage.provider = old_provider
+        coverage.memberId = 'OLD-MEM'
         coverage.eligibilityStatus = 'active'
         coverage.save()
 
@@ -493,7 +493,7 @@ class TestUpdatePatientCoverageAPIView:
         self, api_client, admin_user, coverage_factory, insurance_provider_factory
     ):
         old_provider = insurance_provider_factory(name='Old Insurer')
-        coverage     = coverage_factory()
+        coverage = coverage_factory()
         coverage.provider = old_provider
         coverage.save()
 
@@ -582,31 +582,43 @@ class TestUpdatePatientCoverageAPIView:
 @pytest.mark.django_db
 class TestUsedYTDSignal:
     def test_insurance_transaction_sets_used_ytd(
-        self, dentist_user, patient_factory, bill_factory
+        self, dentist_user, patient_factory, bill_factory, insurance_provider_factory
     ):
         from finances.models import Transaction
 
-        patient  = patient_factory(doctor=dentist_user)
+        patient = patient_factory(doctor=dentist_user)
         coverage = PatientCoverage.objects.get(patient=patient)
-        bill     = bill_factory(patient=patient)
+        #assign provider to patient 
+        coverage.provider = insurance_provider_factory()
+        coverage.save()
+
+        #create bill and insurance transaction
+        bill = bill_factory(patient=patient)
 
         Transaction.objects.create(
             bill=bill, patient=patient, visit=bill.visits.first(),
             date=date.today(), amount=Decimal('500.00'), method='insurance',
         )
         coverage.refresh_from_db()
+
         assert coverage.usedYTD == Decimal('500.00')
 
     def test_multiple_insurance_transactions_accumulate_in_used_ytd(
-        self, dentist_user, patient_factory, bill_factory
+        self, dentist_user, patient_factory, bill_factory, insurance_provider_factory
     ):
         from finances.models import Transaction
 
-        patient  = patient_factory(doctor=dentist_user)
+        patient = patient_factory(doctor=dentist_user)
         coverage = PatientCoverage.objects.get(patient=patient)
-        bill     = bill_factory(patient=patient)
-        visit    = bill.visits.first()
+        #assign provider to patient 
+        coverage.provider = insurance_provider_factory()
+        coverage.save()
 
+        #create bill and visit
+        bill = bill_factory(patient=patient)
+        visit = bill.visits.first()
+
+        #create insurance transaction
         Transaction.objects.create(
             bill=bill, patient=patient, visit=visit,
             date=date.today(), amount=Decimal('200.00'), method='insurance',
@@ -619,23 +631,31 @@ class TestUsedYTDSignal:
         assert coverage.usedYTD == Decimal('500.00')
 
     def test_cash_transaction_does_not_affect_used_ytd(
-        self, dentist_user, patient_factory, bill_factory
+        self, dentist_user, patient_factory, bill_factory, insurance_provider_factory
     ):
         from finances.models import Transaction
 
-        patient  = patient_factory(doctor=dentist_user)
+        patient = patient_factory(doctor=dentist_user)
         coverage = PatientCoverage.objects.get(patient=patient)
-        bill     = bill_factory(patient=patient)
+        #assign provider to patient 
+        coverage.provider = insurance_provider_factory()
+        coverage.save()
+
+        #get usedytd before billing/transaction
+        usedYTD_before = coverage.usedYTD
+        
+        #create bill
+        bill = bill_factory(patient=patient)
 
         Transaction.objects.create(
             bill=bill, patient=patient, visit=bill.visits.first(),
             date=date.today(), amount=Decimal('500.00'), method='cash',
         )
         coverage.refresh_from_db()
-        assert coverage.usedYTD is None   # never touched
+        assert coverage.usedYTD == usedYTD_before   # never touched
 
     def test_changing_method_from_insurance_to_cash_recalculates_ytd(
-        self, dentist_user, patient_factory, bill_factory
+        self, dentist_user, patient_factory, bill_factory, insurance_provider_factory
     ):
         '''pre_save captures _prev_method. When a transaction changes FROM
         'insurance' to another method, the signal recalculates usedYTD,
@@ -643,9 +663,13 @@ class TestUsedYTDSignal:
 
         from finances.models import Transaction
 
-        patient  = patient_factory(doctor=dentist_user)
+        patient = patient_factory(doctor=dentist_user)
         coverage = PatientCoverage.objects.get(patient=patient)
-        bill     = bill_factory(patient=patient)
+        #assign provider to patient 
+        coverage.provider = insurance_provider_factory()
+        coverage.save()
+
+        bill = bill_factory(patient=patient)
 
         txn = Transaction.objects.create(
             bill=bill, patient=patient, visit=bill.visits.first(),
@@ -718,7 +742,7 @@ class TestRetrievePatientCoverageOptionsAPIView:
         self, api_client, admin_user, patient_factory, dentist_user, branch_factory
     ):
         branch_factory()   # ensure branches exist so default guard activates
-        p_own   = patient_factory(doctor=dentist_user)
+        p_own = patient_factory(doctor=dentist_user)
         p_other = patient_factory()
 
         api_client.force_authenticate(user=admin_user)

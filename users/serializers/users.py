@@ -40,11 +40,22 @@ class CreateUserSerializer(serializers.ModelSerializer):
                   'password', 'password2', 'createdAt']
         read_only_fields = ['id', 'createdAt']
 
+    def to_internal_value(self, data):
+        '''Convert null to empty list.'''
+        #get data copy
+        data = data.copy()
+        
+        #convert null to empty list
+        if 'branchIds' in data and data['branchIds'] is None:
+            data['branchIds'] = []
+
+        return super().to_internal_value(data) 
+
     def validate_branchIds(self, branchIds):
         if not branchIds:
             if Branch.objects.exists():
                 raise serializers.ValidationError(_('At least one branch must be assigned to new user when at least one branch is registered. Please provide a branch ID to create an account.'))
-        return branchIds 
+        return branchIds
     
     def validate(self, data):
         '''Validates passwords during user creation.'''
@@ -187,8 +198,11 @@ class UpdateUserSerializer(serializers.ModelSerializer):
              urlparse(data['avatar']).path == self.instance.avatar.url)):
                 data.pop('avatar', None)
     
-        return super().to_internal_value(data) 
+        #convert null to empty list
+        if 'branchIds' in data and data['branchIds'] is None:
+            data['branchIds'] = []
     
+        return super().to_internal_value(data) 
 
     #Validate passwords
     def validate(self, data):

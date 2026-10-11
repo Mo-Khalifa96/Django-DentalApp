@@ -82,7 +82,7 @@ class TestListCreateInventoryAPIView:
         dentist_user.userPermissions = list(dentist_user.userPermissions) + ['view.inventory']
         dentist_user.save(update_fields=['userPermissions'])
 
-        item_own   = inventory_factory(branch=b1)
+        item_own = inventory_factory(branch=b1)
         item_other = inventory_factory(branch=b2)
 
         api_client.force_authenticate(user=dentist_user)
@@ -96,9 +96,9 @@ class TestListCreateInventoryAPIView:
         self, api_client, admin_user, inventory_factory, branch_factory
     ):
         active = branch_factory()
-        dying  = branch_factory()
+        dying = branch_factory()
         visible = inventory_factory(branch=active)
-        hidden  = inventory_factory(branch=dying)
+        hidden = inventory_factory(branch=dying)
 
         dying.is_deleted = True
         dying.save(update_fields=['is_deleted'])

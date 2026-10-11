@@ -13,7 +13,7 @@ from finances.models import Transaction
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _transaction_url(transaction_id):
-    return reverse('update_delete_transaction', kwargs={'id': transaction_id})
+    return reverse('retrieve_update_delete_transaction', kwargs={'id': transaction_id})
 
 def _create_payload(bill, visit, **overrides):
     base = {
@@ -80,15 +80,15 @@ class TestListCreateTransactionsAPIView:
         visit_factory, bill_factory, transaction_factory
     ):
         """GET queryset: dentist path → filter(patient__doctor=user)."""
-        p_own   = patient_factory(doctor=dentist_user)
+        p_own = patient_factory(doctor=dentist_user)
         p_other = patient_factory(doctor=other_dentist_user)
-        b_own   = bill_factory(patient=p_own, visits=[
+        b_own = bill_factory(patient=p_own, visits=[
             visit_factory(patient=p_own, doctor=dentist_user)
         ])
         b_other = bill_factory(patient=p_other, visits=[
             visit_factory(patient=p_other, doctor=other_dentist_user)
         ])
-        transaction_own   = transaction_factory(bill=b_own,   patient=p_own,   visit=b_own.visits.first())
+        transaction_own = transaction_factory(bill=b_own,   patient=p_own,   visit=b_own.visits.first())
         transaction_other = transaction_factory(bill=b_other, patient=p_other, visit=b_other.visits.first())
 
         api_client.force_authenticate(user=dentist_user)
@@ -98,11 +98,11 @@ class TestListCreateTransactionsAPIView:
         assert str(transaction_own.id) in ids
         assert str(transaction_other.id) not in ids
 
-    def test_receptionist_without_view_transactions_gets_403(
-        self, api_client, receptionist_user
+    def test_assistant_without_view_transactions_permission_gets_403(
+        self, api_client, assistant_user
     ):
         """receptionist has create.transaction but not view.transactions."""
-        api_client.force_authenticate(user=receptionist_user)
+        api_client.force_authenticate(user=assistant_user)
         response = api_client.get(reverse(self.LIST_URL))
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
@@ -204,7 +204,7 @@ class TestListCreateTransactionsAPIView:
         self, api_client, admin_user, bill_factory
     ):
         """post_save: visit.paid = SUM(non-deleted transactions for this visit)."""
-        bill  = bill_factory()
+        bill = bill_factory()
         visit = bill.visits.first()
         visit.refresh_from_db()
         initial_paid = visit.paid   #150.00' from visit_factory default
@@ -249,15 +249,6 @@ class TestListCreateTransactionsAPIView:
 
 @pytest.mark.django_db
 class TestUpdateDeleteTransactionAPIView:
-
-    def test_get_method_not_allowed(
-        self, api_client, admin_user, transaction_factory
-    ):
-        transaction = transaction_factory()
-        api_client.force_authenticate(user=admin_user)
-        response = api_client.get(_transaction_url(transaction.id))
-        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED or render_error(response)
-
     # ── PATCH (admin only) ────────────────────────────────────────────────────
 
     def test_admin_can_patch_transaction_amount(
@@ -313,7 +304,7 @@ class TestUpdateDeleteTransactionAPIView:
         assert not Transaction.objects.filter(id=tid).exists()
         assert not Transaction.all_objects.filter(id=tid).exists()
 
-    def test_admin_hard_delete_does_not_update_bill_total_paid(
+    def test_admin_hard_delete_does_updates_bill_total_paid_to_zero(
         self, api_client, admin_user, transaction_factory
     ):
         """
@@ -331,7 +322,7 @@ class TestUpdateDeleteTransactionAPIView:
         api_client.delete(_transaction_url(transaction.id))
 
         bill.refresh_from_db()
-        assert bill.totalPaid == Decimal('150.00')
+        assert bill.totalPaid == Decimal('0')
 
     def test_non_admin_soft_deletes_transaction(
         self, api_client, user_factory, transaction_factory
@@ -374,7 +365,7 @@ class TestUpdateDeleteTransactionAPIView:
     ):
         """post_save signal also recalculates visit.paid after soft-delete."""
         accountant = user_factory(role='accountant')
-        transaction  = transaction_factory(amount=Decimal('150.00'))
+        transaction = transaction_factory(amount=Decimal('150.00'))
         visit = transaction.visit
         visit.refresh_from_db()
         assert visit.paid == Decimal('150.00')   # set on creation

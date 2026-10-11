@@ -30,8 +30,11 @@ list_bills_schema = extend_schema_serializer(
                         'subtotal': '2350.00',
                         'total': '2200.00',
                         'totalPaid': '1000.00',
+                        'collectedFromPatient': '1000.00',
+                        'collectedFromInsurer': '0.00',
                         'currency': 'USD',
                         'status': 'partial',
+                        'isCreditHeld': False,
                         'createdAt': '2026-04-24T23:33:54.610Z',
                         'updatedAt': '2026-05-01T10:15:30.000Z',
                     },
@@ -49,8 +52,11 @@ list_bills_schema = extend_schema_serializer(
                         'subtotal': '3000.00',
                         'total': '3000.00',
                         'totaPaid': '0.00',
+                        'collectedFromPatient': '0.00',
+                        'collectedFromInsurer': '0.00',
                         'currency': 'USD',
                         'status': 'unpaid',
+                        'isCreditHeld': False,
                         'createdAt': '2026-05-01T09:00:00.000Z',
                         'updatedAt': '2026-05-01T09:00:00.000Z',
                     },
@@ -61,7 +67,7 @@ list_bills_schema = extend_schema_serializer(
                     'total': 120,
                     'totalPages': 5,
                     'hasNext': True, 
-                    'hasPrev': False,
+                    'hasPrev': True,
                 },
                 'links': {
                     'next': 'https://dtbackend.site/api/bills/?page=3',
@@ -79,6 +85,7 @@ list_bills_schema = extend_schema_serializer(
                         'view.labOrders': True,
                         'view.transactions': False,
                         'view.invoices': False,
+                        'view.installments': False,
                         'view.insuranceProviders': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
@@ -124,6 +131,7 @@ list_bills_schema = extend_schema_serializer(
                         'totalPaid': '1000.00',
                         'currency': 'USD',
                         'status': 'partial',
+                        'isCreditHeld': False,
                         'createdBy': 'Dr. Layla Hassan',
                         'createdAt': '2026-04-24T23:33:54.610Z',
                         'updatedAt': '2026-05-01T10:15:30.000Z',
@@ -148,6 +156,7 @@ list_bills_schema = extend_schema_serializer(
                         'totaPaid': '0.00',
                         'currency': 'USD',
                         'status': 'unpaid',
+                        'isCreditHeld': False,
                         'createdBy': 'Dr. Layla Hassan',
                         'createdAt': '2026-05-01T09:00:00.000Z',
                         'updatedAt': '2026-05-01T09:00:00.000Z',
@@ -160,7 +169,7 @@ list_bills_schema = extend_schema_serializer(
                     'total': 120,
                     'totalPages': 5,
                     'hasNext': True, 
-                    'hasPrev': False,
+                    'hasPrev': True,
                 },
                 'links': {
                     'next': 'https://dtbackend.site/api/bills/?page=3',
@@ -178,6 +187,7 @@ list_bills_schema = extend_schema_serializer(
                         'view.labOrders': True,
                         'view.transactions': True,
                         'view.invoices': True,
+                        'view.installments': True,
                         'view.insuranceProviders': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
@@ -224,8 +234,11 @@ retrieve_bills_schema = extend_schema_serializer(
                     'subtotal': '2350.00',
                     'total': '2200.00',
                     'totalPaid': '1000.00',
+                    'collectedFromPatient': '1000.00',
+                    'collectedFromInsurer': '0.00',
                     'currency': 'USD',
                     'status': 'partial',
+                    'isCreditHeld': False,
                     'createdAt': '2026-04-24T23:33:54.610Z',
                     'updatedAt': '2026-05-01T10:15:30.000Z',
                 },
@@ -241,6 +254,7 @@ retrieve_bills_schema = extend_schema_serializer(
                         'view.labOrders': True,
                         'view.transactions': False,
                         'view.invoices': False,
+                        'view.installments': False,
                         'view.insuranceProviders': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
@@ -285,6 +299,7 @@ retrieve_bills_schema = extend_schema_serializer(
                     'totalPaid': '1000.00',
                     'currency': 'USD',
                     'status': 'partial',
+                    'isCreditHeld': False,
                     'createdBy': 'Dr. Layla Hassan',
                     'createdAt': '2026-04-24T23:33:54.610Z',
                     'updatedAt': '2026-05-01T10:15:30.000Z',
@@ -301,7 +316,7 @@ retrieve_bills_schema = extend_schema_serializer(
                         'view.labs': True,
                         'view.labOrders': True,
                         'view.transactions': True,
-                        'view.invoices': True,
+                        'view.installments': True,
                         'view.insuranceProviders': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
@@ -386,7 +401,8 @@ list_transactions_schema = extend_schema_serializer(
                         'currency': 'USD',
                         'method': 'card',
                         'type': 'installment',
-                        'note': '',
+                        'status': 'completed',
+                        'notes': '',
                     },
                     {
                         'id': '4gb96g75-6828-5673-c4gd-3d4f66bgb7g7',
@@ -401,7 +417,8 @@ list_transactions_schema = extend_schema_serializer(
                         'currency': 'USD',
                         'method': 'cash',
                         'type': 'visit_fee',
-                        'note': '',
+                        'status': 'refunded',
+                        'notes': '',
                     },
                 ],
                 'pagination': {
@@ -428,6 +445,7 @@ list_transactions_schema = extend_schema_serializer(
                         'view.labOrders': True,
                         'view.bills': False,
                         'view.invoices': False,
+                        'view.installments': False,
                         'view.insuranceProviders': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
@@ -438,6 +456,7 @@ list_transactions_schema = extend_schema_serializer(
                         'view.settings': False,
                         'view.transactions': False,
                         'create.transaction': True,
+                        'update.transaction': True,
                         'delete.transaction': False
                     }
                 }
@@ -467,7 +486,7 @@ list_transactions_schema = extend_schema_serializer(
                         'method': 'card',
                         'type': 'installment',
                         'status': 'completed',
-                        'note': '',
+                        'notes': '',
                         'createdBy': 'Dr. Layla Hassan',
                         'isDeleted': False,
                     },
@@ -487,8 +506,8 @@ list_transactions_schema = extend_schema_serializer(
                         'currency': 'USD',
                         'method': 'cash',
                         'type': 'visit_fee',
-                        'status': 'Refunded',
-                        'note': '',
+                        'status': 'refunded',
+                        'notes': '',
                         'createdBy': 'Dr. Layla Hassan',
                         'isDeleted': True,
                     },
@@ -517,6 +536,7 @@ list_transactions_schema = extend_schema_serializer(
                         'view.labOrders': True,
                         'view.bills': True,
                         'view.invoices': True,
+                        'view.installments': True,
                         'view.insuranceProviders': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
@@ -527,6 +547,124 @@ list_transactions_schema = extend_schema_serializer(
                         'view.settings': True,
                         'view.transactions': True,
                         'create.transaction': True,
+                        'update.transaction': True,
+                        'delete.transaction': True
+                    }
+                }
+            }
+        )
+    ]
+)
+
+
+#Retrieve transaction schema 
+retrieve_transaction_schema = extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            name='Non-Admin Response',
+            description='Response without snapshot fields for non-admin users.',
+            response_only=True,
+            value={
+                'success': True,
+                'data': {
+                    'id': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                    'billId': 'd4e5f6a7-4567-8901-defa-4567890123de',
+                    'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
+                    'patientName': 'Ahmed Khaled',
+                    'visitId': None,
+                    'installmentPlanId': 'ac61b8a2-1278-9881-acfb-4042920114ef',
+                    'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
+                    'date': '2026-04-24',
+                    'amount': '250.00',
+                    'currency': 'USD',
+                    'method': 'card',
+                    'type': 'installment',
+                    'status': 'pending_correction',
+                    'notes': '',
+                    'refundReason': None,
+                    'correctionReason': 'Typed 250 instead of 2500',
+                },
+                'metadata': {
+                    'userPermissions': {
+                        'view.calendar': True,
+                        'view.waitingRoom': True,
+                        'view.patients': True,
+                        'view.appointments': True,
+                        'view.procedures': True,
+                        'view.inventory': True,
+                        'view.labs': False,
+                        'view.labOrders': True,
+                        'view.bills': False,
+                        'view.invoices': False,
+                        'view.installments': False,
+                        'view.insuranceProviders': True,
+                        'view.doctorSchedules': True,
+                        'view.sterilizationLogs': True,
+                        'view.recalls': True,
+                        'view.referrals': False,
+                        'view.clinicalAnalytics': True,
+                        'view.financialAnalytics': False,
+                        'view.settings': False,
+                        'view.transactions': False,
+                        'create.transaction': True,
+                        'update.transaction': True,
+                        'delete.transaction': False
+                    }
+                }
+            }
+        ),
+        OpenApiExample(
+            name='Admin Response',
+            response_only=True,
+            description='Admin response includes additional details, snapshot fields, and isDeleted flag.',
+            value={
+                'success': True,
+                'data': {
+                    'id': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                    'billId': 'd4e5f6a7-4567-8901-defa-4567890123de',
+                    'billDescription': 'Full mouth rehabilitation - Session 1',
+                    'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
+                    'patientName': 'Ahmed Khaled',
+                    'visitId': None,
+                    'treatmentTitle': 'Full Mouth Rehabilitation',
+                    'installmentPlanId': 'ac61b8a2-1278-9881-acfb-4042920114ef',
+                    'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
+                    'branchName': 'Main Branch',
+                    'date': '2026-04-24',
+                    'amount': '250.00',
+                    'currency': 'USD',
+                    'method': 'card',
+                    'type': 'installment',
+                    'status': 'pending_correction',
+                    'notes': '',
+                    'correctionReason': 'Typed 250 instead of 2500',
+                    'createdBy': 'Dr. Layla Hassan',
+                    'isDeleted': False,
+                },
+                'metadata': {
+                    'userPermissions': {
+                        'view.calendar': True,
+                        'view.waitingRoom': True,
+                        'view.patients': True,
+                        'view.appointments': True,
+                        'view.procedures': True,
+                        'view.inventory': True,
+                        'view.labs': True,
+                        'view.labOrders': True,
+                        'view.bills': True,
+                        'view.invoices': True,
+                        'view.installments': True,
+                        'view.insuranceProviders': True,
+                        'view.doctorSchedules': True,
+                        'view.sterilizationLogs': True,
+                        'view.recalls': True,
+                        'view.referrals': True,
+                        'view.clinicalAnalytics': True,
+                        'view.financialAnalytics': False,
+                        'view.settings': True,
+                        'view.transactions': True,
+                        'create.transaction': True,
+                        'update.transaction': True,
                         'delete.transaction': True
                     }
                 }
@@ -576,11 +714,13 @@ transactions_options_schema = extend_schema_serializer(
                     {'value': 'treatment_payment', 'label': 'Treatment payment'},
                     {'value': 'installment', 'label': 'Installment'},
                     {'value': 'visit_fee', 'label': 'Visit fee'},
+                    {'value': 'deposit', 'label': 'Deposit'},
                     {'value': 'other', 'label': 'Other'},
                 ],
                 'transactionStatusChoices': [
-                    {'value': 'completed', 'label': 'Completed'},
-                    {'value': 'refunded', 'label': 'Refunded'}
+                    {'value': 'pending_correction', 'label': 'Pending correction'},
+                    {'value': 'refunded', 'label': 'Refunded'},
+                    {'value': 'completed', 'label': 'Completed'}
                 ]
             }
         )
@@ -603,6 +743,10 @@ list_invoices_schema = extend_schema_serializer(
                         'id': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
                         'invoiceNumber': 'INV-2026-0001',
                         'billId': 'd4e5f6a7-4567-8901-defa-4567890123de',
+                        'recipientName': 'Ahmed Khaled',
+                        'billedToName': None,
+                        'billedToTaxId': None, 
+                        'billedToAddress': None,
                         'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
                         'patientName': 'Ahmed Khaled',
                         'patientNationalId': '525400222211100',
@@ -636,24 +780,35 @@ list_invoices_schema = extend_schema_serializer(
                     {
                         'id': '4gb96g75-6828-5673-c4gd-3d4f66bgb7g7',
                         'invoiceNumber': 'INV-2026-0002',
-                        'billId': 'd5f5f6b7-4567-8901-aeca-7912190321da',
-                        'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
-                        'patientName': 'Khaled Ahmed',
-                        'patientNationalId': '525400222211111',
+                        'billId': None,
+                        'recipientName': 'Dental Care Labs',
+                        'billedToName': 'Dental Care Labs',
+                        'billedToTaxId': 'Tax-1234', 
+                        'billedToAddress': 'Helioplis, Cairo',
+                        'patientId': None,
+                        'patientName': None,
+                        'patientNationalId': None,
                         'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
                         'items': [
                             {
                                 'code': None,
-                                'description': 'Root canal',
+                                'description': 'RCT kit',
                                 'quantity': 1,
-                                'unitPrice': '3500.00',
-                                'total': '3500.00'
+                                'unitPrice': '3200.00',
+                                'total': '3200.00'
                             },
+                            {
+                                'code': None,
+                                'description': 'Extraction kit',
+                                'quantity': 2,
+                                'unitPrice': '500',
+                                'total': '1000'
+                            }
                         ],
-                        'subtotal': '3500.00',
+                        'subtotal': '4200.00',
                         'tax': '0.00',
                         'discount': '150.00',
-                        'total': '3350.00',
+                        'total': '4050.00',
                         'currency': 'USD',
                         'status': 'submitted',
                         'issuedAt': None,
@@ -685,6 +840,7 @@ list_invoices_schema = extend_schema_serializer(
                         'view.labOrders': True,
                         'view.bills': False,
                         'view.transactions': False,
+                        'view.installments': False,
                         'view.insuranceProviders': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
@@ -713,6 +869,10 @@ list_invoices_schema = extend_schema_serializer(
                         'invoiceNumber': 'INV-2026-0001',
                         'billId': 'd4e5f6a7-4567-8901-defa-4567890123de',
                         'billDescription': 'Full mouth rehabilitation - Session 1',
+                        'recipientName': 'Ahmed Khaled',
+                        'billedToName': None,
+                        'billedToTaxId': None, 
+                        'billedToAddress': None,
                         'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
                         'patientName': 'Ahmed Khaled',
                         'patientNationalId': '525400222211100',
@@ -750,27 +910,38 @@ list_invoices_schema = extend_schema_serializer(
                     {
                         'id': '4gb96g75-6828-5673-c4gd-3d4f66bgb7g7',
                         'invoiceNumber': 'INV-2026-0002',
-                        'billId': 'd5f5f6b7-4567-8901-aeca-7912190321da',
-                        'billDescription': 'Routine checkup and root canal',
-                        'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
-                        'patientName': 'Khaled Ahmed',
-                        'patientNationalId': '525400222211111',
+                        'billId': None,
+                        'billDescription': None,
+                        'recipientName': 'Dental Care Labs',
+                        'billedToName': 'Dental Care Labs',
+                        'billedToTaxId': 'Tax-1234', 
+                        'billedToAddress': 'Helioplis, Cairo',
+                        'patientId': None,
+                        'patientName': None,
+                        'patientNationalId': None,
                         'treatmentTitle': None,
                         'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
                         'branchName': 'Main Branch',
                         'items': [
                             {
                                 'code': None,
-                                'description': 'Root canal',
+                                'description': 'RCT kit',
                                 'quantity': 1,
-                                'unitPrice': '3500.00',
-                                'total': '3500.00'
+                                'unitPrice': '3200.00',
+                                'total': '3200.00'
                             },
+                            {
+                                'code': None,
+                                'description': 'Extraction kit',
+                                'quantity': 2,
+                                'unitPrice': '500',
+                                'total': '1000'
+                            }
                         ],
-                        'subtotal': '3500.00',
+                        'subtotal': '4200.00',
                         'tax': '0.00',
                         'discount': '150.00',
-                        'total': '3350.00',
+                        'total': '4050.00',
                         'currency': 'USD',
                         'status': 'submitted',
                         'issuedAt': None,
@@ -804,6 +975,7 @@ list_invoices_schema = extend_schema_serializer(
                         'view.labOrders': True,
                         'view.bills': True,
                         'view.transactions': True,
+                        'view.installments': True,
                         'view.insuranceProviders': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
@@ -837,6 +1009,10 @@ retrieve_invoice_schema = extend_schema_serializer(
                     'id': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
                     'invoiceNumber': 'INV-2026-0001',
                     'billId': 'd4e5f6a7-4567-8901-defa-4567890123de',
+                    'recipientName': 'Ahmed Khaled',
+                    'billedToName': None,
+                    'billedToTaxId': None, 
+                    'billedToAddress': None,
                     'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
                     'patientName': 'Ahmed Khaled',
                     'patientNationalId': '525400222211100',
@@ -879,6 +1055,7 @@ retrieve_invoice_schema = extend_schema_serializer(
                         'view.labOrders': True,
                         'view.bills': False,
                         'view.transactions': False,
+                        'view.installments': False,
                         'view.insuranceProviders': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
@@ -906,6 +1083,10 @@ retrieve_invoice_schema = extend_schema_serializer(
                     'invoiceNumber': 'INV-2026-0001',
                     'billId': 'd4e5f6a7-4567-8901-defa-4567890123de',
                     'billDescription': 'Full mouth rehabilitation - Session 1',
+                    'recipientName': 'Ahmed Khaled',
+                    'billedToName': None,
+                    'billedToTaxId': None, 
+                    'billedToAddress': None,
                     'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
                     'patientName': 'Ahmed Khaled',
                     'patientNationalId': '525400222211100',
@@ -952,6 +1133,7 @@ retrieve_invoice_schema = extend_schema_serializer(
                         'view.labOrders': True,
                         'view.bills': True,
                         'view.transactions': True,
+                        'view.installments': True,
                         'view.insuranceProviders': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
@@ -1015,8 +1197,134 @@ invoices_options_schema = extend_schema_serializer(
 ) 
 
 
+#Retrieve installments transaction schema
+retrieve_installments_transaction_schema = extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            name='Non-Admin Response',
+            description='Response without snapshot fields for non-admin users.',
+            response_only=True,
+            value={
+                'success': True,
+                'data': {
+                    'transactionId': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                    'billId': 'd4e5f6a7-4567-8901-defa-4567890123de',
+                    'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
+                    'patientName': 'Ahmed Khaled',
+                    'treatmentId': 'b2c3d4e5-2345-6789-bcde-2345678901bc',
+                    'installmentPlanId': 'ac61b8a2-1278-9881-acfb-4042920114ef',
+                    'installmentsPaid': [
+                        {'id': '41f1c0fd-3b69-4289-9a8a-83eb205702c3', 'amount': '200.00', 'sequence': 0, 'dueDate': '2026-09-6', 'type': 'down_payment'},
+                        {'id': 'ea0b1f0f-df7e-4a0a-9bb6-67ecfa1ecef4', 'amount': '800.00', 'sequence': 1, 'dueDate':'2026-09-15', 'type': 'installment'},
+                        {'id': '3fa85f64-5717-4562-b3fc-2c963f66afa6', 'amount': '800.00', 'sequence': 2, 'dueDate':'2026-10-15', 'type': 'installment'},
+                    ],
+                    'date': '2026-04-24',
+                    'amount': '250.00',
+                    'currency': 'USD',
+                    'method': 'card',
+                    'type': 'installment',
+                    'status': 'pending_correction',
+                    'notes': '',
+                    'refundReason': None,
+                    'correctionReason': None,
+                    'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
+                },
+                'metadata': {
+                    'userPermissions': {
+                        'view.calendar': True,
+                        'view.waitingRoom': True,
+                        'view.patients': True,
+                        'view.appointments': True,
+                        'view.procedures': True,
+                        'view.inventory': True,
+                        'view.labs': False,
+                        'view.labOrders': True,
+                        'view.bills': True,
+                        'view.transactions': True,
+                        'view.invoices': True,
+                        'view.insuranceProviders': True,
+                        'view.doctorSchedules': True,
+                        'view.sterilizationLogs': True,
+                        'view.recalls': True,
+                        'view.referrals': False,
+                        'view.clinicalAnalytics': True,
+                        'view.financialAnalytics': False,
+                        'view.settings': False,
+                        'view.installments': False,
+                        'create.installments': True,
+                        'update.installments': True,
+                        'delete.installments': False
+                    }
+                }
+            }
+        ),
+        OpenApiExample(
+            name='Admin Response',
+            response_only=True,
+            description='Admin response includes additional details, snapshot fields, and isDeleted flag.',
+            value={
+                'success': True,
+                'data': {
+                    'transactionId': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                    'billId': 'd4e5f6a7-4567-8901-defa-4567890123de',
+                    'billDescription': 'Full mouth rehabilitation - Session 1',
+                    'patientId': 'a1b2c3d4-1234-5678-abcd-1234567890ab',
+                    'patientName': 'Ahmed Khaled',
+                    'treatmentId': 'b2c3d4e5-2345-6789-bcde-2345678901bc',
+                    'treatmentTitle': 'Full Mouth Rehabilitation',
+                    'installmentPlanId': 'ac61b8a2-1278-9881-acfb-4042920114ef',
+                    'installmentsPaid': [
+                        {'id': '41f1c0fd-3b69-4289-9a8a-83eb205702c3', 'amount': '200.00', 'sequence': 0, 'dueDate': '2026-09-6', 'type': 'down_payment'},
+                        {'id': 'ea0b1f0f-df7e-4a0a-9bb6-67ecfa1ecef4', 'amount': '800.00', 'sequence': 1, 'dueDate': '2026-09-15', 'type': 'installment'},
+                        {'id': '3fa85f64-5717-4562-b3fc-2c963f66afa6', 'amount': '800.00', 'sequence': 2, 'dueDate': '2026-10-15', 'type': 'installment'},
+                    ],
+                    'date': '2026-04-24',
+                    'amount': '250.00',
+                    'currency': 'USD',
+                    'method': 'card',
+                    'type': 'installment',
+                    'status': 'pending_correction',
+                    'notes': '',
+                    'refundReason': None,
+                    'correctionReason': None,
+                    'createdBy': 'Dr. Layla Hassan',
+                    'branchId': 'e5f6a7b8-5678-9012-efab-5678901234ef',
+                    'branchName': 'Main Branch',
+                    'isDeleted': False
+                },
+                'metadata': {
+                    'userPermissions': {
+                        'view.calendar': True,
+                        'view.waitingRoom': True,
+                        'view.patients': True,
+                        'view.appointments': True,
+                        'view.procedures': True,
+                        'view.inventory': True,
+                        'view.labs': True,
+                        'view.labOrders': True,
+                        'view.bills': True,
+                        'view.transactions': True,
+                        'view.invoices': True,
+                        'view.insuranceProviders': True,
+                        'view.doctorSchedules': True,
+                        'view.sterilizationLogs': True,
+                        'view.recalls': True,
+                        'view.referrals': True,
+                        'view.clinicalAnalytics': True,
+                        'view.financialAnalytics': True,
+                        'view.settings': True,
+                        'view.installments': True,
+                        'create.installments': True,
+                        'update.installments': True,
+                        'delete.installments': True
+                    }
+                }
+            }
+        )
+    ]
+)
+
 #Schema for installments options serializer 
-#Schema for invoices options serializer
 installments_options_schema = extend_schema_serializer(
     examples=[
         OpenApiExample(
@@ -1041,7 +1349,7 @@ installments_options_schema = extend_schema_serializer(
                     {'id': '41f1c0fd-3b69-4289-9a8a-83eb205702c3', 'amount': '200.00', 'sequence': 0, 'dueDate': '2026-09-6', 'type': 'down_payment'},
                     {'id': 'ea0b1f0f-df7e-4a0a-9bb6-67ecfa1ecef4', 'amount': '800.00', 'sequence': 1, 'dueDate':'2026-09-15', 'type': 'installment'},
                     {'id': '3fa85f64-5717-4562-b3fc-2c963f66afa6', 'amount': '800.00', 'sequence': 2, 'dueDate':'2026-10-15', 'type': 'installment'},
-                    {'id': '4gb96g75-6828-5673-c4gd-3d4f66bgb7g7', 'amount': '800.00', 'sequence': 3, 'dueDate':'2026-11-15', 'type': 'installment'}
+                    {'id': '4gb96g75-6828-5673-c4gd-3d4f66bgb7g7', 'amount': '800.00', 'sequence': 3, 'dueDate':'2026-11-15', 'type': 'installment'},
                 ],
                 'InstallmentPlanStatusChoices': [
                     {'value': 'pending', 'label': 'Pending'},
@@ -1074,6 +1382,7 @@ installments_options_schema = extend_schema_serializer(
                     {'value': 'treatment_payment', 'label': 'Treatment payment'},
                     {'value': 'installment', 'label': 'Installment'},
                     {'value': 'visit_fee', 'label': 'Visit fee'},
+                    {'value': 'deposit', 'label': 'Deposit'},
                     {'value': 'other', 'label': 'Other'},
                 ]
             }

@@ -83,7 +83,7 @@ class TestListCreateProceduresAPIView:
         b2 = branch_factory()
         dentist_user.branches.set([b1])
 
-        p_own   = procedure_factory(branch=b1)
+        p_own = procedure_factory(branch=b1)
         p_other = procedure_factory(branch=b2)
 
         api_client.force_authenticate(user=dentist_user)
@@ -110,9 +110,9 @@ class TestListCreateProceduresAPIView:
     ):
         """ProcedureManager: Q(branch__is_deleted=False) hides stale entries."""
         active = branch_factory()
-        dying  = branch_factory()
+        dying = branch_factory()
         visible = procedure_factory(branch=active)
-        hidden  = procedure_factory(branch=dying)
+        hidden = procedure_factory(branch=dying)
 
         dying.is_deleted = True
         dying.save(update_fields=['is_deleted'])

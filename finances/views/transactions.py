@@ -1,5 +1,6 @@
 from utils.base_views import *
 from users.models import User
+from django.db.models import Q 
 from django.http import Http404
 from django.db import transaction
 from patients.models import Patient
@@ -12,15 +13,16 @@ from utils.filters import CustomOrderingFilter
 from rest_framework.filters import SearchFilter
 from users.utils import get_required_permission
 from utils.mixins import BranchToSerializerMixin
+from users.permissions import PatientDataPermissions
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
-from users.permissions import AdminOnly, PatientDataPermissions
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
-from finances.serializers.transactions import (TransactionSerializer, CreateTransactionSerializer,
-                                        UpdateTransactionSerializer, TransactionsOptionsSerializer
-                                        )
+from finances.serializers.transactions import (TransactionSerializer, RetrieveTransactionSerializer, 
+                                        CreateTransactionSerializer, UpdateTransactionSerializer, 
+                                        CreateDepositTransactionSerializer, RefundTransactionSerializer, 
+                                        RequestCorrectionSerializer, TransactionsOptionsSerializer)
 
 
 #TRANSACTIONS API VIEWS
@@ -29,15 +31,15 @@ from finances.serializers.transactions import (TransactionSerializer, CreateTran
 class ListCreateTransactionsAPIView(FilterListCreateAPIView):
     permission_classes = [PatientDataPermissions]
     ordering = ['branch__name', '-date', 'patientName']
-    ordering_fields = ['patientName', 'branchName', 'date', 'amount', 'createdBy']
-    search_fields = ['patientName', 'branchName', 'note']
+    ordering_fields = ['patientName', 'branchName', 'date', 'amount', 'type', 'status', 'createdBy']
+    search_fields = ['patientName', 'branchName', 'notes']
     filterset_class = TransactionsFilter
     filter_backends = [DjangoFilterBackend, SearchFilter, CustomOrderingFilter]
 
     def initial(self, request, *args, **kwargs):
         #add `createdBy` and `billDescription` to admin's search fields
         if getattr(request.user, 'role', None) == 'admin':
-            self.search_fields = ['patientName', 'branchName', 'billDescription', 'status', 'note', 'createdBy']
+            self.search_fields = ['patientName', 'branchName', 'billDescription', 'notes', 'createdBy']
         #determine required permission
         self.required_permission = get_required_permission('transactions', request, self)
         super().initial(request, *args, **kwargs)
@@ -49,12 +51,12 @@ class ListCreateTransactionsAPIView(FilterListCreateAPIView):
         #admin gets all objects
         if getattr(user, 'role', None) == 'admin':
             return Transaction.all_objects.select_related(
-                'bill', 'patient', 'visit', 'branch'
+                'bill', 'bill__installmentPlan', 'patient', 'visit', 'branch'
             ).all()
         
         #fetch transactions data normally for non-admins
         transactions = Transaction.objects.select_related(
-            'bill', 'patient', 'visit', 'branch'
+            'bill', 'bill__installmentPlan', 'patient', 'visit', 'branch'
         ).all()
 
         #return on post
@@ -77,30 +79,37 @@ class ListCreateTransactionsAPIView(FilterListCreateAPIView):
 
 #Update/delete transaction API view
 @extend_schema(tags=['Payments and Billing'])
-class UpdateDeleteTransactionAPIView(UpdateAPIView, DeleteAPIView):
-    queryset = Transaction.objects.select_related('bill').all()
-    required_permission = 'delete.transaction'
+class RetrieveUpdateDeleteTransactionAPIView(RetrieveUpdateDeleteAPIView):
+    permission_classes = [PatientDataPermissions]
     lookup_url_kwarg = 'id'
     lookup_field = 'id'
 
+    def initial(self, request, *args, **kwargs):
+        #determine required permission
+        self.required_permission = get_required_permission('transactions', request, self)
+        super().initial(request, *args, **kwargs)
+
     def get_queryset(self):
         #admin gets all objects
-        user = self.request.user 
+        user = self.request.user
         if getattr(user, 'role', None) == 'admin':
-            return Transaction.all_objects.select_related('bill').all()
+            transactions = Transaction.all_objects.select_related(
+                    'bill', 'bill__installmentPlan', 'patient', 'visit', 'branch'
+                ).all()
         else:
-            return Transaction.objects.select_related('bill').all()
-
-    def get_permissions(self):
-        if self.request.method == 'PATCH':  #TODO --> needs change
-            return [AdminOnly()]
-        return [PatientDataPermissions()]
+            transactions = Transaction.objects.select_related(
+                    'bill', 'bill__installmentPlan', 'patient', 'visit', 'branch'
+                ).all()
+        
+        #exclude transactions associated with installments for updates
+        if self.request.method == 'PATCH':
+            return transactions.exclude(Q(installments__isnull=False) | Q(type='installment'))
+        return transactions
 
     def get_serializer_class(self):
         if self.request.method == 'PATCH':
             return UpdateTransactionSerializer
-        return TransactionSerializer
-
+        return RetrieveTransactionSerializer
 
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
@@ -110,6 +119,51 @@ class UpdateDeleteTransactionAPIView(UpdateAPIView, DeleteAPIView):
         #soft delete bill and return response
         Transaction.objects.delete_transaction(user=request.user, transaction=transaction)
         return Response({}, status=status.HTTP_204_NO_CONTENT)
+
+
+#Create deposit transaction API view
+@extend_schema(tags=['Payments and Billing'])
+class CreateDepositTransactionAPIView(CreateAPIView):
+    queryset = Transaction.objects.select_related('patient', 'branch').all()
+    serializer_class = CreateDepositTransactionSerializer
+    permission_classes = [PatientDataPermissions]
+    required_permission = 'create.transaction'
+
+
+#Refund transaction API view
+@extend_schema(tags=['Payments and Billing'])
+class RefundTransactionAPIView(UpdateAPIView):
+    serializer_class = RefundTransactionSerializer
+    permission_classes = [PatientDataPermissions]
+    required_permission = 'create.transaction'
+    lookup_url_kwarg = 'id'
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        #admin gets all objects
+        user = self.request.user 
+        if getattr(user, 'role', None) == 'admin':
+            return Transaction.all_objects.select_related('bill', 'patient').all()
+        else:
+            return Transaction.objects.select_related('bill', 'patient').all()
+
+
+#Request correction to a transaction API view
+@extend_schema(tags=['Payments and Billing'])
+class RequestCorrectionAPIView(UpdateAPIView):
+    serializer_class = RequestCorrectionSerializer
+    permission_classes = [PatientDataPermissions]
+    required_permission = 'create.transaction'
+    lookup_url_kwarg = 'id'
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        #admin gets all objects
+        user = self.request.user 
+        if getattr(user, 'role', None) == 'admin':
+            return Transaction.all_objects.select_related('bill', 'patient').all()
+        else:
+            return Transaction.objects.select_related('bill', 'patient').all()
 
 
 #API View for serving choice options for transactions

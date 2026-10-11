@@ -1,19 +1,19 @@
 import logging
 from decimal import Decimal
+from django.db.models import Q
 from clinic.models import Branch
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Sum
 from patients.models import Patient
 from rest_framework import serializers
-from django.db.models.functions import Coalesce
+from utils.mixins import UserPermissionsMixin
 from dateutil.relativedelta import relativedelta
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 from utils.exceptions import InstallmentPlanInProgressError
 from services.translation.serializers import TranslatedChoiceField
 from finances.models import Bill, Transaction, InstallmentPlan, Installment
-from finances.docs import installments_options_schema
+from finances.docs import retrieve_installments_transaction_schema, installments_options_schema
 
 
 #Initiate logger 
@@ -41,7 +41,7 @@ class InstallmentPlanSerializer(serializers.ModelSerializer):
     patientId = serializers.PrimaryKeyRelatedField(source='treatment.patient', read_only=True)
     patientName = serializers.CharField(source='treatment.patient.name', read_only=True)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
-    status = TranslatedChoiceField(choices=InstallmentPlan.InstallmentPlanStatusChoices, read_only=True)
+    status = TranslatedChoiceField(choices=InstallmentPlan.InstallmentPlanStatusChoices.choices, read_only=True)
     installmentMonths = TranslatedChoiceField(choices=InstallmentPlan.InstallmentMonthsChoices.choices)
     installments = InstallmentsSerializer(many=True, read_only=True)
 
@@ -83,7 +83,7 @@ class RetrievePatientInstallmentPlanSerializer(InstallmentPlanSerializer):
     status = serializers.SerializerMethodField()
     installments = RetrievePatientInstallmentsSerializer(many=True, read_only=True)
 
-    class Meta(InstallmentPlanSerializer):
+    class Meta(InstallmentPlanSerializer.Meta):
         fields = ['installmentPlanId', 'treatmentId', 'billId', 'installmentMonths', 'startDate',
                 'totalAmount', 'totalPaid', 'status', 'installments', 'createdAt', 'updatedAt']
 
@@ -120,7 +120,7 @@ class GenerateInstallmentsSerializer(InstallmentsSerializer):
             return Installment.InstallmentStatusChoices.OVERDUE
         else:
             return Installment.InstallmentStatusChoices.PENDING
-        
+
 #Generate installment plan serializer
 class GenerateInstallmentPlanSerializer(InstallmentPlanSerializer):
     status = serializers.SerializerMethodField()
@@ -155,7 +155,7 @@ class GenerateInstallmentPlanSerializer(InstallmentPlanSerializer):
         #Validate the treatment doesn't already have a plan with paid installments
         if getattr(treatment, 'installment_plan', None):
             installments = treatment.installment_plan.installments.all()
-            if installments.filter(type=Installment.InstallmentTypeChoices.INSTALLMENT, paidAt__isnull=False).exists():
+            if installments.filter(type='installment', paidAt__isnull=False).exists():
                 raise InstallmentPlanInProgressError(
                     detail=_('An installment plan already exists for this treatment plan with paid installments marked as complete.')
                 )
@@ -295,7 +295,7 @@ class UpdateInstallmentPlanSerializer(InstallmentPlanSerializer):
 
         #Validate the installment plan doesn't already have paid installments
         installments = installment_plan.installments.all()
-        if installments.filter(type=Installment.InstallmentTypeChoices.INSTALLMENT, paidAt__isnull=False).exists():
+        if installments.filter(type='installment', paidAt__isnull=False).exists():
             raise InstallmentPlanInProgressError(
                 detail=_('This installment plan cannot be modified because one or more installments have already been paid.')
             )
@@ -457,31 +457,29 @@ class AutogenerateInstallmentsBillSerializer(serializers.ModelSerializer):
 #Create installment(s) transaction serializer
 class CreateInstallmentTransactionSerializer(serializers.ModelSerializer):
     #read-only
+    transactionId = serializers.UUIDField(source='id', read_only=True)  #TODO - document new field
     billId = serializers.PrimaryKeyRelatedField(source='bill', read_only=True)
     patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
     treatmentId = serializers.PrimaryKeyRelatedField(source='bill.treatment', read_only=True)
     installmentPlanId = serializers.PrimaryKeyRelatedField(source='bill.installmentPlan', read_only=True)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     type = TranslatedChoiceField(choices=Transaction.TransactionTypeChoices.choices, read_only=True)
-    transactionIds = serializers.ListField(child=serializers.UUIDField(read_only=True), read_only=True)
     #read/write
-    installmentIds = serializers.PrimaryKeyRelatedField(many=True, source='installments_to_settle', queryset=Installment.objects.all())
+    installmentIds = serializers.PrimaryKeyRelatedField(many=True, source='installments', queryset=Installment.objects.all(), allow_empty=False)
     method = TranslatedChoiceField(choices=Transaction.PaymentMethodChoices.choices, 
                                    required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = Transaction
-        fields = ['billId', 'patientId', 'patientName', 'treatmentId', 'installmentPlanId', 'installmentIds', 
-                  'transactionIds', 'branchId', 'date', 'amount', 'currency', 'method', 'type', 'note']
-        read_only_fields = ['billId', 'patientId', 'patientName', 'treatmentId', 'installmentPlanId', 
-                            'transactionIds', 'branchId', 'type']
-        extra_kwargs = {'amount': {'required': False}}
-        #read/write --> installmentIds, date, amount, currency, method, note
+        fields = ['transactionId', 'billId', 'patientId', 'patientName', 'treatmentId', 'installmentPlanId', 
+                  'installmentIds', 'branchId', 'date', 'amount', 'currency', 'method', 'type', 'notes']
+        read_only_fields = ['transactionId', 'billId', 'patientId', 'patientName', 'treatmentId',
+                            'installmentPlanId', 'branchId', 'amount', 'currency', 'type']
+        #read/write --> installmentIds, date, method, notes
 
     def validate(self, data):
         #fetch necessary data for validation
-        amount = data.get('amount')
-        installments = data.get('installments_to_settle')
+        installments = data.get('installments')
         plan = self.context.get('installment_plan')  #passed from serializer context
         bill = plan.active_bill
         
@@ -490,8 +488,13 @@ class CreateInstallmentTransactionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'non_field_errors': [_(f'The installment plan to which these installments belong does not have a corresponding bill. '
                                                                       f'Make sure a bill is generated for the associated installment plan first before making a transaction.')]})
 
+        lowest_sequence = None
         total_from_installments = 0
         for installment in installments:
+            #determine lowest sequence
+            if lowest_sequence is None or installment.sequence < lowest_sequence:
+                lowest_sequence = installment.sequence
+            
             #validate if an installment has already been paid 
             if installment.paidAt:
                 raise serializers.ValidationError({'installmentIds': _('At least one or more of the chosen installments has already been paid.')})
@@ -503,22 +506,25 @@ class CreateInstallmentTransactionSerializer(serializers.ModelSerializer):
             #add installment's amount to total
             total_from_installments = total_from_installments + installment.amount
 
-        #validate amount passed against pending installments' total amount
+        #convert total amount to decimal
         total_from_installments = Decimal(str(total_from_installments))
-        if amount and (round(amount, 2) != round(total_from_installments,2) 
-         or abs(total_from_installments - amount) > 0.01):
-            logger.error(f'FRONTEND BUG: Total amount provided does not match the installments total amount! '
-                         f'Total provided: {amount} - Total calculated: {total_from_installments}')
         
-        #assign the calculated total anyway
-        data['amount'] = total_from_installments
+        #Validate order of installments
+        #validate if earlier pending installments are excluded from installments sent
+        if plan.installments.filter(paidAt__isnull=True, sequence__lt=lowest_sequence).exists():
+            raise serializers.ValidationError({'installmentIds': _('Installments must be paid in sequence according to the installment plan. '
+                                                                    'Please select installments with the earliest due dates first before paying '
+                                                                    'subsequent ones.')})
 
 
         #validate insurance is active and can cover transaction costs
         coverage = bill.patient.patient_insurance
-        if coverage and data.get('method') == Transaction.PaymentMethodChoices.INSURANCE:
-              coverage.validate_coverage_for_transaction(transaction_amount=amount)
+        if coverage and data.get('method') == 'insurance':
+              coverage.validate_coverage_for_transaction(transaction_amount=total_from_installments)
 
+        #assign the calculated total and currency
+        data['amount'] = total_from_installments
+        data['currency'] = bill.currency
         return data 
     
     @transaction.atomic
@@ -526,106 +532,189 @@ class CreateInstallmentTransactionSerializer(serializers.ModelSerializer):
         #fetch necessary data for the transactions
         user = self.context.get('request').user
         total_amount = validated_data.get('amount')
-        installments = validated_data.get('installments_to_settle')
+        installments = validated_data.get('installments')
         plan = self.context.get('installment_plan')  #passed from serializer context
         bill = plan.active_bill
         datetime_now = timezone.localtime(timezone.now())
 
-        #Create transaction per installment
-        transactions_to_create = [
-            Transaction(
-                patient=bill.patient,
-                patientName=bill.patient.name,
-                bill=bill,
-                billDescription=bill.description,
-                # installment=installment,  #current installment
-                amount=installment.amount,  #amount taken directly from current installment
-                date=validated_data['date'],
-                currency=validated_data.get('currency', bill.currency),
-                method=(validated_data.get('method') or 'cash'),
-                note=validated_data.get('note'),
-                status=Transaction.TransactionStatusChoices.COMPLETED,
-                type=Transaction.TransactionTypeChoices.INSTALLMENT,
-                treatmentTitle=(bill.treatmentTitle or getattr(plan.treatment, 'title', None)),
-                branch=(bill.branch or bill.patient.branch),
-                branchName=(getattr(bill.branch, 'name', None) or getattr(bill.patient.branch, 'name', None)),
-                createdBy=user.name
-            )
-            for installment in installments
-        ]
-
-        #Bulk create transactions
-        Transaction.objects.bulk_create(transactions_to_create)
+        #Create transaction 
+        transaction = Transaction.objects.create(
+                        patient=bill.patient,
+                        patientName=bill.patient.name,
+                        bill=bill,
+                        billDescription=bill.description,
+                        amount=total_amount,
+                        date=validated_data['date'],
+                        currency=validated_data['currency'],
+                        method=(validated_data.get('method') or 'cash'),
+                        notes=validated_data.get('notes'),
+                        status='completed',
+                        type='installment',
+                        treatmentTitle=(bill.treatmentTitle or getattr(plan.treatment, 'title', None)),
+                        branch=(bill.branch or bill.patient.branch),
+                        branchName=(getattr(bill.branch, 'name', None) or getattr(bill.patient.branch, 'name', None)),
+                        createdBy=user.name
+                    )    
 
         #Set installments' paidAt and transactionId
-        for installment, transaction in zip(installments, transactions_to_create):
+        for installment in installments:
             installment.transaction_id = transaction.id
             installment.paidAt = datetime_now
         
         #Bulk update installments
         Installment.objects.bulk_update(installments, fields=['transaction', 'paidAt'])
+        
+        #return current transaction instance
+        return transaction
 
 
-        #Update installment plan and bill
-        plan.totalPaid = (plan.totalPaid or Decimal('0')) + total_amount
-        bill.totalPaid = (bill.totalPaid or Decimal('0')) + total_amount
-        #save changes
-        plan.save(update_fields=['totalPaid', 'updatedAt'])
-        bill.save(update_fields=['totalPaid'])
+#Installments settled serializer -- nested serializer 
+class InstallmentsSettledSerializer(InstallmentsSerializer):
+    class Meta(InstallmentsSerializer.Meta):
+        fields = ['id', 'amount', 'sequence', 'dueDate', 'type']
 
-        #Update patient's insurance `usedYTD` if they have insurance
-        #get coverage instance
+#Retrieve installment(s) transaction serializer 
+@retrieve_installments_transaction_schema
+class RetrieveInstallmentTransactionSerializer(UserPermissionsMixin, serializers.ModelSerializer):
+    transactionId = serializers.UUIDField(source='id', read_only=True)
+    patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
+    billId = serializers.PrimaryKeyRelatedField(source='bill', read_only=True)
+    treatmentId = serializers.PrimaryKeyRelatedField(source='bill.treatment', read_only=True)
+    installmentPlanId = serializers.PrimaryKeyRelatedField(source='bill.installmentPlan', read_only=True)
+    installmentsPaid = InstallmentsSettledSerializer(many=True, source='installments', read_only=True)
+    branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
+    type = TranslatedChoiceField(choices=Transaction.TransactionTypeChoices.choices, read_only=True)
+    method = TranslatedChoiceField(choices=Transaction.PaymentMethodChoices.choices, read_only=True)
+    status = TranslatedChoiceField(choices=Transaction.TransactionStatusChoices.choices, read_only=True)
+
+    class Meta:
+        model = Transaction
+        fields = ['transactionId', 'billId', 'billDescription', 'patientId', 'patientName', 'treatmentId', 
+                  'treatmentTitle', 'installmentPlanId', 'installmentsPaid', 'date', 'amount', 'currency', 
+                  'method', 'type', 'status', 'notes', 'refundReason', 'correctionReason', 'createdBy', 
+                  'branchId', 'branchName', 'isDeleted']
+
+
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get('request')
+        #Remove snapshot fields for non-admins
+        if request and getattr(request.user, 'role', None) != 'admin':
+            fields.pop('billDescription', None)
+            fields.pop('treatmentTitle', None)
+            fields.pop('branchName', None)
+            fields.pop('createdBy', None)
+            fields.pop('isDeleted', None)
+        return fields
+
+
+#Update installment(s) transaction serializer -- PUT only
+class UpdateInstallmentTransactionSerializer(CreateInstallmentTransactionSerializer):
+    method = TranslatedChoiceField(choices=Transaction.PaymentMethodChoices.choices, 
+                                   required=False, allow_blank=False, allow_null=False)
+    status = TranslatedChoiceField(choices=Transaction.TransactionStatusChoices.choices,
+                                   required=False, allow_blank=False, allow_null=False)
+
+    class Meta(CreateInstallmentTransactionSerializer.Meta):
+        fields = ['transactionId', 'billId', 'treatmentId', 'installmentPlanId', 'installmentIds', 
+                  'date', 'amount', 'currency', 'method', 'type', 'status', 'notes', 'updatedAt']
+        read_only_fields = ['transactionId', 'billId', 'treatmentId', 'installmentPlanId',
+                            'amount', 'currency', 'type', 'updatedAt']
+        # extra_kwargs = {'amount': {'required': False}}
+        #read/write --> installmentIds, date,  method, status, notes
+
+    def validate(self, data):
+        #fetch necessary data for validation
+        bill = getattr(self.instance, 'bill', None)
+        installments = data.get('installments')
+        
+        #Validate current plan has a bill
+        if not bill or bill.isDeleted:
+            raise serializers.ValidationError({'non_field_errors': [
+                _(f'The installment plan to which these installments belong does not have a corresponding bill. '
+                  f'The bill may have been removed or deleted. Make sure a bill is generated for the installment plan before updating.')
+            ]})
+        
+        #get plan from bill
+        plan = bill.installmentPlan
+
+
+        ids_list = []
+        lowest_sequence = None
+        total_from_installments = 0
+        for installment in installments:
+            #add installment id
+            ids_list.append(installment.id)
+
+            #determine lowest sequence
+            if lowest_sequence is None or installment.sequence < lowest_sequence:
+                lowest_sequence = installment.sequence
+            
+            if installment.paidAt and (installment.transaction_id != self.instance.id):
+                raise serializers.ValidationError({
+                    'installmentIds': _('At least one or more of the chosen installments has already been paid '
+                                        'through a different transaction.')})
+                    
+            #add installment's amount to total
+            total_from_installments = total_from_installments + installment.amount
+
+        #convert total amount to decimal
+        total_from_installments = Decimal(str(total_from_installments))
+        
+        #Validate order of installments
+        #validate if pending installments earlier in the sequence were excluded (account for installments about to lose their 'paid' status)
+        if plan.installments.exclude(id__in=ids_list)\
+         .filter(Q(paidAt__isnull=True) | Q(transaction_id=self.instance.id), sequence__lt=lowest_sequence)\
+         .exists():
+            raise serializers.ValidationError({'installmentIds': _('Installments must be paid in sequence according to the installment plan. '
+                                                                    'Please select installments with the earliest due dates first before paying '
+                                                                    'subsequent ones.')})
+
+
+        #validate insurance is active and can cover transaction costs
         coverage = bill.patient.patient_insurance
-        if validated_data.get('method', 'cash') == Transaction.PaymentMethodChoices.INSURANCE:
-
-            #calculate total ytd used for insurance-type transactions
-            # coverage.usedYTD = (coverage.usedYTD or Decimal('0')) + total_amount
-            
-            coverage.usedYTD = Transaction.objects.filter(
-                    patient=bill.patient, method='insurance', date__year=timezone.now().year
-                ).aggregate(total_ytd=Coalesce(Sum('amount'), Decimal('0'))
-                )['total_ytd']
-            
-            #update coverage
-            coverage.save()
+        if coverage and data.get('method') == 'insurance'\
+         and (total_from_installments != self.instance.amount):
+            amount_diff = total_from_installments - self.instance.amount
+            coverage.validate_coverage_for_transaction(transaction_amount=amount_diff)
         
-        #else, check if patient has insurance and deductible amount is met
-        elif coverage and (coverage.coveragePercent != 100 or not coverage.deductibleMet)\
-         and coverage.provider and isinstance(coverage.provider.deductible, Decimal):
-            #calculate patient's non-insurance payments total (including new payments)
-            total_paid = Transaction.objects.filter(
-                    patient=bill.patient, date__year=timezone.now().year
-                ).exclude(method=Transaction.PaymentMethodChoices.INSURANCE)\
-                 .aggregate(total_paid=Coalesce(Sum('amount'), Decimal('0'))
-                )['total_paid']
-            
-            if total_paid >= coverage.provider.deductible:
-                coverage.deductibleMet = True
+        #pass over data for updating
+        data['amount'] = total_from_installments
+        data['currency'] = bill.currency
+        data['installment_ids'] = ids_list
+        return data
 
-                #update coverage
-                coverage.save()
+    @transaction.atomic 
+    def update(self, instance, validated_data):
+        #fetch current installments (and ids list)
+        installments = validated_data.pop('installments')
+        installments_ids = validated_data.pop('installment_ids')
 
+        #update removed installments' transaction and paid date (if any)
+        excluded_installments = instance.installments.exclude(id__in=installments_ids)
+        excluded_installments.update(paidAt=None, transaction=None)
+
+        #update transaction fields with new values
+        for field, value in validated_data.items():
+            setattr(instance, field, value)  #i.e. instance.field = value
+
+        #save changes
+        instance.save()
+
+
+        #get datetime now
+        datetime_now = timezone.localtime(timezone.now())        
+        #set installments' paidAt and transactionId
+        for installment in installments:
+            if getattr(installment, 'transaction_id', None) != instance.id:
+                installment.transaction_id = instance.id
+                installment.paidAt = datetime_now
         
-        #construct serializer response data
-        response_data = {
-            'bill': bill,
-            'patient': bill.patient,
-            'patientName': bill.patient.name,
-            'treatment': bill.treatment,
-            'installmentPlan': plan,
-            'installments_to_settle': installments,
-            'transactionIds': [transaction.id for transaction in transactions_to_create],
-            'branch': (bill.branch or bill.patient.branch),
-            'date': validated_data['date'],
-            'amount': total_amount,
-            'currency': validated_data.get('currency', bill.currency),
-            'method': (validated_data.get('method') or 'cash'),
-            'type': Transaction.TransactionTypeChoices.INSTALLMENT,
-            'note': validated_data.get('note'),
-        }
-        
-        #return response
-        return response_data
+        #Bulk update installments
+        Installment.objects.bulk_update(installments, fields=['transaction', 'paidAt'])
+
+        #return updated instance
+        return instance
 
 
 #Installment options serializer 
@@ -696,7 +785,7 @@ class InstallmentsOptionsSerializer(serializers.Serializer):
                 'amount': amount,
                 'sequence': sequence,
                 'dueDate': dueDate,
-                'type': installment_type
+                'type': installment_type,
             } for installment_id, amount, sequence, dueDate, installment_type
                 in Installment.objects.filter(**plan_filter).values_list(
                     'id', 'amount', 'sequence', 'dueDate', 'type'
@@ -771,5 +860,3 @@ class InstallmentsOptionsSerializer(serializers.Serializer):
              for choice in Transaction.TransactionTypeChoices
         ]
         
-
-    

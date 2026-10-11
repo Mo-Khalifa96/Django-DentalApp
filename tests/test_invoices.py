@@ -20,9 +20,9 @@ def invoice_factory(patient_factory):
     Override any field; pass add_items=False to skip item creation.
     """
     def _create(**overrides):
-        patient   = overrides.pop('patient', None) or patient_factory()
+        patient = overrides.pop('patient', None) or patient_factory()
         add_items = overrides.pop('add_items', True)
-        defaults  = {
+        defaults = {
             'patient':  patient,
             'subtotal': Decimal('200.00'),
             'total':    Decimal('200.00'),
@@ -119,9 +119,9 @@ class TestListCreateInvoicesAPIView:
         invoice_factory
     ):
         """Dentist filter: patient__doctor=user OR createdBy=user.name."""
-        p_own   = patient_factory(doctor=dentist_user)
+        p_own = patient_factory(doctor=dentist_user)
         p_other = patient_factory(doctor=other_dentist_user)
-        inv_own   = invoice_factory(patient=p_own)
+        inv_own = invoice_factory(patient=p_own)
         inv_other = invoice_factory(patient=p_other)
 
         api_client.force_authenticate(user=dentist_user)
@@ -132,11 +132,10 @@ class TestListCreateInvoicesAPIView:
         assert str(inv_own.id) in ids
         assert str(inv_other.id) not in ids
 
-    def test_receptionist_without_view_invoices_gets_403(
-        self, api_client, receptionist_user
+    def test_assistant_without_view_invoices_gets_403(
+        self, api_client, assistant_user
     ):
-        """receptionist default permissions do not include 'view.invoices'."""
-        api_client.force_authenticate(user=receptionist_user)
+        api_client.force_authenticate(user=assistant_user)
         response = api_client.get(reverse(self.LIST_URL))
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 

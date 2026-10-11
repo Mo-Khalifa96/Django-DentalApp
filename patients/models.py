@@ -6,10 +6,10 @@ from rest_framework import serializers
 from django.db import models, transaction
 from patients.utils import normalize_phone_number
 from utils.exceptions import AppointmentConflictError
-from django.core.validators import MinValueValidator
 from django.contrib.postgres.fields import ArrayField
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import pgettext_lazy as _context
+from django.core.validators import MinValueValidator, MaxValueValidator
 from patients.validators import (validate_phone_number, validate_country_code, image_validators, 
                                  file_validators, validate_toothNumber, FDI_PERMANENT)
 
@@ -146,7 +146,7 @@ class Patient(models.Model):
         #assign flag for new patients
         is_new = self._state.adding
         if is_new and not self.status:
-            self.status = self.StatusChoices.ACTIVE
+            self.status = 'active'
         #Normalize and save phone number
         if self.countryCode and self.phone:
             code, phone_number = normalize_phone_number(self.countryCode, self.phone)
@@ -229,6 +229,76 @@ class DentalChart(models.Model):
         ordering = ['-lastUpdated']
 
 
+#Periodontal Exams Manager
+class PerioExamsManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(patient__is_deleted=False)
+
+#PERIODONTAL EXAMS MODEL
+class PerioExam(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    #Many-to-One relationship to Patient (i.e., many exams, one patient)
+    patient = models.ForeignKey(Patient, related_name='patient_perio_exams', on_delete=models.CASCADE, db_index=True)
+    #Many-to-One relationship to the examining doctor
+    examinedBy = models.ForeignKey('users.User', related_name='doctor_perio_exams', on_delete=models.SET_NULL, null=True, db_index=True)
+    examinedByName = models.CharField(max_length=255, blank=True, null=True)   #snapshot field
+    examinedAt = models.DateField()  #exam's date
+
+    #teeth dict
+    teeth = models.JSONField(default=dict)  #{"16": {"mobility": 1, "furcation": 0, "sites": {"DB": {...}, ...}}}
+
+    #summary fields (computed at save time)
+    meanProbingDepth = models.FloatField(null=True, blank=True)
+    bleedingPercent = models.IntegerField(validators=[MinValueValidator(0), MaxValueValidator(100)], null=True, blank=True)
+    sitesProbed = models.IntegerField(default=0)
+
+    #other fields
+    notes = models.TextField(blank=True, null=True)
+    createdAt = models.DateTimeField(auto_now_add=True)  #used for sorting/validating same-day corrections
+
+    #Objects after filtering by manager
+    objects = PerioExamsManager()
+    #to access all objects   
+    all_objects = models.Manager()
+
+    class Meta:
+        db_table = 'PerioExams'
+        verbose_name_plural = 'PerioExams'
+        ordering = ['-examinedAt', '-createdAt']   #newest first, matches contract
+
+    def __str__(self):
+        return f'Perio exam for {self.patient.name} on {self.examinedAt}'
+    
+    @classmethod
+    def compute_perio_summary(cls, teeth):
+        #prepare summary data
+        probingDepth_total = 0 
+        probingDepth_count = 0
+        bleeding_count = 0
+        sites_count = 0
+        
+        for tooth_dict in teeth.values():
+            for site_data in tooth_dict.get('sites', {}).values():
+                #compute probing depth total/count
+                probing_depth = site_data.get('probingDepth')
+                if probing_depth is not None:
+                    sites_count += 1  #num sites examined/probed
+                    probingDepth_total += probing_depth
+                    probingDepth_count += 1
+
+                #compute bleeding count
+                if site_data.get('bleeding'):
+                    bleeding_count += 1
+
+        #compute mean probing depth and bleeding percent
+        probingDepth_mean = round(probingDepth_total / probingDepth_count, 1) if probingDepth_count else None        
+        bleeding_perc = int((bleeding_count * 100 / sites_count) +0.5) if sites_count else None  #rounds .5s up
+        
+        #return results
+        return (sites_count, probingDepth_mean, bleeding_perc)
+
+
 #Visits Manager 
 class VisitsManager(models.Manager):
     #Overriding get_query to filter out soft-deleted patients's data
@@ -280,7 +350,7 @@ class Visit(models.Model):
     def __str__(self):
         return f'[{self.date}] {self.type} -- {self.patient.name}'
     
-    @transaction.atomic 
+    @transaction.atomic
     def save(self, *args, **kwargs):
         if self._state.adding and self.date:
             self.patient.lastVisit = self.date 
@@ -337,7 +407,7 @@ class PatientDocument(models.Model):
         ID_DOCUMENT = 'id_document', _('ID document')
         REFERRAL_LETTER = 'referral_letter', _('Referral letter')
         RADIOGRAPH = 'radiograph', _('Radiograph')
-        OTHER = 'other', _('Other')
+        OTHER = 'other', _context('document_type', 'Other')
         
     #Many-to-One relationship to the Patient model (i.e., many documents, one patient)
     patient = models.ForeignKey(Patient, related_name='patient_documents', on_delete=models.CASCADE, db_index=True)
@@ -432,7 +502,7 @@ class Appointment(models.Model):
     def save(self, *args, **kwargs):
         if self._state.adding:
             if not self.status:
-                self.status = self.AppointmentStatusChoices.PENDING
+                self.status = 'pending'
             self.procedureName = self.procedure.name
             self.doctorName = getattr(self.doctor, 'name', None)
 
@@ -537,7 +607,7 @@ class TreatmentPlan(models.Model):
         #if creating treatment plan but not a doctor, assign doctor
         if self._state.adding:
             if not self.status:
-                self.status = self.TreatmentStatusChoices.ACTIVE
+                self.status = 'active'
             if self.patient and not self.doctor and self.patient.doctor:
                 self.doctor = self.patient.doctor
             if self.doctor:
@@ -572,85 +642,8 @@ class TreatmentPlanItem(models.Model):
     @transaction.atomic
     def save(self, *args, **kwargs):
         if self._state.adding and not self.status:
-            self.status = self.ItemStatusChoices.PENDING
+            self.status = 'pending'
          #save changes 
-        super().save(*args, **kwargs)
-
-
-#Patient Recalls Manager
-class PatientRecallsManager(models.Manager):
-    #Overriding get_query to filter out soft-deleted patients
-    def get_queryset(self): 
-        return super().get_queryset().filter(patient__is_deleted=False) 
-
-#PATIENT RECALLS MODEL 
-class PatientRecall(models.Model):
-    class RecallTypeChoices(models.TextChoices):
-        CHECKUP = 'checkup', _('Checkup')
-        POST_PROCEDURE = 'post_procedure', _('Post-procedure')
-        TREATMENT = 'treatment', _('Treatment')
-        CUSTOM = 'custom', _('Custom')
-    
-    class RecallStatusChoices(models.TextChoices):
-        PENDING = 'pending', _('Pending')
-        CONTACTED = 'contacted', _('Contacted')
-        CONFIRMED = 'confirmed', _('Confirmed')
-        NO_ANSWER = 'no_answer', _('No answer')
-        DECLINED = 'declined', _('Declined')
-    
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    #Many-to-One relationship to the Patient model (i.e., many recalls, one patient)
-    patient = models.ForeignKey(Patient, related_name='patient_recalls', on_delete=models.CASCADE, db_index=True)
-    #Many-to-One relationship to the Branch model (i.e., many recalls, one branch)
-    branch = models.ForeignKey('clinic.Branch', related_name='branch_patient_recalls', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)  #Changed cascade to set_null
-    #other fields
-    phone = models.CharField(max_length=50, blank=True, null=True, validators=[validate_phone_number])
-    type = models.CharField(max_length=50, choices=RecallTypeChoices.choices)
-    status = models.CharField(max_length=50, choices=RecallStatusChoices.choices, blank=True, null=True)
-    dueDate = models.DateField()
-    notes = models.TextField(blank=True, null=True)
-    contactedAt = models.DateTimeField(blank=True, null=True)
-    createdAt = models.DateTimeField(auto_now_add=True)
-    updatedAt = models.DateTimeField(auto_now=True)
-
-    #Objects after filtering by manager
-    objects = PatientRecallsManager()
-    
-    #to access all objects
-    all_objects = models.Manager()
-
-    class Meta:
-        db_table = 'PatientRecalls'
-        verbose_name_plural = 'PatientRecalls'
-        ordering = ['branch__name', 'patient__name']
-        indexes = [
-            models.Index(fields=['patient', 'branch']),
-            models.Index(fields=['patient', 'branch', 'status']),
-        ]
-        # constraints = [
-        #     models.UniqueConstraint(
-        #         fields=['patient', 'type'],
-        #         condition=Q(status='pending'),
-        #         name='unique_pending_recall_per_patient_and_type'
-        #     )
-        # ]
-
-    def __str__(self):
-        return f'{self.type} for patient {self.patient.name}'
-    
-    @transaction.atomic
-    def save(self, *args, **kwargs):
-        if self._state.adding:
-            if not self.status:
-                self.status = self.RecallStatusChoices.PENDING
-            if not self.phone:
-                self.phone = self.patient.phone
-        
-        #if status is contacted, set contact date to today
-        if self.status == self.RecallStatusChoices.CONTACTED and not self.contactedAt:
-            self.contactedAt = timezone.localtime(timezone.now())
-
-        #save changes 
         super().save(*args, **kwargs)
 
 
@@ -728,10 +721,13 @@ class PatientCoverage(models.Model):
                 self.deductibleMet = self.deductibleMet if (self.coveragePercent != 100) else True
 
             #check if the allowance has been used up 
-            if isinstance(self.usedYTD, Decimal) and isinstance(self.annualMax, Decimal)\
-             and self.usedYTD >= self.annualMax:
-                self.eligibilityStatus = 'limit_reached'
-                self.eligibilityChecked = timezone.localdate(timezone.now())
+            if isinstance(self.usedYTD, Decimal) and isinstance(self.annualMax, Decimal):
+                if self.usedYTD >= self.annualMax:
+                    self.eligibilityStatus = 'limit_reached'
+                    self.eligibilityChecked = timezone.localdate(timezone.now())
+                elif self.eligibilityStatus == 'limit_reached':  #to account for refunds
+                    self.eligibilityStatus = 'active'
+                    self.eligibilityChecked = timezone.localdate(timezone.now())
 
         #handle null usedYTD
         if self.usedYTD in (None, ''):
@@ -739,9 +735,8 @@ class PatientCoverage(models.Model):
 
         #handle status
         if not self.eligibilityStatus:
-            self.eligibilityStatus = self.EligibilityStatusChoices.NONE
+            self.eligibilityStatus = 'none'
 
-        
         #save changes 
         super().save(*args, **kwargs)
 
@@ -757,6 +752,8 @@ class PatientCoverage(models.Model):
         if self.eligibilityStatus == PatientCoverage.EligibilityStatusChoices.EXPIRED:
             raise serializers.ValidationError({'method': _(f"The current patient's insurance coverage is expired. "
                                                            f"Either update their insurance details or change the transaction method to complete the transaction.")})
+        
+        #validate if coverage's limit is reached / maxed out
         elif self.eligibilityStatus == PatientCoverage.EligibilityStatusChoices.LIMIT_REACHED:
             raise serializers.ValidationError({'method': _(f"The current patient's insurance coverage has reached the maximum allowance from their insurer. "
                                                            f"Either update their insurance details or change the transaction method to complete the transaction.")})
@@ -774,6 +771,83 @@ class PatientCoverage(models.Model):
                                                            f"Either divide the payment into different transactions and/or change the transaction method to complete the transaction.")})
     
         return True
+
+
+#Patient Recalls Manager
+class PatientRecallsManager(models.Manager):
+    #Overriding get_query to filter out soft-deleted patients
+    def get_queryset(self): 
+        return super().get_queryset().filter(patient__is_deleted=False) 
+
+#PATIENT RECALLS MODEL 
+class PatientRecall(models.Model):
+    class RecallTypeChoices(models.TextChoices):
+        CHECKUP = 'checkup', _('Checkup')
+        POST_PROCEDURE = 'post_procedure', _('Post-procedure')
+        TREATMENT = 'treatment', _('Treatment')
+        CUSTOM = 'custom', _('Custom')
+    
+    class RecallStatusChoices(models.TextChoices):
+        PENDING = 'pending', _('Pending')
+        CONTACTED = 'contacted', _('Contacted')
+        CONFIRMED = 'confirmed', _('Confirmed')
+        NO_ANSWER = 'no_answer', _('No answer')
+        DECLINED = 'declined', _('Declined')
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    #Many-to-One relationship to the Patient model (i.e., many recalls, one patient)
+    patient = models.ForeignKey(Patient, related_name='patient_recalls', on_delete=models.CASCADE, db_index=True)
+    #Many-to-One relationship to the Branch model (i.e., many recalls, one branch)
+    branch = models.ForeignKey('clinic.Branch', related_name='branch_patient_recalls', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)  #Changed cascade to set_null
+    #other fields
+    phone = models.CharField(max_length=50, blank=True, null=True, validators=[validate_phone_number])
+    type = models.CharField(max_length=50, choices=RecallTypeChoices.choices)
+    status = models.CharField(max_length=50, choices=RecallStatusChoices.choices, blank=True, null=True)
+    dueDate = models.DateField()
+    notes = models.TextField(blank=True, null=True)
+    contactedAt = models.DateTimeField(blank=True, null=True)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    #Objects after filtering by manager
+    objects = PatientRecallsManager()
+    
+    #to access all objects
+    all_objects = models.Manager()
+
+    class Meta:
+        db_table = 'PatientRecalls'
+        verbose_name_plural = 'PatientRecalls'
+        ordering = ['branch__name', 'patient__name']
+        indexes = [
+            models.Index(fields=['patient', 'branch']),
+            models.Index(fields=['patient', 'branch', 'status']),
+        ]
+        # constraints = [
+        #     models.UniqueConstraint(
+        #         fields=['patient', 'type'],
+        #         condition=Q(status='pending'),
+        #         name='unique_pending_recall_per_patient_and_type'
+        #     )
+        # ]
+
+    def __str__(self):
+        return f'{self.type} for patient {self.patient.name}'
+    
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            if not self.status:
+                self.status = 'pending'
+            if not self.phone:
+                self.phone = self.patient.phone
+        
+        #if status is contacted, set contact date to today
+        if self.status == 'contacted' and not self.contactedAt:
+            self.contactedAt = timezone.localtime(timezone.now())
+
+        #save changes 
+        super().save(*args, **kwargs)
         
 
 #REFERRALS
@@ -801,13 +875,13 @@ class InboundReferral(models.Model):
     class SpecialityChoices(models.TextChoices):
         GENERAL = 'general', _('General')
         ORTHODONTICS = 'orthodontics', _('Orthodontics')
-        ORAL_SURGERY =  'oral_surgery', _('Oral Surgery') 
+        ORAL_SURGERY = 'oral_surgery', _('Oral Surgery') 
         ENDODONTICS = 'endodontics', _('Endodontics')
         PERIODONTICS = 'periodontics', _('Periodontics') 
         PROSTHODONTICS = 'prosthodontics', _('Prosthodontics') 
         PEDIATRIC = 'pediatric', _('Pediatric') 
         RADIOLOGY = 'radiology', _('Radiology') 
-        OTHER = 'other', _('Other')
+        OTHER = 'other', _context('speciality_choice', 'Other')
 
     #model fields
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -879,7 +953,7 @@ class OutboundReferral(models.Model):
     referredToUser = models.ForeignKey('users.User', related_name='doctor_inbound_referrals', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
     referredToEntity = models.ForeignKey(InboundReferral, related_name='entity_outbound_referrals', on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
     name = models.CharField(max_length=300, null=True)
-    status =  models.CharField(max_length=25, choices=ReferralStatusChoices.choices, blank=True, null=True)
+    status = models.CharField(max_length=25, choices=ReferralStatusChoices.choices, blank=True, null=True)
     outcome = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -910,7 +984,7 @@ class OutboundReferral(models.Model):
     def save(self, *args, **kwargs):
         #Auto-assign status on create (if not provided)
         if self._state.adding and not self.status:
-            self.status = self.ReferralStatusChoices.SENT
+            self.status = 'sent'
         
         #handle name assignment (create & update)
         if self.referredToUser:

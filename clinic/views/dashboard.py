@@ -2,12 +2,11 @@ from utils.base_views import *
 from decimal import Decimal
 from django.utils import timezone
 from datetime import date, timedelta
+from finances.utils import get_quarter
 from rest_framework import status, generics
 from rest_framework.response import Response
-from finances.models import Transaction, Bill
 from utils.filters import CustomOrderingFilter
 from rest_framework.filters import SearchFilter
-from django.db.models.functions import Coalesce
 from users.permissions import SystemUserPermissions
 from clinic.filters import DashboardAppointmentsFilter
 from rest_framework.permissions import IsAuthenticated
@@ -16,6 +15,7 @@ from clinic.models import Branch, WaitingRoom, Inventory
 from django_filters.rest_framework import DjangoFilterBackend
 from utils.pagination import DashboardAppointmentsPagination
 from services.translation.mixins import FieldsTranslationMixin
+from finances.models import Transaction, Bill, InstallmentPlan
 from utils.mixins import BranchToSerializerMixin, FilterByBranchMixin
 from patients.models import Patient, Appointment, Visit, PatientRecall
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
@@ -24,26 +24,10 @@ from clinic.serializers.dashboard import (DashboardStatisticsSerializer, Dashboa
                                         DashboardQueryParamSerializer, DashboardOptionsSerializer)
 
 
-#Helpers
-def get_quarter(today: date):
-    month, year = today.month, today.year
-
-    if month in [1,2,3]:
-        # start_date = date(year=year, month=1, day=1)
-        # end_date = date(year=year, month=3, day=31)
-        return (date(year, 1, 1), date(year, 3, 31))
-    elif month in [4,5,6]:
-        return (date(year, 4, 1), date(year, 6, 30))
-    elif month in [7,8,9]:
-        return (date(year, 7, 1), date(year, 9, 30))
-    elif month in [10,11,12]:
-        return (date(year, 10, 1), date(year, 12, 31))
-
-
 #DASHBOARD API VIEWS
 #Dashboard Statistics API view
 @extend_schema(
-    tags=['Dashboard'],
+    tags=['Dashboard and Analytics'],
     parameters=[
         OpenApiParameter('branchId', OpenApiTypes.UUID, OpenApiParameter.QUERY, required=False),
         OpenApiParameter('dateRange', OpenApiTypes.STR, OpenApiParameter.QUERY, 
@@ -62,10 +46,7 @@ class DashboardStatisticsAPIView(GenericAPIView):
         data = {
             'patientsTotal': None,
             'patientsNew': None,
-            'appointmentsCount': None,
-            'appointmentsCompleted': None,
-            'appointmentsCancelled': None,
-            'appointmentsNoShow': None,
+            'appointments': None,
             'revenue': None,
             'waitingRoom': None,
             'recalls': None,
@@ -114,7 +95,7 @@ class DashboardStatisticsAPIView(GenericAPIView):
         else:
             #fallback
             branch_ids = user.branches.values_list('id', flat=True)
-            branch_filter = Q(branch_id__in=branch_ids) if branch_ids else Q()
+            branch_filter = Q(branch_id__in=branch_ids) if branch_ids else Q(pk__in=[])
         
 
         #Define complex filters
@@ -125,7 +106,8 @@ class DashboardStatisticsAPIView(GenericAPIView):
               in_waiting_room__isnull=True
             )
             &
-            (Q(endTime__isnull=False, endTime__lt=local_datetime.time()) 
+            (
+             Q(endTime__isnull=False, endTime__lt=local_datetime.time()) 
               |   #OR
              Q(endTime__isnull=True, startTime__lte=(local_datetime - timedelta(hours=1)).time())
             )
@@ -203,7 +185,10 @@ class DashboardStatisticsAPIView(GenericAPIView):
                 ) 
                 & ~Exists(Visit.objects.filter(patient=OuterRef('patient'), date=OuterRef('date')))
             ))
-
+        
+        #Define revenue date filter
+        revenue_date_filter = date_filter if dateRange else Q(date__month=today.month, date__year=today.year)
+        
 
         #CLINICAL ANALYTICS
         #if admin or has permission
@@ -280,10 +265,12 @@ class DashboardStatisticsAPIView(GenericAPIView):
             #Add computed data to the data dictioary
             data['patientsTotal'] = patients_aggregates['patientsTotal']
             data['patientsNew'] = patients_aggregates['patientsNew']
-            data['appointmentsCount'] = appointments_aggregates['appointmentsCount']
-            data['appointmentsCompleted'] = appointments_aggregates['appointmentsCompleted']
-            data['appointmentsCancelled'] = appointments_aggregates['appointmentsCancelled']
-            data['appointmentsNoShow'] = appointments_aggregates['appointmentsNoShow']
+            data['appointments'] = {
+                'appointmentsCount': appointments_aggregates['appointmentsCount'],
+                'appointmentsCompleted': appointments_aggregates['appointmentsCompleted'],
+                'appointmentsCancelled': appointments_aggregates['appointmentsCancelled'],
+                'appointmentsNoShow': appointments_aggregates['appointmentsNoShow']
+            }
             data['waitingRoom'] = {
                 'waiting': waiting_room_aggregates['waiting'],
                 'inChair': waiting_room_aggregates['inChair'],
@@ -306,36 +293,70 @@ class DashboardStatisticsAPIView(GenericAPIView):
         #if admin or has permission
         if is_admin or has_financialAnalytics_permission:
             #Get necessary querysets for financial analytics
-            bills = Bill.objects.only('id', 'totalAmount', 'createdAt', 'branch').filter(branch_filter)
-            transactions = Transaction.objects.only('id', 'amount', 'method', 'date', 'branch').filter(branch_filter)
+            #bills queryset
+            bills = Bill.objects.earnings().only(  #excludes deposits/credit held
+                    'id', 'totalAmount', 'branch', 'createdAt'
+                ).filter(branch_filter) 
+            
+            #get transactions queryset
+            transactions = Transaction.objects.completed().only(  #exclude refunds
+                    'id', 'amount', 'method', 'date', 'branch'
+                ).filter(branch_filter)
 
+            # *new*
+            #account for installments without bills
+            installment_plans_no_bill = InstallmentPlan.objects.filter(branch_filter).annotate(
+                has_active_bill=Exists(Bill.objects.earnings().filter(treatment_id=OuterRef('treatment_id')))
+            ).filter(has_active_bill=False)
+            #
+
+            
+            #Compute aggregates
             #get billing aggregates
             bills_aggregates = bills.aggregate(
-                total_billed=Coalesce(Sum('totalAmount'), Decimal('0')),  #used for calculating 'totalOutstanding' only
-                billed_in_range=Coalesce(Sum('totalAmount', filter=createdAt_filter), Decimal('0'))   #for 'billedInPeriod'
+                total_billed=Sum('totalAmount', default=Decimal('0')),  #used for calculating 'totalOutstanding' only
+                billed_in_range=Sum('totalAmount', filter=createdAt_filter, default=Decimal('0'))   #for 'billedInPeriod'
             )
 
+            # *new*
+            #get installments aggregates
+            installment_aggregates = installment_plans_no_bill.aggregate(
+                installments_total=Sum('totalAmount', default=Decimal('0')),
+                installments_total_in_range=Sum('totalAmount', filter=createdAt_filter, default=Decimal('0'))
+            )
+            #
+
+            #get transaction aggregates
             transactions_aggregates = transactions.aggregate(
-                total_revenue=Coalesce(Sum('amount'), Decimal('0')), #used for calculating 'totalOutstanding' only
-                revenue_in_range=Coalesce(Sum('amount', filter=date_filter), Decimal('0')),  #for 'collectedInPeriod'
+                #total paid to bills (used for calculating 'totalOutstanding' only)
+                total_revenue=Sum('amount', filter=~Q(type='deposit'), default=Decimal('0')),
+                revenue_in_range=Sum('amount', filter=revenue_date_filter, default=Decimal('0')),  #for 'collectedInPeriod' (includes deposits)
+                total_deposit_held=Sum('amount', filter=Q(type='deposit'), default=Decimal('0')),  #total deposit `currently` held
                 #aggregates for 'collectedByMethod'
-                revenue_by_cash=Coalesce(Sum('amount', filter=Q(method='cash') & date_filter), Decimal('0')),
-                revenue_by_card=Coalesce(Sum('amount', filter=Q(method='card') & date_filter), Decimal('0')),
-                revenue_by_bank=Coalesce(Sum('amount', filter=Q(method='bank_transfer') & date_filter), Decimal('0')),
-                revenue_by_insurance=Coalesce(Sum('amount', filter=Q(method='insurance') & date_filter), Decimal('0')),
-                revenue_by_mobWallet=Coalesce(Sum('amount', filter=Q(method='mobile_wallet') & date_filter), Decimal('0')),
+                revenue_by_cash=Sum('amount', filter=Q(method='cash') & revenue_date_filter, default=Decimal('0')),
+                revenue_by_card=Sum('amount', filter=Q(method='card') & revenue_date_filter, default=Decimal('0')),
+                revenue_by_bank=Sum('amount', filter=Q(method='bank_transfer') & revenue_date_filter, default=Decimal('0')),
+                revenue_by_insurance=Sum('amount', filter=Q(method='insurance') & revenue_date_filter, default=Decimal('0')),
+                revenue_by_mobWallet=Sum('amount', filter=Q(method='mobile_wallet') & revenue_date_filter, default=Decimal('0')),
                 # currency=Max('currency')
             )
 
-            #calculate total outstanding from bill/transaction totals
-            totalOutstanding = bills_aggregates['total_billed'] - transactions_aggregates['total_revenue']
+            # *new*
+            #calculate total outstanding from bill/installments/transaction totals
+            #recalculate bills accounting for installment plans without active bills
+            total_billed = bills_aggregates['total_billed'] + installment_aggregates['installments_total']
+            billed_in_range = bills_aggregates['billed_in_range'] + installment_aggregates['installments_total_in_range']
+            #calculate total outstanding
+            totalOutstanding = total_billed - transactions_aggregates['total_revenue']
             totalOutstanding = Decimal(str(totalOutstanding)) if (totalOutstanding > 0) else Decimal('0')
+            #
 
             #Add computed revenue data 
             data['revenue'] = {
-                'billedInPeriod': bills_aggregates['billed_in_range'],
+                'billedInPeriod': billed_in_range,    #bills_aggregates['billed_in_range'],
                 'collectedInPeriod': transactions_aggregates['revenue_in_range'],
-                'totalOutstanding': totalOutstanding, 
+                'totalOutstanding': totalOutstanding,
+                'totalCreditHeld': transactions_aggregates['total_deposit_held'],
                 # 'currency': transactions_aggregates['currency']
                 'collectedByMethod': {
                     'cash': transactions_aggregates['revenue_by_cash'],
@@ -355,7 +376,7 @@ class DashboardStatisticsAPIView(GenericAPIView):
 
 
 #Dashboard Appointments Today API View
-@extend_schema(tags=['Dashboard'])
+@extend_schema(tags=['Dashboard and Analytics'])
 class DashboardAppointmentTodayAPIView(FieldsTranslationMixin, FilterByBranchMixin, generics.ListAPIView):  #No finalize response mixin
     serializer_class = DashboardAppointmentTodaySerializer
     permission_classes = [SystemUserPermissions]
@@ -389,7 +410,7 @@ class DashboardAppointmentTodayAPIView(FieldsTranslationMixin, FilterByBranchMix
 
 #View for retrieving branch choices for filtering
 @extend_schema(
-    tags=['Dashboard'],
+    tags=['Dashboard and Analytics'],
     parameters=[
         OpenApiParameter('branchId', OpenApiTypes.UUID, OpenApiParameter.QUERY, required=False),
     ]

@@ -18,14 +18,17 @@ dashboard_stats_schema = extend_schema_serializer(
                 'data': {
                     'patientsTotal': 340,
                     'patientsNew': 12,
-                    'appointmentsCount': 18,
-                    'appointmentsCompleted': 11,
-                    'appointmentsCancelled': 4,
-                    'appointmentsNoShow': 2,
+                    'appointments': {
+                        'appointmentsCount': 18,
+                        'appointmentsCompleted': 11,
+                        'appointmentsCancelled': 4,
+                        'appointmentsNoShow': 2
+                    },
                     'revenue': {
                         'billedInPeriod': '254500.00',
                         'collectedInPeriod': '150200.00',
                         'totalOutstanding': '104300.00',
+                        'totalCreditHeld': '20500.00',
                         # 'currency': 'SAR',
                         'collectedByMethod': {
                             'cash': '60000.00', 
@@ -64,6 +67,7 @@ dashboard_stats_schema = extend_schema_serializer(
                         'view.bills': True,
                         'view.transactions': True,
                         'view.invoices': True,
+                        'view.installments': True,
                         'view.insuranceProviders': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
@@ -89,10 +93,12 @@ dashboard_stats_schema = extend_schema_serializer(
                 'data': {
                     'patientsTotal': 340,
                     'patientsNew': 12,
-                    'appointmentsCount': 18,
-                    'appointmentsCompleted': 11,
-                    'appointmentsCancelled': 4,
-                    'appointmentsNoShow': 2,
+                    'appointments': {
+                        'appointmentsCount': 18,
+                        'appointmentsCompleted': 11,
+                        'appointmentsCancelled': 4,
+                        'appointmentsNoShow': 2
+                    },
                     'revenue': None,
                     'waitingRoom': {
                         'waitin': 3,
@@ -123,6 +129,7 @@ dashboard_stats_schema = extend_schema_serializer(
                         'view.bills': False,
                         'view.transactions': False,
                         'view.invoices': False,
+                        'view.installments': False,
                         'view.insuranceProviders': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
@@ -146,10 +153,12 @@ dashboard_stats_schema = extend_schema_serializer(
                 'data': {
                     'patientsTotal': None,
                     'patientsNew': None,
-                    'appointmentsCount': None,
-                    'appointmentsCompleted': None,
-                    'appointmentsCancelled': None,
-                    'appointmentsNoShow': None,
+                    'appointments': {
+                        'appointmentsCount': None,
+                        'appointmentsCompleted': None,
+                        'appointmentsCancelled': None,
+                        'appointmentsNoShow': None
+                    },
                     'revenue': {
                         'billedInPeriod': '254500.00',
                         'collectedInPeriod': '150200.00',
@@ -180,6 +189,7 @@ dashboard_stats_schema = extend_schema_serializer(
                         'view.bills': False,
                         'view.transactions': False,
                         'view.invoices': False,
+                        'view.installments': False,
                         'view.insuranceProviders': True,
                         'view.doctorSchedules': True,
                         'view.sterilizationLogs': True,
@@ -234,6 +244,13 @@ dashboard_options_schema = extend_schema_serializer(
                     {'doctorId': '8d9e0abc-7abb-4497-a2ed-19737c92a229', 'doctorName': 'Layla Hassan'},
                     {'doctorId': 'ec4ebe94-c8a6-45d5-8cc6-675cef7bbafe', 'doctorName': 'Ahmed Hassan'}, 
                     {'doctorId': '0078af5e-7b68-4c29-9c81-04c8665fee68', 'doctorName': 'Ghassan Mattar'}
+                ],
+                'dateRangeChoices': [
+                    {'value': 'today', 'label': 'today'},
+                    {'value': 'week', 'label': 'week'},
+                    {'value': 'month', 'label': 'month'},
+                    {'value': 'quarter', 'label': 'quarter'},
+                    {'value': 'year', 'label': 'year'}
                 ],
             }
         )

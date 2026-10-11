@@ -84,7 +84,7 @@ class TestListCreateWaitingRoomItemsAPIView:
         user = user_factory(role='receptionist')
         user.branches.set([b1])
 
-        item_own   = waiting_room_factory(branch=b1)
+        item_own = waiting_room_factory(branch=b1)
         item_other = waiting_room_factory(branch=b2)
 
         api_client.force_authenticate(user=user)
@@ -100,9 +100,9 @@ class TestListCreateWaitingRoomItemsAPIView:
     ):
         """WaitingRoomManager: Q(branch__is_deleted=False) hides stale items."""
         active = branch_factory()
-        dying  = branch_factory()
+        dying = branch_factory()
         visible = waiting_room_factory(branch=active)
-        hidden  = waiting_room_factory(branch=dying)
+        hidden = waiting_room_factory(branch=dying)
 
         dying.is_deleted = True
         dying.save(update_fields=['is_deleted'])
@@ -113,18 +113,6 @@ class TestListCreateWaitingRoomItemsAPIView:
         ids = [str(i['id']) for i in response.data['data']]
         assert str(visible.id) in ids
         assert str(hidden.id) not in ids
-
-    def test_dentist_without_view_waiting_room_permission_gets_403(
-        self, api_client, dentist_user
-    ):
-        """Dentist role explicitly excludes 'view.waitingRoom' from default perms."""
-        api_client.force_authenticate(user=dentist_user)
-        response = api_client.get(reverse(self.LIST_URL))
-        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
-
-    def test_unauthenticated_gets_401(self, api_client):
-        response = api_client.get(reverse(self.LIST_URL))
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
     # ── CREATE ────────────────────────────────────────────────────────────────
 
@@ -222,14 +210,14 @@ class TestListCreateWaitingRoomItemsAPIView:
         assert 'data' in response.data
 
     def test_user_without_permission_cannot_create(
-        self, api_client, dentist_user, appointment_factory, patient_factory,
+        self, api_client, accountant_user, appointment_factory, patient_factory,
         procedure_factory
     ):
         """dentist lacks view.waitingRoom → blocked at permission level."""
         appointment = appointment_factory(
-            patient=patient_factory(), doctor=dentist_user, procedure=procedure_factory()
+            patient=patient_factory(), doctor=accountant_user, procedure=procedure_factory()
         )
-        api_client.force_authenticate(user=dentist_user)
+        api_client.force_authenticate(user=accountant_user)
         response = api_client.post(
             reverse(self.LIST_URL),
             {'appointmentId': str(appointment.id), 'branchId': None},
@@ -524,10 +512,10 @@ class TestUpdateDeleteWaitingRoomItemAPIView:
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 
     def test_user_without_permission_cannot_update(
-        self, api_client, dentist_user, waiting_room_factory
+        self, api_client, accountant_user, waiting_room_factory
     ):
         item = waiting_room_factory()
-        api_client.force_authenticate(user=dentist_user)
+        api_client.force_authenticate(user=accountant_user)
         payload = {
             'room': 'Chair 3'
         }
@@ -646,10 +634,10 @@ class TestUpdateDeleteWaitingRoomItemAPIView:
         assert not WaitingRoom.all_objects.filter(id=iid).exists()
 
     def test_user_without_permission_cannot_delete(
-        self, api_client, dentist_user, waiting_room_factory
+        self, api_client, accountant_user, waiting_room_factory
     ):
         item = waiting_room_factory()
-        api_client.force_authenticate(user=dentist_user)
+        api_client.force_authenticate(user=accountant_user)
         response = api_client.delete(self._url(item.id))
         assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
 

@@ -9,7 +9,7 @@ from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
 from services.translation.serializers import TranslatedChoiceField
 from finances.serializers.insurance_providers import CreateNewProviderSerializer
-from patients.docs import patient_insurance_options_schema
+from patients.docs import patient_coverage_stats_schema, patient_insurance_options_schema
 
 
 #Reference object to patient coverage fields
@@ -241,6 +241,17 @@ class RetrieveUpdatePatientCoverageSerializer(UserPermissionsMixin, serializers.
         #update coverage instance and return
         instance.save()
         return instance
+
+
+#Patient coverage stats serializer
+@patient_coverage_stats_schema
+class PatientCoverageStatisticsSerializer(UserPermissionsMixin, serializers.Serializer):
+    insuredPatients = serializers.IntegerField(allow_null=True)
+    byEligibility = serializers.DictField(child=serializers.IntegerField(allow_null=True), allow_null=True)
+    annualMaxTotal = serializers.DecimalField(max_digits=20, decimal_places=2, allow_null=True)
+    usedYTDTotal = serializers.DecimalField(max_digits=20, decimal_places=2, allow_null=True)
+    remainingTotal = serializers.DecimalField(max_digits=20, decimal_places=2, allow_null=True)
+    utilisationPercent = serializers.IntegerField(allow_null=True)
 
 
 #Patient insurance options serializer

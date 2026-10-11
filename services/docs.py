@@ -61,6 +61,7 @@ def get_message_history_schema():
                                 "view.bills": False,
                                 "view.transactions": True,
                                 "view.invoices": False,
+                                "view.installments": False,
                                 "view.insuranceProviders": False,
                                 "view.doctorSchedules": True,
                                 "view.sterilizationLogs": False,

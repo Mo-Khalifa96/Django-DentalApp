@@ -27,11 +27,11 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.staticfiles',
     'users',
-    'patients',
     'services',
-    'utils.apps.UtilsConfig',
-    'clinic.apps.ClinicConfig',
+    'patients.apps.PatientsConfig',
     'finances.apps.FinancesConfig',
+    'clinic.apps.ClinicConfig',
+    'utils.apps.UtilsConfig',
     'rest_framework_simplejwt',
     'rest_framework',
     'django_filters',
@@ -71,8 +71,8 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
-        },
-    },
+        }
+    }
 ]
 
 
@@ -91,7 +91,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
         'OPTIONS': {
-            'min_length': 8,   
+            'min_length': 8,
         }
     },
     {
@@ -101,7 +101,7 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
     {
-        'NAME': 'users.validators.NumberRequiredValidator',  
+        'NAME': 'users.validators.NumberRequiredValidator',
     },
     {
         'NAME': 'users.validators.CapitalLetterRequiredValidator',

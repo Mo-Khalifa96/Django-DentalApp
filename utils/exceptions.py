@@ -21,11 +21,18 @@ class AppointmentConflictError(APIException):
     default_code = 'APPOINTMENT_CONFLICT'
     default_detail = _('This appointment conflicts with an existing one.')
 
+#Exception for perio exams
+class PerioExamLockedError(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_code = 'PERIO_EXAM_LOCKED'
+    default_detail = _('This exam can no longer be corrected because it was recorded on an older date. '
+                       'Create a new exam instead to record current findings.')
+
 #Exception for invalid phone numbers 
 class InvalidPhoneNumberError(APIException):
     status_code = status.HTTP_400_BAD_REQUEST
-    default_code = 'INVALID_PHONE_NUMBER' 
-    default_detail = _("Patient's phone number is invalid or not registered on WhatsApp.")
+    default_code = 'INVALID_PHONE_NUMBER'
+    default_detail = _("Patient's phone number is invalid or can't be reached on WhatsApp.")
 
 #Exception for duplicate installment bill creation
 class InstallmentBillExistsError(APIException):
@@ -72,8 +79,20 @@ def DentalTechExceptionHandler(exc, context):
                     'success': False,
                     'error': {
                         'code': 'APPOINTMENT_CONFLICT',
-                        'message': _('This appointment conflicts with an existing one.'),
+                        'message': str(data.get('detail') or exc.default_detail) if isinstance(data, dict) else str(exc.detail),
                         'conflictWith': data.get('conflictWith'),
+                    }
+                },
+                status=exc.status_code,
+            )
+        
+        if isinstance(exc, PerioExamLockedError):
+            return Response(
+                {
+                    'success': False,
+                    'error': {
+                        'code': 'PERIO_EXAM_LOCKED',
+                        'message': str(data.get('detail') or exc.default_detail) if isinstance(data, dict) else str(exc.detail)
                     }
                 },
                 status=exc.status_code,
@@ -85,8 +104,8 @@ def DentalTechExceptionHandler(exc, context):
                 {
                     'success': False,
                     'error': {
-                        'code': exc.get_codes(),
-                        'message': str(exc.detail)
+                        'code': exc.default_code,
+                        'message': str(data.get('detail') or exc.default_detail) if isinstance(data, dict) else str(exc.detail)
                     }
                 },
                 status=exc.status_code,
@@ -98,9 +117,12 @@ def DentalTechExceptionHandler(exc, context):
                 {
                     'success': False,
                     'error': {
-                        'code': exc.get_codes(),
-                        'message': str(exc.detail),
+                        'code': exc.default_code,
+                        'message': str(data.get('detail') or exc.default_detail) if isinstance(data, dict) else str(exc.detail),
                         'billId': data.get('billId'),
+                        
+                        # 'message': str(data.get('detail', exc.default_detail)), #TODO - confirm which one is right
+                        # 'billId': str(data['billId']) if data.get('billId') else None,
                     }
                 },
                 status=exc.status_code,
@@ -112,26 +134,25 @@ def DentalTechExceptionHandler(exc, context):
                 {
                     'success': False,
                     'error': {
-                        'code': exc.error_code or 'WHATSAPP_API_ERROR',
-                        'message': str(exc.detail)
+                        'code': getattr(exc, 'error_code', None) or 'WHATSAPP_API_ERROR',
+                        'message': str(data.get('detail') or exc.default_detail) if isinstance(data, dict) else str(exc.detail)
                     }
                 },
                 status=exc.status_code,
             )
 
         #Handle InvalidPhoneNumberError
-        if isinstance(exc, InvalidPhoneNumberError):   #TODO -- not sure it's used anywhere
+        if isinstance(exc, InvalidPhoneNumberError): 
             return Response(
                 {
                     'success': False,
                     'error': {
-                        'code': 'INVALID_PHONE_NUMBER',
-                        'message': "Patient's phone number is invalid or not registered on WhatsApp.",
+                        'code': exc.default_code,
+                        'message': str(data.get('detail') or exc.default_detail) if isinstance(data, dict) else str(exc.detail)
                     }
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_400_BAD_REQUEST
             )
-
 
         ##Handle standard DRF exceptions##
         #Exceptions with a 'detail' key

@@ -12,8 +12,8 @@ logger = logging.getLogger('django-q')
 def setup_scheduled_tasks():
 
     #Set default first run at 2 AM (low-load time)
-    default_first_run = timezone.localtime(timezone.now())
-    default_first_run = default_first_run.replace(hour=2, minute=0, second=0, microsecond=0)
+    datetime_now = timezone.localtime(timezone.now())
+    default_first_run = datetime_now.replace(hour=2, minute=0, second=0, microsecond=0)
 
     #YEARLY SCHEDULES
     #Schedule to clean up payments data
@@ -28,7 +28,7 @@ def setup_scheduled_tasks():
     )
 
     if created:
-        logger.info(f"Created cleanup task #1: {yearly_schedule.name}")
+        logger.info(f"Created payments cleanup task (task #1): {yearly_schedule.name}")
     else:
         logger.info(f"Task #1 already exists: {yearly_schedule.name}")
 
@@ -45,7 +45,7 @@ def setup_scheduled_tasks():
     )
 
     if created:
-        logger.info(f"Created cleanup task #2: {yearly_schedule2.name}")
+        logger.info(f"Created yearly insurance check task (task #2): {yearly_schedule2.name}")
     else:
         logger.info(f"Task #2 already exists: {yearly_schedule2.name}")
 
@@ -63,7 +63,7 @@ def setup_scheduled_tasks():
     )
 
     if created:
-        logger.info(f"Created cleanup task #3: {monthly_schedule.name}")
+        logger.info(f"Created soft-deletes cleanup task (task #3): {monthly_schedule.name}")
     else:
         logger.info(f"Task #3 already exists: {monthly_schedule.name}")
     
@@ -81,7 +81,7 @@ def setup_scheduled_tasks():
     )
 
     if created:
-        logger.info(f"Created cleanup task #4: {monthly_schedule2.name}")
+        logger.info(f"Created sterilization logs cleanup task (task #4): {monthly_schedule2.name}")
     else:
         logger.info(f"Task #4 already exists: {monthly_schedule2.name}")
     
@@ -99,7 +99,7 @@ def setup_scheduled_tasks():
     )
 
     if created:
-        logger.info(f"Created cleanup task #5: {monthly_schedule3.name}")
+        logger.info(f"Created recalls cleanup task (task #5): {monthly_schedule3.name}")
     else:
         logger.info(f"Task #5 already exists: {monthly_schedule3.name}")
     
@@ -118,7 +118,7 @@ def setup_scheduled_tasks():
             'repeats': -1})
     
     if created:
-        logger.info(f"Created cleanup task #6: {weekly_schedule.name}")
+        logger.info(f"Created cancelled appointments cleanup task (task #6): {weekly_schedule.name}")
     else:
         logger.info(f"Task #6 already exists: {weekly_schedule.name}")
 
@@ -134,7 +134,7 @@ def setup_scheduled_tasks():
             'repeats': -1})
     
     if created:
-        logger.info(f"Created cleanup task #7: {weekly_schedule2.name}")
+        logger.info(f"Created waiting room cleanup task (task #7): {weekly_schedule2.name}")
     else:
         logger.info(f"Task #7 already exists: {weekly_schedule2.name}")
 
@@ -150,7 +150,7 @@ def setup_scheduled_tasks():
             'repeats': -1})
     
     if created:
-        logger.info(f"Created cleanup task #8: {weekly_schedule3.name}")
+        logger.info(f"Created whatsapp messages cleanup task (task #8): {weekly_schedule3.name}")
     else:
         logger.info(f"Task #8 already exists: {weekly_schedule3.name}")
     
@@ -166,7 +166,7 @@ def setup_scheduled_tasks():
             'repeats': -1})
 
     if created:
-        logger.info(f"Created cleanup task #9: {weekly_schedule4.name}")
+        logger.info(f"Created django-Q schedules cleanup task (task #9): {weekly_schedule4.name}")
     else:
         logger.info(f"Task #9 already exists: {weekly_schedule4.name}")
 
@@ -175,18 +175,32 @@ def setup_scheduled_tasks():
 
 
     #DAILY TASKS
-    #Schedule daily task to update patient insurance details
+    #Schedule daily task to update unrecorded visit expenses
     daily_schedule, created = Schedule.objects.get_or_create(
+        name='Update Unrecorded Visit Expenses Task',
+        defaults={
+            'func': 'finances.tasks.update_unrecorded_visit_expenses',
+            'schedule_type': Schedule.DAILY,
+            'next_run': default_first_run + timedelta(hours=21, minutes=0),  #runs every day at 11:00 PM
+            'repeats': -1})
+    
+    if created:
+        logger.info(f"Created visits update task (task #10): {daily_schedule.name}")
+    else:
+        logger.info(f"Task #10 already exists: {daily_schedule.name}")
+        
+    #Schedule daily task to update patient insurance details
+    daily_schedule2, created = Schedule.objects.get_or_create(
         name='Update Patient Insurance Details Task',
         defaults={
             'func': 'patients.tasks.update_patient_insurance_details_task',
             'schedule_type': Schedule.DAILY,
-            'next_run': default_first_run + timedelta(hours=23, minutes=1),  #runs every day at 1:01 AM
+            'next_run': default_first_run + timedelta(hours=23, minutes=5),  #runs every day at 1:05 AM
             'repeats': -1})
     
     if created:
-        logger.info(f"Created cleanup task #10: {daily_schedule.name}")
+        logger.info(f"Created patient coverages update task (task #11): {daily_schedule2.name}")
     else:
-        logger.info(f"Task #10 already exists: {daily_schedule.name}")
+        logger.info(f"Task #11 already exists: {daily_schedule2.name}")
 
     ####

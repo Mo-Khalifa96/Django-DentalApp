@@ -11,14 +11,15 @@ category_patterns = {
     r'/insurance/coverage/': 'patient-insurance',
     r'/bills/': 'bills',
     r'/transactions/': 'transactions',
-    r'invoices/': 'invoices',
+    r'/invoices/': 'invoices',
+    r'/installments/': 'installments',
     r'/insurance/providers/': 'insurance-providers',
     r'/inventory/': 'inventory',
     r'/lab-orders/': 'lab-orders',
     r'/labs/': 'labs',
     r'recalls': 'patient-recalls',
     r'referrals': 'referrals',
-    r'sterilization/': 'sterilization-logs',
+    r'sterilization/': 'sterilization-logs'
 }
 
 #Custom function for identifying permission category
@@ -133,6 +134,7 @@ def _build_permissions_lookup(permissions_dict):
         # 'transactions: {
         #   'view': 'view.transactions',
         #   'create': 'create.transaction',
+        #   'update': 'update.transaction',
         #   'delete': 'delete.transaction'
         # },
         #
@@ -141,6 +143,13 @@ def _build_permissions_lookup(permissions_dict):
         #   'create': 'create.invoice',
         #   'update': 'update.invoice',
         #   'delete': 'delete.invoice'
+        # },
+        #
+        # 'installments: {
+        #   'view': 'view.installments',
+        #   'create': 'create.installments',
+        #   'update': 'update.installments',
+        #   'delete': 'delete.installments'
         # },
         #
         # 'insurance-providers': {

@@ -4,7 +4,7 @@ from utils.swagger_utils import (extend_schema, extend_schema_serializer,
 
 def get_dentalchart_schema():
     '''Helper function for lazy import of dental chart schema to prevent circular import'''
-    from patients.serializers.patients import DentalChartSerializer
+    from patients.serializers.dental_chart import DentalChartSerializer
     
     return extend_schema_view(
             get=extend_schema(
@@ -238,6 +238,385 @@ def get_dentalchart_schema():
         )
 
 
+def get_list_create_perio_exams_schema():
+    '''Helper function for lazy import of perio exams (list/create) for a single patient.'''
+    from patients.serializers.perio_exams import ListPerioExamsSummarySerializer, CreatePerioExamSerializer
+
+    return extend_schema_view(
+        get=extend_schema(
+            tags=['Periodontal Chart'],
+            responses={200: ListPerioExamsSummarySerializer},
+            examples=[
+                OpenApiExample(
+                    name='Response',
+                    response_only=True,
+                    description='Response -- exam summaries only, newest first. Use the retrieve endpoint for full tooth/site detail.',
+                    value={
+                        'success': True,
+                        'data': [
+                            {
+                                'id': 'ef284ae5-1234-4a1b-9c3d-abc123456789',
+                                'meanProbingDepth': 3.2,
+                                'bleedingPercent': 18,
+                                'sitesProbed': 168,
+                                'notes': None,
+                                'examinedById': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                                'examinedByName': 'Dr. Layla',
+                                'examinedAt': '2026-09-06',
+                            },
+                            {
+                                'id': 'ade34116-5678-4a1b-9c3d-abc123456789',
+                                'meanProbingDepth': 2.9,
+                                'bleedingPercent': 22,
+                                'sitesProbed': 168,
+                                'notes': 'Baseline exam.',
+                                'examinedById': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                                'examinedByName': 'Dr. Layla',
+                                'examinedAt': '2026-06-14',
+                            },
+                        ],
+                        'pagination': {
+                            'page': 1,
+                            'limit': 20,
+                            'total': 50,
+                            'totalPages': 3,
+                            'hasNext': True, 
+                            'hasPrev': True,
+                        },
+                        'links': {
+                            'next': 'https://dtbackend.site/api/patients/ec4ebe94-c8a6-45d5-8cc6-675cef7bbafe/perio-charts/?page=2',
+                            'previous': None
+                        },
+                        'metadata': {
+                            'userPermissions': {
+                                'view.calendar': True,
+                                'view.waitingRoom': True,
+                                'view.appointments': True,
+                                'view.procedures': True,
+                                'view.inventory': True,
+                                'view.labs': False,
+                                'view.labOrders': True,
+                                'view.bills': False,
+                                'view.transactions': False,
+                                'view.invoices': False,
+                                'view.installments': False,
+                                'view.insuranceProviders': True,
+                                'view.doctorSchedules': True,
+                                'view.sterilizationLogs': True,
+                                'view.recalls': True,
+                                'view.referrals': False,
+                                'view.clinicalAnalytics': True,
+                                'view.financialAnalytics': False,
+                                'view.settings': False,
+                                'view.patients': True,
+                                'create.patient': True,
+                                'update.patient': True,
+                                'delete.patient': False,
+                            }
+                        }
+                    }
+                ),
+            ]
+        ),
+        post=extend_schema(
+            tags=['Periodontal Chart'],
+            request=CreatePerioExamSerializer,
+            responses={201: CreatePerioExamSerializer},
+            examples=[
+                OpenApiExample(
+                    name='Request body',
+                    request_only=True,
+                    description='Request body -- absent teeth are simply omitted; a site with no probingDepth means it was not measured.',
+                    value={
+                        'teeth': {
+                            "16": {
+                                "mobility": 1,
+                                "furcation": 0,
+                                "sites": {
+                                    "DB": {
+                                        "probingDepth": 3, 
+                                        "recession": 1, 
+                                        "bleeding": True, 
+                                        "plaque": False, 
+                                        "suppuration": False, 
+                                        "calculus": True
+                                    },
+                                    "B": {
+                                        "probingDepth": 2, 
+                                        "recession": 0, 
+                                        "bleeding": False, 
+                                        "plaque": False, 
+                                        "suppuration": False, 
+                                        "calculus": False
+                                    },
+                                },
+                            },
+                            "26": {
+                                "mobility": None,
+                                "furcation": None,
+                                "sites": {
+                                    "MB": {
+                                        "probingDepth": None, 
+                                        "recession": None, 
+                                        "bleeding": False, 
+                                        "plaque": False, 
+                                        "suppuration": False, 
+                                        "calculus": False
+                                    },
+                                },
+                            },
+                        },
+                        'notes': None,
+                    },
+                ),
+                OpenApiExample(
+                    name='Success Response (201 Created)',
+                    response_only=True,
+                    description='Response -- meanProbingDepth, bleedingPercent, and sitesProbed are server-derived.',
+                    value={
+                        'success': True,
+                        'data': {
+                            'id': 'ef284ae5-1234-4a1b-9c3d-abc123456789',
+                            'teeth': {
+                                "16": {
+                                    "mobility": 1,
+                                    "furcation": 0,
+                                    "sites": {
+                                        "DB": {
+                                            "probingDepth": 3, 
+                                            "recession": 1, 
+                                            "bleeding": True, 
+                                            "plaque": False, 
+                                            "suppuration": False, 
+                                            "calculus": True, 
+                                            "attachmentLoss": 4
+                                        },
+                                        "B": {
+                                            "probingDepth": 2, 
+                                            "recession": 0, 
+                                            "bleeding": False, 
+                                            "plaque": False, 
+                                            "suppuration": False, 
+                                            "calculus": False, 
+                                            "attachmentLoss": 2
+                                        },
+                                    },
+                                },
+                                "26": {
+                                    "mobility": None,
+                                    "furcation": None,
+                                    "sites": {
+                                        "MB": {
+                                            "probingDepth": None, 
+                                            "recession": None, 
+                                            "bleeding": False, 
+                                            "plaque": False, 
+                                            "suppuration": False, 
+                                            "calculus": False, 
+                                            "attachmentLoss": None
+                                        },
+                                    },
+                                },
+                            },
+                            'meanProbingDepth': 2.5,
+                            'bleedingPercent': 33,
+                            'sitesProbed': 3,
+                            'notes': None,
+                            'examinedById': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                            'examinedByName': 'Dr. Layla',
+                            'examinedAt': '2026-09-06',
+                        }
+                    }
+                ),
+                OpenApiExample(
+                    name='Error Response (400 Bad Request)',
+                    response_only=True,
+                    description='Error response -- invalid tooth number or site key.',
+                    value={
+                        'success': False,
+                        'error': {
+                            'code': 'VALIDATION_ERROR',
+                            'message': 'Validation failed',
+                            'fields': {
+                                'teeth': {
+                                    '16': 'Invalid tooth site(s): X.',
+                                    '99': 'Invalid tooth number. Does not comply with FDI notation.',
+                                }
+                            }
+                        }
+                    }
+                )
+            ]
+        )
+    )
+
+def get_retrieve_update_perio_exam_schema():
+    '''Helper function for lazy import of retrieve/update perio exam schema to prevent circular import'''
+    from patients.serializers.perio_exams import RetrievePerioExamSerializer, UpdatePerioExamSerializer
+
+    return extend_schema_view(
+        get=extend_schema(
+            tags=['Periodontal Chart'],
+            responses={200: RetrievePerioExamSerializer},
+            examples=[
+                OpenApiExample(
+                    name='Response',
+                    response_only=True,
+                    description='Response -- attachmentLoss (probingDepth + recession) is derived per site at read time and is not stored.',
+                    value={
+                        'success': True,
+                        'data': {
+                            'id': 'ef284ae5-1234-4a1b-9c3d-abc123456789',
+                            'teeth': {
+                                "16": {
+                                    "mobility": 1,
+                                    "furcation": 0,
+                                    "sites": {
+                                        "DB": {"probingDepth": 3, "recession": 1, "bleeding": True, "plaque": False, "suppuration": False, "calculus": True, "attachmentLoss": 4},
+                                        "B": {"probingDepth": 2, "recession": 0, "bleeding": False, "plaque": False, "suppuration": False, "calculus": False, "attachmentLoss": 2},
+                                    },
+                                },
+                            },
+                            'meanProbingDepth': 3.2,
+                            'bleedingPercent': 18,
+                            'sitesProbed': 168,
+                            'notes': None,
+                            'examinedById': '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                            'examinedByName': 'Dr. Layla',
+                            'examinedAt': '2026-09-06',
+                        }
+                    }
+                ),
+                OpenApiExample(
+                    name='Error Response (404 Not Found)',
+                    response_only=True,
+                    description='Error response -- exam does not exist or does not belong to this patient.',
+                    value={
+                        'success': False,
+                        'error': {'code': 'NOT_FOUND', 'message': 'The requested resource was not found.'}
+                    }
+                )
+            ]
+        ),
+        put=extend_schema(
+            tags=['Periodontal Chart'],
+            request=UpdatePerioExamSerializer,
+            responses={200: UpdatePerioExamSerializer},
+            examples=[
+                OpenApiExample(
+                    name='Request body',
+                    request_only=True,
+                    description=(
+                        'Request body -- send the entire teeth object, including unchanged teeth/sites. '
+                        'Corrections are only permitted if done on the same day the exam was recorded.'
+                    ),
+                    value={
+                        'teeth': {
+                            "16": {
+                                "mobility": 1,
+                                "furcation": 0,
+                                "sites": {
+                                    "DB": {
+                                        "probingDepth": 4, 
+                                        "recession": 1, 
+                                        "bleeding": True, 
+                                        "plaque": False, 
+                                        "suppuration": False, 
+                                        "calculus": True
+                                    },
+                                    "B": {
+                                        "probingDepth": 2, 
+                                        "recession": 0, 
+                                        "bleeding": False, 
+                                        "plaque": False, 
+                                        "suppuration": False, 
+                                        "calculus": False
+                                    },
+                                },
+                            },
+                        },
+                        'notes': 'Corrected DB probing depth (typo).',
+                    },
+                ),
+                OpenApiExample(
+                    name='Success Response (200 OK)',
+                    response_only=True,
+                    description='Response -- meanProbingDepth, bleedingPercent, and sitesProbed are recomputed from the corrected data.',
+                    value={
+                        'success': True,
+                        'data': {
+                            'id': 'ef284ae5-1234-4a1b-9c3d-abc123456789',
+                            'teeth': {
+                                "16": {
+                                    "mobility": 1,
+                                    "furcation": 0,
+                                    "sites": {
+                                        "DB": {
+                                            "probingDepth": 4, 
+                                            "recession": 1, 
+                                            "bleeding": True, 
+                                            "plaque": False, 
+                                            "suppuration": False, 
+                                            "calculus": True
+                                        },
+                                        "B": {
+                                            "probingDepth": 2, 
+                                            "recession": 0, 
+                                            "bleeding": False, 
+                                            "plaque": False, 
+                                            "suppuration": False, 
+                                            "calculus": False
+                                        },
+                                    },
+                                },
+                            },
+                            'meanProbingDepth': 3.0,
+                            'bleedingPercent': 50,
+                            'sitesProbed': 2,
+                            'notes': 'Corrected DB probing depth (typo).',
+                        }
+                    }
+                ),
+                OpenApiExample(
+                    name='Error Response (400 Bad Request)',
+                    response_only=True,
+                    description='Error response -- invalid tooth number or site key.',
+                    value={
+                        'success': False,
+                        'error': {
+                            'code': 'VALIDATION_ERROR',
+                            'message': 'Validation failed',
+                            'fields': {
+                                'teeth': {
+                                    '99': 'Invalid tooth number. Does not comply with FDI notation.',
+                                }
+                            }
+                        }
+                    }
+                ),
+                OpenApiExample(
+                    name='Error Response (409 Conflict)',
+                    response_only=True,
+                    description='Error response -- the exam was recorded on a previous day and can no longer be corrected.',
+                    value={
+                        'success': False,
+                        'error': {
+                            'code': 'PERIO_EXAM_LOCKED',
+                            'message': (
+                                'This exam can no longer be corrected because it was recorded on a previous day. '
+                                'Create a new exam instead to record current findings.'
+                            ),
+                        }
+                    }
+                )
+            ]
+        )
+    )
+
+
+#############
+
+
 #Schema for create patient serializer
 create_patient_schema = extend_schema_serializer(
     examples=[
@@ -275,7 +654,7 @@ create_patient_schema = extend_schema_serializer(
             value={
                 "name": "John Smith",
                 "age": 25,
-                "gender": "Male",
+                "gender": "male",
                 "countryCode": "+966",
                 "phone": "123456789",
                 "email": "johnsmith@example.com",
@@ -311,7 +690,7 @@ create_patient_schema = extend_schema_serializer(
                     "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                     "name": "John Smith",
                     "age": 25,
-                    "gender": "Male",
+                    "gender": "male",
                     "countryCode": "+966",
                     "phone": "123456789",
                     "email": "johnsmith@example.com",
@@ -877,6 +1256,58 @@ patient_insurance_options_schema = extend_schema_serializer(
     ]
 ) 
 
+
+#Schema for patient coverage statistics serializer
+patient_coverage_stats_schema = extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            name='Response',
+            response_only=True,
+            value={
+                'success': True, 
+                'data': {
+                    'insuredPatients': 84,
+                    'byEligibility': { 
+                        'active': 60,
+                        'expiring': 9,
+                        'expired': 10,
+                        'limit_reached': 5,
+                        'none': 32
+                    },
+                    'annualMaxTotal': "740000.00",
+                    'usedYTDTotal': "103500.00",
+                    'remainingTotal': "636500.00",
+                    'utilisationPercent': 14
+                },
+                'metadata': {
+                    'userPermissions': {
+                        'view.calendar': True,
+                        'view.waitingRoom': True,
+                        'view.patients': True,
+                        'view.appointments': True,
+                        'view.procedures': True,
+                        'view.inventory': True,
+                        'view.labs': True,
+                        'view.labOrders': True,
+                        'view.bills': True,
+                        'view.transactions': True,
+                        'view.invoices': True,
+                        'view.installments': True,
+                        'view.insuranceProviders': True,
+                        'view.doctorSchedules': True,
+                        'view.sterilizationLogs': True,
+                        'view.recalls': True,
+                        'view.referrals': True,
+                        'view.clinicalAnalytics': True,
+                        'view.financialAnalytics': True,
+                        'view.settings': True
+                    }
+                }
+            }
+        )
+    ]
+)
+       
 
 #Schema for patient recalls options serializer
 patient_recalls_options_schema = extend_schema_serializer(

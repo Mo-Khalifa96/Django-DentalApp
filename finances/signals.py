@@ -1,7 +1,8 @@
 from decimal import Decimal
-from django.db.models import Sum
 from django.utils import timezone
+from django.db.models import Q, Sum
 from django.dispatch import receiver
+from patients.models import PatientCoverage
 from django.db.models.functions import Coalesce
 from django.db.models.signals import m2m_changed
 from finances.models import Bill, Transaction, Installment
@@ -54,21 +55,27 @@ def update_visit_costs(sender, instance, action, pk_set, **kwargs):
 #Signal to capture transaction method on updated instance 
 @receiver(pre_save, sender=Transaction)
 def track_transaction_method_changes(sender, instance, **kwargs):
-    if not instance._state.adding:
+    if not instance._state.adding:  #update
         try:
-            instance._prev_method = Transaction.all_objects.get(id=instance.id).method
+            prev = Transaction.all_objects.get(id=instance.id)
+            instance._prev_method = prev.method
+            instance._prev_status = prev.status
         except:
             instance._prev_method = None
+            instance._prev_status = None
+
 
 #Signal for updating transaction-related data upon saving (bill/visit/installments/insurance)
 @receiver([post_save, pre_delete], sender=Transaction)
 def update_transaction_aggregates(sender, instance, **kwargs):
     #Determine type of signal/operation
     is_deletion = kwargs.get('signal') is pre_delete
+    # #make sure you have up-to-date data (remove caching)
+    # instance.patient._state.fields_cache.pop('patient_insurance', None)
 
-    #Handle transaction deletion (soft-delete & hard delete)
+    #Handle transaction deletion (soft-delete & hard delete) and refunds
     exclude_ids = []
-    if is_deletion or instance.isDeleted:
+    if is_deletion or instance.isDeleted or instance.status == 'refunded':
         #remove installment's paidAt and transaction
         Installment.objects.filter(transaction_id=instance.id)\
          .update(paidAt=None, transaction=None)
@@ -76,47 +83,50 @@ def update_transaction_aggregates(sender, instance, **kwargs):
         #add transaction id to exclude
         exclude_ids.append(instance.id)
 
-    #Update bill `totalPaid`
-    #Calculate current bill's totalPaid from all related transactions so far
+    #Update bill's `totalPaid`
     if instance.bill:
-        #update bill's total paid
-        total_paid = Transaction.objects.filter(bill=instance.bill).exclude(id__in=exclude_ids)\
-            .aggregate(total_paid=Coalesce(Sum('amount'), Decimal('0'))
-         )['total_paid']
-        instance.bill.totalPaid = total_paid
-        instance.bill.save(update_fields=['totalPaid'])
-    
-        #update installment plan's total paid if bill has one
-        if instance.bill.installmentPlan:
-            instance.bill.installmentPlan.totalPaid = total_paid
-            instance.bill.installmentPlan.save(update_fields=['totalPaid', 'updatedAt'])
+        #handle deposit bills separately -- don't update amount
+        if instance.type == 'deposit':
+            _handle_deposit_refunds(instance)
+        else:
+            #update bill's total paid
+            total_paid = Transaction.objects.completed().filter(bill=instance.bill)\
+                .exclude(Q(id__in=exclude_ids)
+                ).aggregate(total_paid=Coalesce(Sum('amount'), Decimal('0'))
+            )['total_paid']
+            instance.bill.totalPaid = total_paid
+            instance.bill.save(update_fields=['totalPaid'])
+        
+            #update installment plan's total paid if bill has one
+            if instance.bill.installmentPlan:
+                instance.bill.installmentPlan.totalPaid = total_paid
+                instance.bill.installmentPlan.save(update_fields=['totalPaid', 'updatedAt'])
     
     #Update visit `paid`
     #Calculate current visit's paid based on today's transactions
     if instance.visit:
         instance.visit.currency = (instance.currency or None) if not instance.visit.currency else None
-        instance.visit.paid = Transaction.objects.filter(visit=instance.visit).exclude(id__in=exclude_ids)\
-            .aggregate(total_paid=Coalesce(Sum('amount'), Decimal('0'))
-        )['total_paid']
+        instance.visit.paid = Transaction.objects.completed().filter(visit=instance.visit)\
+            .exclude(Q(id__in=exclude_ids))\
+            .aggregate(
+                total_paid=Coalesce(Sum('amount'), Decimal('0'))
+         )['total_paid']
         #save paid update
         instance.visit.save(update_fields=['paid'])
     
 
-    #Update patient's inurance `usedYTD`
+    #Update patient's inurance 'usedYTD' (if they have coverage)
     prev_method = getattr(instance, '_prev_method', None)
-    has_coverage = instance.patient and getattr(instance.patient, 'patient_insurance', None)
-    is_insurance_transaction = (instance.method == 'insurance') or (prev_method == 'insurance')
+    coverage = PatientCoverage.objects.filter(patient_id=instance.patient_id).first() #getattr(instance.patient, 'patient_insurance', None)
+    has_coverage = bool(coverage and (getattr(coverage, 'provider_id', False) or coverage.providerName))
 
-    if has_coverage:
-        if is_insurance_transaction:
-            #get coverage instance
-            coverage = instance.patient.patient_insurance
-
+    if (instance.type != 'deposit') and has_coverage:  #exclude deposits
+        if instance.method == 'insurance' or prev_method == 'insurance':
             #calculate total ytd used from insurance-type payments
-            coverage.usedYTD = Transaction.objects.filter(
-                    patient=instance.patient, method='insurance', date__year=timezone.now().year
-                 ).exclude(id__in=exclude_ids)\
-                  .aggregate(
+            coverage.usedYTD = Transaction.objects.completed().filter(
+                    patient=instance.patient, method='insurance', date__year=timezone.now().year)\
+                .exclude(Q(id__in=exclude_ids))\
+                .aggregate(
                      total_ytd=Coalesce(Sum('amount'), Decimal('0'))
                 )['total_ytd']
     
@@ -124,10 +134,12 @@ def update_transaction_aggregates(sender, instance, **kwargs):
         elif (coverage.coveragePercent != 100 or not coverage.deductibleMet)\
          and coverage.provider and isinstance(coverage.provider.deductible, Decimal):
             
-            total_paid = Transaction.objects.filter(
+            total_paid = Transaction.objects.completed().filter(
                     patient=instance.patient, date__year=timezone.now().year
-                ).exclude(id__in=exclude_ids, method=Transaction.PaymentMethodChoices.INSURANCE)\
-                 .aggregate(total_paid=Coalesce(Sum('amount'), Decimal('0'))
+                ).exclude(
+                    Q(id__in=exclude_ids) | Q(method='insurance')
+                ).aggregate(
+                    total_paid=Coalesce(Sum('amount'), Decimal('0'))
                 )['total_paid']
             
             if total_paid >= coverage.provider.deductible:
@@ -135,3 +147,58 @@ def update_transaction_aggregates(sender, instance, **kwargs):
     
         #update coverage's usedYTD
         coverage.save()
+
+
+def _handle_deposit_refunds(instance):   #NOTE - awaiting decision from the frontend
+    '''Helper function to handle deposit refunds.'''
+
+    #determine if transaction is a refunded or was refunded but not any longer
+    is_refunded = instance.status == 'refunded'
+    was_refunded = getattr(instance, '_prev_status', None) == 'refunded'
+
+    #Hanldle refunded deposits
+    if is_refunded and not was_refunded:
+        instance.bill.isCreditHeld = False
+        instance.bill.description = f"{instance.bill.description}\n\n[Refunded on {timezone.localdate(timezone.now())}]"
+        # instance.bill.subtotal = Decimal('0')
+        # instance.bill.totalAmount = Decimal('0')
+        # instance.bill.totalPaid = Decimal('0')
+    
+    #handle deposits previously refunded but returned to completed/correction
+    elif was_refunded and not is_refunded:
+        instance.bill.isCreditHeld = True
+        instance.bill.description = (instance.bill.description).rsplit('[Refunded')[0].strip()
+        # instance.bill.subtotal = instance.amount
+        # instance.bill.totalAmount = instance.amount
+        # instance.bill.totalPaid = instance.amount
+    
+    else:
+        return instance
+    
+    #save changes 
+    instance.bill.save(update_fields=['isCreditHeld', 'description', 'updatedAt'])
+    
+
+
+#     # #Goes with the block:
+#     # if instance.bill:
+#     #     #handle deposit bills separately
+#     #     if instance.type == 'desposit':
+#     #         instance = _handle_deposit_refunds(instance)
+#     #     else:
+#     #         #update bill's total paid
+#     #         total_paid = Transaction.objects.completed().filter(bill=instance.bill)\
+#     #             .exclude(Q(id__in=exclude_ids)
+#     #             ).aggregate(total_paid=Coalesce(Sum('amount'), Decimal('0'))
+#     #         )['total_paid']
+#     #         instance.bill.totalPaid = total_paid
+#     #         instance.bill.save(update_fields=['totalPaid'])
+        
+#     #         #update installment plan's total paid if bill has one
+#     #         if instance.bill.installmentPlan:
+#     #             instance.bill.installmentPlan.totalPaid = total_paid
+#     #             instance.bill.installmentPlan.save(update_fields=['totalPaid', 'updatedAt'])
+
+#     #NOTE: Scrapped for now. Awaiting decision from the frontend!
+    
+#     return instance

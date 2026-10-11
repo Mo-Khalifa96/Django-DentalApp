@@ -2,7 +2,7 @@ import os
 import itertools
 from io import BytesIO
 from decimal import Decimal
-from datetime import time, date, timedelta
+from datetime import time, timedelta
 
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'DentalTech.settings.dev')
@@ -90,6 +90,10 @@ def receptionist_user(user_factory):
 def assistant_user(user_factory):
     return user_factory(role='assistant', email='assistant@test.com', name='Assistant User')
 
+@pytest.fixture
+def accountant_user(user_factory):
+    return user_factory(role='accountant', email='accountant@test.com', name='Accountant User')
+
 
 @pytest.fixture
 def branch_factory():
@@ -150,7 +154,7 @@ def procedure_factory():
             'name': f'Procedure {index}',
             'category': Procedure.ProcedureCategory.CheckUp,
             'duration': 30,
-            'price': '150.00',
+            'price': Decimal('150.00'),
             'currency': '$',
         }
         defaults.update(overrides)
@@ -198,8 +202,8 @@ def visit_factory():
             'date': timezone.localdate(),
             'type': 'follow_up',
             'procedures': [f'Procedure {index}'],
-            'cost': '200.00',
-            'paid': '150.00',
+            'cost': Decimal('200.00'),
+            'paid': Decimal('150.00'),
             'currency': '$',
             'notes': f'Visit notes {index}',
         }
@@ -228,7 +232,7 @@ def treatment_plan_factory():
             title=overrides.pop('title', 'Treatment Plan'),
             status=overrides.pop('status', 'active'),
             currency=overrides.pop('currency', '$'),
-            totalCost=overrides.pop('totalCost', '0.00'),
+            totalCost=overrides.pop('totalCost', Decimal('0')),
             sessions=overrides.pop('sessions', None),
             **overrides,
         )
@@ -237,7 +241,7 @@ def treatment_plan_factory():
             {
                 'procedure': procedure,
                 'toothNumber': '11',
-                'price': '120.00',
+                'price': Decimal('120.00'),
                 'session': 1,
                 'status': 'pending',
                 'notes': None,
@@ -321,7 +325,7 @@ def bill_factory(patient_factory, dentist_user, visit_factory):
 
     def _create(**overrides):
         patient = overrides.pop('patient', None) or patient_factory()
-        visits  = overrides.pop('visits', None)
+        visits = overrides.pop('visits', None)
         if visits is None:
             visits = [visit_factory(patient=patient, doctor=dentist_user)]
 
@@ -341,6 +345,57 @@ def bill_factory(patient_factory, dentist_user, visit_factory):
     return _create
 
 
+
+@pytest.fixture
+def plan_bill_factory():
+    from finances.models import Bill
+
+    def _create(plan, **overrides):
+        defaults = {
+            'patient': plan.treatment.patient, 'treatment': plan.treatment, 'installmentPlan': plan,
+            'branch': plan.branch, 'description': 'Installment plan bill',
+            'subtotal': plan.totalAmount, 'totalAmount': plan.totalAmount, 'currency': plan.currency,
+        }
+        defaults.update(overrides)
+        return Bill.objects.create(**defaults)
+
+    return _create
+
+
+@pytest.fixture
+def installment_plan_factory(treatment_plan_factory, patient_factory, procedure_factory):
+    from finances.models import InstallmentPlan, Installment
+
+    def _create(treatment=None, months=3, down_payment=Decimal('0'), **overrides):
+        treatment = treatment or treatment_plan_factory(
+            patient=patient_factory(), procedure=procedure_factory()
+        )
+        total = treatment.totalCost
+        start = timezone.localdate()
+        plan = InstallmentPlan.objects.create(
+            treatment=treatment,
+            branch=treatment.patient.branch,
+            installmentMonths=months,
+            startDate=start,
+            totalAmount=total,
+            currency=treatment.currency,
+            downPayment=down_payment,
+            **overrides,
+        )
+        base = (total / months).quantize(Decimal('0.01'))
+        for seq in range(1, months + 1):
+            Installment.objects.create(
+                installmentPlan=plan,
+                amount=total - base * (months - 1) if seq == months else base,
+                sequence=seq,
+                dueDate=start + timedelta(days=30 * seq),
+                type='installment',
+            )
+        return plan
+
+    return _create
+
+
 @pytest.fixture
 def transaction_factory(bill_factory):
     """
@@ -352,23 +407,46 @@ def transaction_factory(bill_factory):
     from finances.models import Transaction
 
     def _create(**overrides):
-        bill    = overrides.pop('bill',    None) or bill_factory()
+        bill = overrides.pop('bill',    None) or bill_factory()
         patient = overrides.pop('patient', None) or bill.patient
-        visit   = overrides.pop('visit',   None) or bill.visits.first()
+        visit = overrides.pop('visit',   None) or bill.visits.first()
 
         defaults = {
             'bill':     bill,
             'patient':  patient,
             'visit':    visit,
-            'date':     date.today(),
+            'date':     timezone.localdate(timezone.now()),
             'amount':   Decimal('150.00'),
             'currency': '$',
         }
+        
         defaults.update(overrides)
         return Transaction.objects.create(**defaults)
 
     return _create
 
+@pytest.fixture
+def refund_transaction(transaction_factory):
+    def _refund(transaction=None, reason='Test refund', **overrides):
+        txn = transaction or transaction_factory(**overrides)
+        txn.status = 'refunded'
+        txn.refundReason = reason
+        txn.save(update_fields=['status', 'refundReason'])
+        return txn
+    return _refund
+
+@pytest.fixture
+def deposit_factory(treatment_plan_factory, patient_factory, procedure_factory):
+    from finances.models import Transaction
+    
+    def _create(treatment=None, amount=Decimal('500.00'), **overrides):
+        treatment = treatment or treatment_plan_factory(
+            patient=patient_factory(), procedure=procedure_factory(), totalCost=amount
+        )
+        return Transaction.autogenerate_deposit_after_reducing_costs_below_paid(
+            amount=amount, treatment=treatment, **overrides
+        )
+    return _create
 
 @pytest.fixture
 def insurance_provider_factory():

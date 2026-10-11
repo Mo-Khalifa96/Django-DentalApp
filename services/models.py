@@ -49,7 +49,7 @@ class Message(models.Model):
 
     def save(self, *args, **kwargs):
         if self._state.adding and not self.status:
-            self.status = self.MessageStatusChoices.QUEUED
+            self.status = 'queued'
         super().save(*args, **kwargs)
     
     def cascade_messaging_results(self, result=None, exc=None):

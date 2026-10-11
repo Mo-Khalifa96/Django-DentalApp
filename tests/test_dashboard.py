@@ -89,8 +89,8 @@ class TestDashboardStatsAPI:
         api_client.force_authenticate(user=admin_user)
         data = _data(_get(api_client))
 
-        for field in ('patientsTotal', 'patientsNew', 'appointmentsCount',
-                      'appointmentsCompleted', 'revenue', 'outstanding'):
+        for field in ('patientsTotal', 'patientsNew', 'appointments',
+                      'revenue', 'recalls', 'waitingRoom', 'inventory'):
             assert field in data, f"Missing field: {field}"
 
     def test_invalid_date_range_returns_400(self, api_client, admin_user):
@@ -108,16 +108,16 @@ class TestDashboardStatsAPI:
         visit_factory, bill_factory, transaction_factory
     ):
         patient = patient_factory()
-        visit   = visit_factory(patient=patient, doctor=dentist_user, paid='999.00')
-        bill    = bill_factory(patient=patient, visits=[visit],
+        visit = visit_factory(patient=patient, doctor=dentist_user, paid=Decimal('999.00'))
+        bill = bill_factory(patient=patient, visits=[visit],
                                subtotal=Decimal('300.00'), totalAmount=Decimal('300.00'))
         transaction_factory(bill=bill, visit=visit, patient=patient, amount=Decimal('250.00'))
 
         api_client.force_authenticate(user=admin_user)
         data = _data(_get(api_client))
 
-        assert data['revenue'] == 250.0    # transaction amount
-        assert data['revenue'] != 999.0    #ot visit.paid
+        assert data['revenue']['collectedInPeriod'] == '250.00'    # transaction amount
+        assert data['revenue']['collectedInPeriod'] != '999.00'    #ot visit.paid
 
     def test_outstanding_is_billed_minus_total_paid(
         self, api_client, admin_user, bill_factory, transaction_factory
@@ -131,7 +131,7 @@ class TestDashboardStatsAPI:
         api_client.force_authenticate(user=admin_user)
         data = _data(_get(api_client))
 
-        assert data['outstanding'] == pytest.approx(200.0, abs=0.01)
+        assert Decimal(data['revenue']['totalOutstanding']) == pytest.approx(200.0, abs=0.01)
 
     def test_outstanding_zero_when_fully_paid(
         self, api_client, admin_user, bill_factory, transaction_factory
@@ -143,7 +143,7 @@ class TestDashboardStatsAPI:
         api_client.force_authenticate(user=admin_user)
         data = _data(_get(api_client))
 
-        assert data['outstanding'] == pytest.approx(0.0, abs=0.01)
+        assert Decimal(data['revenue']['totalOutstanding']) == pytest.approx(0.0, abs=0.01)
 
     def test_revenue_and_outstanding_hidden_without_financial_analytics(
         self, api_client, receptionist_user
@@ -153,8 +153,8 @@ class TestDashboardStatsAPI:
         api_client.force_authenticate(user=receptionist_user)
         data = _data(_get(api_client))
 
-        assert 'revenue'     not in data
-        assert 'outstanding' not in data
+        assert data['revenue'] is None
+        assert data['appointments'] is not None
 
     def test_accountant_with_financial_analytics_sees_revenue_and_outstanding(
         self, api_client, user_factory
@@ -165,8 +165,8 @@ class TestDashboardStatsAPI:
         api_client.force_authenticate(user=accountant)
         data = _data(_get(api_client))
 
-        assert 'revenue'     in data
-        assert 'outstanding' in data
+        assert data['revenue'] is not None
+        assert data['appointments'] is not None
 
     def test_soft_deleted_bills_excluded_from_outstanding_calculation(
         self, api_client, admin_user, bill_factory
@@ -181,7 +181,7 @@ class TestDashboardStatsAPI:
         data = _data(_get(api_client))
 
         #deleted bill should not contribute to total_billed
-        assert data['outstanding'] == pytest.approx(0.0, abs=0.01)
+        assert Decimal(data['revenue']['totalOutstanding']) == pytest.approx(0.0, abs=0.01)
 
 
     # ══════════════════════════════════════════════════════════════════════════════
@@ -200,15 +200,15 @@ class TestDashboardStatsAPI:
         data = _data(_get(api_client))
 
         #Transaction created today (current month) → counted
-        assert data['revenue'] == 180.0
+        assert data['revenue']['collectedInPeriod'] == '180.00'
 
     def test_today_range_excludes_yesterdays_transaction(
         self, api_client, admin_user, bill_factory, transaction_factory
     ):
         """dateRange=today uses Q(date__exact=today)."""
 
-        bill       = bill_factory()
-        yesterday  = date.today() - timedelta(days=1)
+        bill = bill_factory()
+        yesterday = date.today() - timedelta(days=1)
         transaction_factory(bill=bill, visit=bill.visits.first(),
                             patient=bill.patient, amount=Decimal('100.00'),
                             date=yesterday)
@@ -217,7 +217,7 @@ class TestDashboardStatsAPI:
         response = api_client.get(reverse(self.URL), {'dateRange': 'today'})
         data = _data(response)
 
-        assert data['revenue'] == 0.0   # yesterday excluded
+        assert data['revenue']['collectedInPeriod'] == '0.00'   # yesterday excluded
 
     def test_today_range_includes_todays_transaction(
         self, api_client, admin_user, bill_factory, transaction_factory
@@ -231,14 +231,14 @@ class TestDashboardStatsAPI:
         response = api_client.get(reverse(self.URL), {'dateRange': 'today'})
         data = _data(response)
 
-        assert data['revenue'] == 120.0
+        assert data['revenue']['collectedInPeriod'] == '120.00'
 
     def test_week_range_excludes_transaction_from_previous_week(
         self, api_client, admin_user, bill_factory, transaction_factory
     ):
         """dateRange=week: Q(date__range=(starting_saturday, ending_friday))."""
 
-        bill      = bill_factory()
+        bill = bill_factory()
         two_weeks = date.today() - timedelta(days=14)
         transaction_factory(bill=bill, visit=bill.visits.first(),
                             patient=bill.patient, amount=Decimal('200.00'),
@@ -248,7 +248,7 @@ class TestDashboardStatsAPI:
         response = api_client.get(reverse(self.URL), {'dateRange': 'week'})
         data = _data(response)
 
-        assert data['revenue'] == 0.0
+        assert data['revenue']['collectedInPeriod'] == '0.00'
 
     def test_month_range_behaviour_same_as_default(
         self, api_client, admin_user, bill_factory, transaction_factory
@@ -260,7 +260,7 @@ class TestDashboardStatsAPI:
 
         api_client.force_authenticate(user=admin_user)
         default_rev = _data(_get(api_client))['revenue']
-        month_rev   = _data(api_client.get(reverse(self.URL), {'dateRange': 'month'}))['revenue']
+        month_rev = _data(api_client.get(reverse(self.URL), {'dateRange': 'month'}))['revenue']
 
         assert default_rev == month_rev
 
@@ -297,44 +297,47 @@ class TestDashboardStatsAPI:
         """Default appointmentsCount uses Q(date__exact=today)."""
 
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
         appointment_factory(patient=patient, doctor=dentist_user, procedure=proc,
                             date=date.today())
 
         api_client.force_authenticate(user=admin_user)
         data = _data(_get(api_client))
 
-        assert data['appointmentsCount'] >= 1
+        assert data['appointments']['appointmentsCount'] >= 1
 
-    def test_cancelled_appointments_excluded_from_all_counts(
+    def test_cancelled_appointments_include_only_cancelled(
         self, api_client, admin_user, patient_factory, dentist_user,
         procedure_factory, appointment_factory
     ):
         """Appointment queryset uses .exclude(status='cancelled')."""
 
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
         appointment_factory(patient=patient, doctor=dentist_user, procedure=proc,
+                            date=date.today())
+        proc2 = procedure_factory()
+        appointment_factory(patient=patient, doctor=dentist_user, procedure=proc2,
                             date=date.today(), status='cancelled')
 
         api_client.force_authenticate(user=admin_user)
         data = _data(_get(api_client))
 
-        assert data['appointmentsCount'] == 0
+        assert data['appointments']['appointmentsCancelled'] == 1
 
     def test_appointments_completed_counts_completed_this_month(
         self, api_client, admin_user, patient_factory, dentist_user,
         procedure_factory, appointment_factory
     ):
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
         appointment_factory(patient=patient, doctor=dentist_user, procedure=proc,
                             date=date.today(), status='completed')
 
         api_client.force_authenticate(user=admin_user)
         data = _data(_get(api_client))
 
-        assert data['appointmentsCompleted'] >= 1
+        assert data['appointments']['appointmentsCompleted'] >= 1
 
 
     # ══════════════════════════════════════════════════════════════════════════════
@@ -371,7 +374,7 @@ class TestDashboardStatsAPI:
         accountant.branches.set([b1])
 
         #b1 patient + bill + transaction
-        p1   = patient_factory(branch=b1)
+        p1 = patient_factory(branch=b1)
         bill = bill_factory(patient=p1,
                             subtotal=Decimal('200.00'), totalAmount=Decimal('200.00'),
                             branch=b1)
@@ -379,7 +382,7 @@ class TestDashboardStatsAPI:
                             patient=p1, amount=Decimal('150.00'), branch=b1)
 
         #patient + transaction
-        p2    = patient_factory(branch=b2)
+        p2 = patient_factory(branch=b2)
         bill2 = bill_factory(patient=p2, branch=b2)
         transaction_factory(bill=bill2, visit=bill2.visits.first(),
                             patient=p2, amount=Decimal('500.00'), branch=b2)
@@ -388,8 +391,8 @@ class TestDashboardStatsAPI:
         data = _data(_get(api_client))
 
         #Only b1 data should appear
-        assert data['revenue'] == 150.0       #ot 650
-        assert data['outstanding'] == pytest.approx(50.0, abs=0.01)   #0 - 150
+        assert data['revenue']['collectedInPeriod'] == '150.00'       #ot 650
+        assert Decimal(data['revenue']['totalOutstanding']) == pytest.approx(50.0, abs=0.01)   #0 - 150
 
     def test_branchId_qp_filters_dashboard_stats_for_non_admins(
         self, api_client, receptionist_user, branch
@@ -399,6 +402,140 @@ class TestDashboardStatsAPI:
         response = api_client.get(reverse(self.URL), {'branchId': str(branch.id)})
 
         assert response.status_code == status.HTTP_200_OK or render_error(response)
+
+
+@pytest.mark.django_db
+class TestDashboardRevenueRules:
+    """Financial rules added by the refund / deposit / installment redesign."""
+
+    @staticmethod
+    def _revenue(api_client):
+        return _data(_get(api_client))['revenue']
+
+    # ── Refunds ──────────────────────────────────────────────────────────────
+
+    def test_refunded_transaction_excluded_from_collected_and_restores_outstanding(
+        self, api_client, admin_user, bill_factory, transaction_factory, refund_transaction
+    ):
+        bill = bill_factory(subtotal=Decimal('300.00'), totalAmount=Decimal('300.00'))
+        txn = transaction_factory(bill=bill, amount=Decimal('100.00'))
+        api_client.force_authenticate(user=admin_user)
+
+        before = self._revenue(api_client)
+        assert Decimal(before['collectedInPeriod']) == Decimal('100.00')
+        assert Decimal(before['totalOutstanding']) == Decimal('200.00')
+
+        refund_transaction(transaction=txn)   # two-step flip so the signals fire like the real refund flow
+
+        after = self._revenue(api_client)
+        assert Decimal(after['collectedInPeriod']) == Decimal('0.00')
+        assert Decimal(after['collectedByMethod']['cash']) == Decimal('0.00')
+        assert Decimal(after['totalOutstanding']) == Decimal('300.00')
+
+    def test_pending_correction_transaction_still_counts_as_collected(
+        self, api_client, admin_user, bill_factory, transaction_factory
+    ):
+        bill = bill_factory(subtotal=Decimal('300.00'), totalAmount=Decimal('300.00'))
+        txn = transaction_factory(bill=bill, amount=Decimal('100.00'))
+        # Transaction.save() forces status='completed' on create, so flip it afterwards
+        txn.status = 'pending_correction'
+        txn.correctionReason = 'Wrong amount entered'
+        txn.save(update_fields=['status', 'correctionReason'])
+
+        api_client.force_authenticate(user=admin_user)
+        revenue = self._revenue(api_client)
+
+        assert Decimal(revenue['collectedInPeriod']) == Decimal('100.00')
+        assert Decimal(revenue['totalOutstanding']) == Decimal('200.00')
+
+    # ── Deposits ─────────────────────────────────────────────────────────────
+
+    def test_deposit_does_not_reduce_outstanding_owed_on_real_bills(
+        self, api_client, admin_user, bill_factory, deposit_factory
+    ):
+        """Fails against the current views; passes once outstanding subtracts non-deposit payments only."""
+        bill_factory(subtotal=Decimal('300.00'), totalAmount=Decimal('300.00'))   # unpaid
+        deposit_factory(amount=Decimal('500.00'))
+
+        api_client.force_authenticate(user=admin_user)
+        revenue = self._revenue(api_client)
+
+        assert Decimal(revenue['totalOutstanding']) == Decimal('300.00')   # held money isn't payment toward bills
+        assert Decimal(revenue['billedInPeriod']) == Decimal('300.00')     # deposit bill isn't 'billed' work
+        assert Decimal(revenue['collectedInPeriod']) == Decimal('500.00')  # but it is real cash in hand
+        assert Decimal(revenue['totalCreditHeld']) == Decimal('500.00')
+
+    def test_refunded_deposit_leaves_credit_held_but_stays_out_of_billed(
+        self, api_client, admin_user, deposit_factory, refund_transaction
+    ):
+        """Guards the two-flag design: isCreditHeld flips on refund, isDepositBill never does."""
+        deposit = deposit_factory(amount=Decimal('400.00'))
+        api_client.force_authenticate(user=admin_user)
+        assert Decimal(self._revenue(api_client)['totalCreditHeld']) == Decimal('400.00')
+
+        refund_transaction(transaction=deposit)
+
+        revenue = self._revenue(api_client)
+        assert Decimal(revenue['totalCreditHeld']) == Decimal('0.00')
+        assert Decimal(revenue['collectedInPeriod']) == Decimal('0.00')
+        assert Decimal(revenue['billedInPeriod']) == Decimal('0.00')   # must NOT creep back in after refund
+
+    # ── Installment plans ────────────────────────────────────────────────────
+
+    def test_installment_plan_without_bill_counts_as_billed_and_outstanding(
+        self, api_client, admin_user, installment_plan_factory
+    ):
+        plan = installment_plan_factory()
+        api_client.force_authenticate(user=admin_user)
+        revenue = self._revenue(api_client)
+
+        assert Decimal(revenue['billedInPeriod']) == plan.totalAmount
+        assert Decimal(revenue['totalOutstanding']) == plan.totalAmount
+
+    def test_installment_plan_with_bill_is_counted_once(
+        self, api_client, admin_user, installment_plan_factory
+    ):
+        from finances.models import Bill
+        plan = installment_plan_factory()
+        Bill.objects.create(
+            patient=plan.treatment.patient, treatment=plan.treatment, installmentPlan=plan,
+            description='Plan bill', subtotal=plan.totalAmount, totalAmount=plan.totalAmount, currency='$',
+        )
+        api_client.force_authenticate(user=admin_user)
+        revenue = self._revenue(api_client)
+
+        assert Decimal(revenue['billedInPeriod']) == plan.totalAmount   # not 2x
+        assert Decimal(revenue['totalOutstanding']) == plan.totalAmount
+
+    def test_deposit_bill_on_same_treatment_does_not_hide_plan_from_billed(
+        self, api_client, admin_user, installment_plan_factory, deposit_factory
+    ):
+        """has_active_bill must ignore deposit bills, or the plan silently drops out of the totals."""
+        plan = installment_plan_factory()
+        deposit_factory(treatment=plan.treatment, amount=Decimal('50.00'))
+
+        api_client.force_authenticate(user=admin_user)
+        revenue = self._revenue(api_client)
+
+        assert Decimal(revenue['billedInPeriod']) == plan.totalAmount
+        assert Decimal(revenue['totalOutstanding']) == plan.totalAmount   # deposit must not offset it either
+
+    def test_installment_plan_in_other_branch_excluded_for_scoped_user(
+        self, api_client, user_factory, branch_factory, patient_factory,
+        procedure_factory, treatment_plan_factory, installment_plan_factory
+    ):
+        b1, b2 = branch_factory(), branch_factory()
+        accountant = user_factory(role='accountant')
+        accountant.branches.set([b1])
+        t1 = treatment_plan_factory(patient=patient_factory(branch=b1), procedure=procedure_factory())
+        t2 = treatment_plan_factory(patient=patient_factory(branch=b2), procedure=procedure_factory())
+        installment_plan_factory(treatment=t1)
+        installment_plan_factory(treatment=t2)
+
+        api_client.force_authenticate(user=accountant)
+        revenue = self._revenue(api_client)
+
+        assert Decimal(revenue['billedInPeriod']) == Decimal('120.00')   # only b1's plan
 
 
 @pytest.mark.django_db
@@ -414,7 +551,7 @@ class TestDashboardAppointmentsTodayAPI:
         patient_factory, procedure_factory, appointment_factory
     ):
         today = timezone.localdate()
-        proc  = procedure_factory()
+        proc = procedure_factory()
         visible = appointment_factory(patient=patient_factory(doctor=dentist_user),
                                       doctor=dentist_user, procedure=proc, date=today)
         appointment_factory(patient=patient_factory(doctor=other_dentist_user),
@@ -437,7 +574,7 @@ class TestDashboardAppointmentsTodayAPI:
         patient_factory, procedure_factory, appointment_factory
     ):
         today = timezone.localdate()
-        proc  = procedure_factory()
+        proc = procedure_factory()
         a1 = appointment_factory(patient=patient_factory(), doctor=dentist_user,
                                  procedure=proc, date=today)
         a2 = appointment_factory(patient=patient_factory(), doctor=other_dentist_user,
@@ -456,8 +593,8 @@ class TestDashboardAppointmentsTodayAPI:
     ):
         """Filter is date__exact=today."""
 
-        today     = timezone.localdate()
-        proc      = procedure_factory()
+        today = timezone.localdate()
+        proc = procedure_factory()
         today_appt = appointment_factory(patient=patient_factory(), doctor=dentist_user,
                                          procedure=proc, date=today)
         appointment_factory(patient=patient_factory(), doctor=dentist_user,

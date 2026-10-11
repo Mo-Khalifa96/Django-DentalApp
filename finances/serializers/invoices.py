@@ -51,14 +51,21 @@ class InvoiceSerializer(serializers.ModelSerializer):
     branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
     items = InvoiceItemSerializer(many=True, source='invoice_items', required=True, allow_empty=False)
     status = TranslatedChoiceField(choices=Invoice.InvoiceStatusChoices.choices, read_only=True)
-    patientNationalId = serializers.CharField(source='patient.nationalId', read_only=True)
+    recipientName = serializers.CharField(read_only=True)
 
     class Meta:
         model = Invoice
-        fields = ['id', 'invoiceNumber','billId', 'billDescription', 'patientId', 'patientName', 
-                  'patientNationalId', 'treatmentTitle', 'branchId', 'branchName', 'items', 
-                  'subtotal', 'tax', 'discount', 'total', 'currency', 'status', 'issuedAt', 
-                  'submittedAt', 'createdBy', 'createdAt', 'isDeleted']
+        fields = [
+            'id', 'invoiceNumber','billId', 'billDescription', 'recipientName',
+            #non-patient/entity-related details
+            'billedToName', 'billedToTaxId', 'billedToAddress', 
+            #patient-related details
+            'patientId', 'patientName', 'patientNationalId', 'treatmentTitle', 
+            #invoice-standard details
+            'branchId', 'branchName', 'items', 'subtotal', 'tax', 'discount', 'total', 'currency', 
+            'status', 'issuedAt', 'submittedAt', 'createdBy', 'createdAt', 'isDeleted'
+        ]
+
 
     def get_fields(self):
         fields = super().get_fields()
@@ -77,18 +84,45 @@ class InvoiceSerializer(serializers.ModelSerializer):
 #Retrieve invoice serializer
 @retrieve_invoice_schema
 class RetrieveInvoiceSerializer(UserPermissionsMixin, InvoiceSerializer):
-    pass
+    recipientName = serializers.SerializerMethodField()
 
+    class Meta(InvoiceSerializer.Meta):
+        fields = [
+            'id', 'invoiceNumber','billId', 'billDescription', 'recipientName',
+            'billedToName', 'billedToTaxId', 'billedToAddress', 
+            'patientId', 'patientName', 'patientNationalId', 'treatmentTitle', 
+            'branchId', 'branchName', 'items', 'subtotal', 'tax', 'discount', 'total', 'currency', 
+            'status', 'issuedAt', 'submittedAt', 'createdBy', 'createdAt', 'isDeleted'
+        ]
+
+    @extend_schema_field(serializers.CharField)
+    def get_recipientName(self, obj):
+        return obj.patientName or obj.billedToName
 
 #Create invoice serializer
 class CreateInvoiceSerializer(InvoiceSerializer):
+    recipientName = serializers.SerializerMethodField()
+
     class Meta(InvoiceSerializer.Meta):
-        fields = ['id', 'invoiceNumber', 'billId', 'patientId', 'patientName', 'patientNationalId', 
-                  'branchId', 'items', 'subtotal', 'tax', 'discount', 'total', 'currency', 'status', 
-                  'issuedAt', 'submittedAt', 'createdAt']
-        read_only_fields = ['id', 'invoiceNumber', 'patientName', 'patientNationalId', 'status', 
-                            'issuedAt', 'submittedAt', 'createdAt']
+        fields = [
+            'id', 'invoiceNumber', 'billId', 'recipientName',
+            #non-patient/entity-related details
+            'billedToName', 'billedToTaxId', 'billedToAddress',
+            #patient-related details
+            'patientId', 'patientName', 'patientNationalId', 
+            #invoice-standard details
+            'branchId', 'items', 'subtotal', 'tax', 'discount', 'total', 'currency', 'status', 
+            'issuedAt', 'submittedAt', 'createdAt'
+        ]
+        
+        read_only_fields = ['id', 'invoiceNumber', 'recipientName', 'patientName', 'patientNationalId', 
+                            'status', 'issuedAt', 'submittedAt', 'createdAt']
+        
         extra_kwargs = {'total': {'required': False}, 'currency': {'required': False}}
+    
+    @extend_schema_field(serializers.CharField)
+    def get_recipientName(self, obj):
+        return obj.patientName or obj.billedToName
     
     def validate(self, data):
         #get current user 
@@ -105,6 +139,8 @@ class CreateInvoiceSerializer(InvoiceSerializer):
 
         #extract fields for validation
         bill = data.get('bill')
+        patient = data.get('patient')
+        billed_to_entity = data.get('billedToName')
         items = data.get('invoice_items', [])
         tax = data.get('tax', Decimal('0'))
         discount = data.get('discount', Decimal('0'))
@@ -112,12 +148,26 @@ class CreateInvoiceSerializer(InvoiceSerializer):
         total = data.get('total')
 
 
+        #handle patient 
+        if bill and not patient:
+            patient = bill.patient
+            data['patient'] = patient
+        
+        #Validate recepient
+        billed_to_provided = any([billed_to_entity, data.get('billedToTaxId'), data.get('billedToAddress')])
+        if billed_to_provided and (bill or patient):
+            raise serializers.ValidationError({
+                'billedToName': _('Non-patient recipient details cannot be provided when a patient or patient bill is also provided. '
+                                  'Choose one or the other to create an invoice.')
+            })
+        elif not any([bill, patient, billed_to_entity]):
+            raise serializers.ValidationError({
+                'patientId': _('An invoice needs a patient, a bill, or a non-patient recipient name to be created.')
+            })
+
+
         #prepare errors dict
         errors = {}
-
-        #handle patient 
-        if bill and not data.get('patient'):
-            data['patient'] = bill.patient
 
         #handle branch
         if not data.get('branch'):
@@ -197,6 +247,7 @@ class CreateInvoiceSerializer(InvoiceSerializer):
 
 #Update invoice serializer
 class UpdateInvoiceSerializer(CreateInvoiceSerializer):    #PUT requests only
+    recipientName = serializers.SerializerMethodField()
     billId = serializers.PrimaryKeyRelatedField(source='bill', read_only=True)
     patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
@@ -204,14 +255,26 @@ class UpdateInvoiceSerializer(CreateInvoiceSerializer):    #PUT requests only
                                    required=False, allow_blank=False, allow_null=False)
 
     class Meta(CreateInvoiceSerializer.Meta):
-        fields = ['id', 'invoiceNumber', 'billId', 'patientId', 'patientName', 'patientNationalId',
-                  'branchId', 'items', 'subtotal', 'tax', 'discount', 'total', 'currency', 'status', 
-                  'issuedAt', 'submittedAt']
-        read_only_fields = ['id', 'invoiceNumber', 'billId', 'patientId', 'patientName', 'patientNationalId',
-                            'branchId']
-        extra_kwargs = {'status': {'required': False}, 'total': {'required': False}, 'discount': {'required': False}, 
-                        'tax': {'required': False}, 'currency': {'required': False}, 'status': {'required': False}}
+        fields = [
+            'id', 'invoiceNumber', 'billId', 'recipientName', 
+            #non-patient/entity-related details
+            'billedToName', 'billedToTaxId', 'billedToAddress',
+            #patient-related details
+            'patientId', 'patientName', 'patientNationalId',
+            #invoice-standard details
+            'branchId', 'items', 'subtotal', 'tax', 'discount', 'total', 'currency', 'status', 
+            'issuedAt', 'submittedAt']
+        
+        read_only_fields = ['id', 'invoiceNumber','recipientName', 'billId', 'patientId', 
+                            'patientName', 'patientNationalId', 'branchId']
+        
+        extra_kwargs = {'total': {'required': False}, 'discount': {'required': False}, 
+                        'tax': {'required': False}, 'currency': {'required': False}}
 
+
+    @extend_schema_field(serializers.CharField)
+    def get_recipientName(self, obj):
+        return obj.patientName or obj.billedToName
 
     def validate(self, data):
         #extract fields for validation
@@ -223,8 +286,16 @@ class UpdateInvoiceSerializer(CreateInvoiceSerializer):    #PUT requests only
         status = data.get('status')
         issuedAt = data.get('issuedAt')
 
+        #Validated recipient details
+        # billed_to_entity = data.get('billedToName')
+        billed_to_provided = any([data.get('billedToName'), data.get('billedToTaxId'), data.get('billedToAddress')])
+        if billed_to_provided and getattr(self.instance, 'patient_id', None):
+            raise serializers.ValidationError({
+                'billedToName': _('This invoice is linked to an existing patient and cannot be assigned different recipient details.')
+            })
+
         #handle invoice issue date (submittedAt is handled in the model's save() method)
-        if status and status == Invoice.InvoiceStatusChoices.ISSUED and not issuedAt:
+        if status and status == 'issued' and not issuedAt:
             data['issuedAt'] = timezone.localtime(timezone.now())
         
         #validate subtotal against invoice items
@@ -300,7 +371,7 @@ class UpdateInvoiceStatusSerializer(serializers.ModelSerializer):   #PATCH reque
     def validate(self, data):
         status = data.get('status')
         issuedAt = data.get('issuedAt')
-        if status and status == Invoice.InvoiceStatusChoices.ISSUED and not issuedAt:
+        if status and status == 'issued' and not issuedAt:
             data['issuedAt'] = timezone.localtime(timezone.now())
         return data
 

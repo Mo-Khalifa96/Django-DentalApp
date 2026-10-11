@@ -1,3 +1,4 @@
+from decimal import Decimal
 from clinic.models import Branch
 from rest_framework import serializers
 from finances.models import InsuranceProvider
@@ -33,6 +34,37 @@ class RetrieveUpdateDeleteInsuranceProviderSerializer(UserPermissionsMixin, Insu
         read_only_fields = ['id', 'branchId']
         extra_kwargs = {'contact': {'allow_null': False, 'allow_blank': False}}
 
+
+#Insurance providers stats serializer
+#Insurer-related payments serializer -- nested serializer
+class InsurerRelatedPaymentsSerializer(serializers.Serializer):
+    billId = serializers.UUIDField(allow_null=True)
+    transactionsCount = serializers.IntegerField(allow_null=True)
+    transactionIds = serializers.ListField(child=serializers.UUIDField(allow_null=True), 
+                                           allow_null=True, allow_empty=True)
+
+# @insurance_providers_stats_schema
+class InsuranceProvidersStatisticsSerializer(serializers.ModelSerializer):
+    #provider details
+    providerId = serializers.UUIDField(source='id')
+    providerName = serializers.CharField(source='name')
+    tier = TranslatedChoiceField(choices=InsuranceProvider.InuranceTierChoices.choices)
+    providerAnnualMax = serializers.DecimalField(source='annualMax', max_digits=12, decimal_places=2, allow_null=True)
+    #stats
+    coveredPatientsCount = serializers.IntegerField(allow_null=True)
+    patientsTotalAnnualMax = serializers.DecimalField(max_digits=20, decimal_places=2, allow_null=True)
+    patientsTotalUsedYTD = serializers.DecimalField(max_digits=20, decimal_places=2, allow_null=True)
+    totalYearlyBenefitRemaining = serializers.DecimalField(max_digits=20, decimal_places=2, allow_null=True)
+    totalCollected = serializers.DecimalField(max_digits=30, decimal_places=2, allow_null=True)
+    relatedBillsCount = serializers.IntegerField(allow_null=True)
+    relatedPayments = InsurerRelatedPaymentsSerializer(many=True, allow_null=True, allow_empty=True)
+
+    class Meta:
+        model = InsuranceProvider
+        fields = ['providerId', 'providerName', 'tier', 'coveragePercent', 'providerAnnualMax', 
+                  'coveredPatientsCount', 'patientsTotalAnnualMax', 'patientsTotalUsedYTD', 
+                  'totalYearlyBenefitRemaining', 'totalCollected', 'relatedBillsCount', 
+                  'relatedPayments']
 
 
 #Insurance providers options serializer

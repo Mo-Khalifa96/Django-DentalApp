@@ -2,17 +2,17 @@ from decimal import Decimal
 from clinic.models import Branch
 from django.db import transaction
 from rest_framework import serializers
-from patients.validators import FDI_PERMANENT
 from django.db.models.functions import Coalesce
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
+from django.core.files.storage import default_storage
 from utils.mixins import UserPermissionsMixin, ValidateBranchMixin
 from services.translation.serializers import TranslatedChoiceField
 from finances.models import Bill, InstallmentPlan, InsuranceProvider
-from patients.models import Patient, DentalChart, PatientDocument, InboundReferral
+from patients.models import Patient, PatientDocument, XRay, InboundReferral
 from django.db.models import F, Sum, ExpressionWrapper, Exists, DecimalField, OuterRef
-from patients.docs import (create_patient_schema, full_update_patient_schema, partial_update_patient_schema,
-                           patients_options_schema, dentalchart_options_schema)
+from patients.docs import (create_patient_schema, full_update_patient_schema, 
+                           partial_update_patient_schema, patients_options_schema)
 
 
 #SERIALIZERS FOR PATIENTS
@@ -34,7 +34,7 @@ class CreatePatientSerializer(ValidateBranchMixin, serializers.ModelSerializer):
     insurance = serializers.CharField(source='patient_insurance.providerName', default=None, read_only=True)
     insuranceProviderId = serializers.PrimaryKeyRelatedField(queryset=InsuranceProvider.objects.all(),
                                         required=False, default=None, allow_null=True, write_only=True)
-    referredById = serializers.PrimaryKeyRelatedField(source='referredBy', queryset=InboundReferral.objects.all(), 
+    referredById = serializers.PrimaryKeyRelatedField(source='referredBy', queryset=InboundReferral.objects.all(),
                                                       required=False, allow_null=True)
     documents = PatientDocumentsSerializer(many=True, source='patient_documents', required=False,
                                            allow_null=True, allow_empty=True)
@@ -159,7 +159,7 @@ class RetrievePatientSerializer(UserPermissionsMixin, serializers.ModelSerialize
     @extend_schema_field(serializers.DecimalField(max_digits=10, decimal_places=2))
     def get_outstandingBalance(self, obj):
         #get outstanding from all bills
-        bills_outstanding = obj.patient_bills.filter(isDeleted=False)\
+        bills_outstanding = obj.patient_bills.filter(isDeleted=False, isDepositBill=False)\
             .annotate(
                 total_outstanding=ExpressionWrapper(
                     F('totalAmount') - Coalesce(F('totalPaid'), Decimal('0')), 
@@ -169,7 +169,9 @@ class RetrievePatientSerializer(UserPermissionsMixin, serializers.ModelSerialize
         #account for installment plans with no active bill generated
         installments_outstanding = InstallmentPlan.objects.filter(treatment__patient=obj)\
             .annotate(
-                has_active_bill=Exists(Bill.objects.filter(treatment_id=OuterRef('treatment_id')))
+                has_active_bill=Exists(
+                    Bill.objects.earnings().filter(treatment_id=OuterRef('treatment_id'))
+                )
             ).filter(has_active_bill=False).annotate(
                 total_outstanding=ExpressionWrapper(
                     F('totalAmount') - Coalesce(F('totalPaid'), Decimal('0')), 
@@ -178,9 +180,11 @@ class RetrievePatientSerializer(UserPermissionsMixin, serializers.ModelSerialize
 
         #sum them together with a single query
         outstanding_balance = bills_outstanding.union(installments_outstanding, all=True)\
-            .aggregate(total=Coalesce(Sum('total_outstanding'), Decimal('0')))['total']
+            .aggregate(total=Sum('total_outstanding', default=Decimal('0')))['total']
         
-        return outstanding_balance if outstanding_balance > 0 else Decimal('0')
+        #Serialize value upon returning it
+        outstanding_balance = outstanding_balance if outstanding_balance > 0 else Decimal('0')
+        return serializers.DecimalField(max_digits=10, decimal_places=2).to_representation(outstanding_balance)
 
 
 #Serializer for PUT-only requests to update patient details with documents
@@ -423,120 +427,6 @@ class PatientsOptionsSerializer(serializers.Serializer):
         ]
 
 
-##########################
-
-
-#SERIALIZERS FOR PATIENT DENTAL CHARTS
-#Tooth serializer
-class ToothDetailSerializer(serializers.Serializer):
-    status = serializers.ChoiceField(choices=DentalChart.ToothStatusChoices.choices)
-    surfaces = serializers.ListField(child=serializers.ChoiceField(
-         choices=DentalChart.ToothSurfacesChoices.choices
-    ), required=False, allow_empty=True, allow_null=True)
-    notes = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-
-#Dental Chart serializer
-class DentalChartSerializer(serializers.ModelSerializer):
-    patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
-    teeth = serializers.DictField(child=ToothDetailSerializer(many=False))
-    
-    class Meta:
-        model = DentalChart
-        fields = ['patientId', 'teeth', 'lastUpdated']
-        read_only_fields = ['patientId', 'lastUpdated']
-
-    def validate_teeth(self, teeth):
-        #get stored teeth dictionary  
-        teeth_before = self.instance.teeth
-
-        #Validate incoming data 
-        if not isinstance(teeth, dict):
-            raise serializers.ValidationError(_('Invalid data format.'))
-        if (self.context['request'].method == 'PUT') and (len(teeth.keys()) < len(teeth_before.keys())):
-            raise serializers.ValidationError(_('Teeth data missing or incomplete.'))
-        elif (self.context['request'].method == 'PATCH') and not teeth:
-            raise serializers.ValidationError(_('Teeth data required for update.'))
-
-        errors, validated = {}, {}
-        for tooth_number, tooth_dict in teeth.items():
-            if tooth_number not in FDI_PERMANENT:
-                errors[tooth_number] = f'Invalid FDI tooth number.'
-                continue
-
-            #Validate inner structure
-            inner_serializer = ToothDetailSerializer(data=tooth_dict)
-            if inner_serializer.is_valid():
-                #store valid tooth data 
-                validated[tooth_number] = inner_serializer.validated_data
-            else:
-                errors[tooth_number] = inner_serializer.errors
-        
-        if errors:  #return errors (if any)
-            raise serializers.ValidationError(errors)
-
-        return validated
-    
-    @transaction.atomic
-    def update(self, instance, validated_data):
-        request = self.context.get('request')
-
-        #fetch updated teeth from validated data 
-        updated_teeth = validated_data.get('teeth', {})
-
-        if request.method == 'PATCH':
-            #get and use stored teeth dict for patch update
-            teeth_dict = instance.teeth.copy()
-            for tooth_number, tooth_data in updated_teeth.items():
-                #merge at the field level within each touched tooth,
-                existing_tooth = teeth_dict.get(tooth_number, {})
-                teeth_dict[tooth_number] = {**existing_tooth, **tooth_data}
-            instance.teeth = teeth_dict
-        
-        else:
-            #update entire teeth dict
-            instance.teeth = updated_teeth
-
-        instance.save(update_fields=['teeth', 'lastUpdated'])
-        return instance
-
-
-#Serializers for providing dental chart options
-@dentalchart_options_schema 
-class DentalChartOptionsSerializer(serializers.Serializer):
-    toothNumberChoices = serializers.SerializerMethodField()
-    toothStatusChoices = serializers.SerializerMethodField()
-    toothSurfaceChoices = serializers.SerializerMethodField()
-
-    @extend_schema_field(
-        serializers.ListField(
-            child=serializers.DictField(child=serializers.CharField(allow_blank=True, allow_null=True))
-        ))
-    def get_toothNumberChoices(self, obj):
-        return [
-            {'value': tooth[0], 'label': tooth[1]}
-             for tooth in [(n, n) for n in sorted(FDI_PERMANENT)]
-        ]
-
-    @extend_schema_field(
-        serializers.ListField(
-            child=serializers.DictField(child=serializers.CharField())
-        ))
-    def get_toothStatusChoices(self, obj):
-        return [
-            {'value': choice.value, 'label': str(choice.label)}
-            for choice in DentalChart.ToothStatusChoices
-        ]
-
-    @extend_schema_field(
-        serializers.ListField(
-            child=serializers.DictField(child=serializers.CharField())
-        ))
-    def get_toothSurfaceChoices(self, obj):
-        return [
-            {'value': choice.value, 'label': str(choice.label)}
-            for choice in DentalChart.ToothSurfacesChoices
-        ]
-
 
 ##########################
 
@@ -575,3 +465,45 @@ class UploadDocumentSerializer(serializers.ModelSerializer):
         )
         return document
     
+
+#Serializer for deleting files (documents or images)
+class DeleteFileSerializer(serializers.Serializer):
+    url = serializers.URLField()
+
+    def validate_url(self, url):
+        media_url = default_storage.url("")
+
+        if not url.startswith(media_url):
+            raise serializers.ValidationError(_('Invalid file URL.'))
+        
+        #extract file name
+        file_name = url[len(media_url):]
+
+        try:
+            url_file = PatientDocument.objects.only('document').get(document=file_name)
+        except PatientDocument.DoesNotExist:
+            try:
+                url_file = XRay.objects.only('image').get(image=file_name)
+            except XRay.DoesNotExist:
+                raise serializers.ValidationError(_('File not found or does not exist.'))
+            except XRay.MultipleObjectsReturned:
+                raise serializers.ValidationError(_('Multiple files match the provided url.'))
+        except PatientDocument.MultipleObjectsReturned:
+            raise serializers.ValidationError(_('Multiple files match the provided url.'))
+
+        self.url_file = url_file
+        return url_file
+
+    @transaction.atomic
+    def delete_file(self):
+        #get file
+        url_file = self.url_file
+
+        #delete the physical file
+        if hasattr(url_file, 'document'):
+            url_file.document.delete(save=False)
+        elif hasattr(url_file, 'image'):
+            url_file.image.delete(save=False)
+
+        #delete file's database record
+        url_file.delete()

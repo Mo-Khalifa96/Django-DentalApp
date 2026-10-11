@@ -24,7 +24,7 @@ from patients.serializers.visits import PatientVisitSerializer, UploadXRaySerial
 @extend_schema(tags=['Visit History'])
 class ListCreateVisitsAPIView(ListCreateAPIView):
     serializer_class = PatientVisitSerializer
-    permission_classes = [PatientDataPermissions]
+    permission_classes = [PatientDataPermissions]  
     ordering = ['-date', '-createdAt']  #default order fields 
     ordering_fields = ['date', 'type']   #sort by 'date' and visit 'type' 
     filterset_class = VisitsFilter  #filter by date / search by visit 'type' and 'procedures'
@@ -34,52 +34,52 @@ class ListCreateVisitsAPIView(ListCreateAPIView):
     lookup_field = 'id'
 
     def initial(self, request, *args, **kwargs):
-        #re-order data for admins
-        if getattr(request.user, 'role', None) == 'admin':
-            self.ordering = ['patient__branch__name', 'patient__name', '-date', '-createdAt']
         #determine required permission
         #self.required_permission = 'view.visits' if request.method == 'GET' else 'create.visit'
         self.required_permission = get_required_permission('visits', request, self)
         super().initial(request, *args, **kwargs)
 
+
+    # def get_permissions(self):   #TODO - confirm with frontend whether other doctors/branches can see patient's visit history
+    #     req_method = self.request.method
+    #     if req_method == 'GET':
+    #         return [UnrestrictedObjectPermissions()]  #unrestricted viewing permission
+    #     return [PatientDataPermissions()]  #applies object permission on create
+
+
     def get_patient(self):
         patient = get_object_or_404(
-            Patient.objects.select_related('doctor'),
-            id=self.kwargs['id']
+            Patient.objects.only('id','doctor').select_related('doctor'),
+            id=self.kwargs.get('id')
         )
-        #check object permission and return patient object
+        #check object permission and return patient object  
         self.check_object_permissions(self.request, patient)
         return patient
 
     def get_queryset(self):
-        user = self.request.user
-        #Fetch patient visits for GET
+        #Get current patient
+        patient = self.get_patient()
+
+        #Get patient's visits
         patient_visits = Visit.objects.select_related('patient', 'doctor')\
-         .prefetch_related('visit_xrays').filter(patient_id=self.kwargs['id'])
+         .prefetch_related('visit_xrays').filter(patient_id=patient.id)
+
         
         #filter queryset by role or permission
-        if getattr(user, 'role', None) == 'dentist':
-            patient = get_object_or_404(
-                Patient.objects.select_related('doctor').only('id', 'doctor'),
-                id=self.kwargs['id']
-            )
-            #check doctor's object permission and return visits
-            self.check_object_permissions(self.request, patient)
+        user = self.request.user
+        if getattr(user, 'role', None) in ('admin', 'dentist') or\
+         self.required_permission in getattr(user, 'userPermissions', []):
             return patient_visits
-
+        else:
+            return patient_visits.none()
+        
             # #alternative, permission check
             # #if current doctor has at least one visit under their name or is the patient's main doctor
             # if patient_visits.filter(doctor_id=user.id).exists()\
             #  or Patient.objects.filter(doctor_id=user.id).exists():
             #     return patient_visits
             # else:
-            #     return patient_visits.none()
-        
-        elif getattr(user, 'role', None) == 'admin' or\
-         self.required_permission in getattr(user, 'userPermissions', []):
-            return patient_visits
-        else:
-            return patient_visits.none()
+
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -97,14 +97,14 @@ class ListCreateVisitsAPIView(ListCreateAPIView):
         visit = serializer.save()
         patient = visit.patient
 
-        if visit.type == Visit.VisitTypeChoices.ROUTINE_CHECKUP:
+        if visit.type == 'routine_checkup':
             today_date = timezone.localtime(timezone.now()).date()
 
             PatientRecall.objects.update_or_create(
                 #look-up fields (if update)
                 patient=patient, 
-                type=PatientRecall.RecallTypeChoices.CHECKUP,
-                status= PatientRecall.RecallStatusChoices.PENDING,
+                type='checkup',
+                status='pending',
 
                 #edit fields
                 defaults={    #updateable fields

@@ -9,12 +9,14 @@ if settings.DEBUG:
     from drf_spectacular.extensions import OpenApiFilterExtension
     from users.utils import category_patterns
 
-    field_map = {'patient__name': 'patientName', 'doctor__name': 'doctorName', 
-                 'treatment__patient__name': 'patientName', 'procedure__name': 'procedureName',
-                'branch__name': 'branchName', 'patient_insurance__providerName': 'insurance', 
-                'lab__name': 'labName', 'treatment__title': 'treatmentTitle', 
-                'treatment_items__procedureName': 'procedureName',
-                'invoice_items__description': 'itemDescription'}
+    field_map = {
+        'patient__name': 'patientName', 'doctor__name': 'doctorName', 
+        'treatment__patient__name': 'patientName', 'procedure__name': 'procedureName',
+        'branch__name': 'branchName', 'patient_insurance__providerName': 'insurance', 
+        'lab__name': 'labName', 'treatment__title': 'treatmentTitle', 
+        'treatment_items__procedureName': 'procedureName', 
+        'invoice_items__description': 'itemDescription',
+    }
     
     CHAR_SEARCH_FIELDS = {
         'ListCreateSterilizationLogsAPIView': ['operator', 'cycleType', 'instrumentSets'],
@@ -300,7 +302,7 @@ if settings.DEBUG:
                 else:
                     #for POST/PUT/PATCH responses 
                     #document validation responses
-                    _add_validation_error_responses(operation, path)
+                    _add_validation_error_responses(operation, path, method)
                     
                     #document success response 
                     _wrap_success_responses(result, operation)
@@ -372,6 +374,7 @@ if settings.DEBUG:
                 for media_type, content in response['content'].items():
                     if 'schema' in content:
                         original_schema = content['schema']
+                        content.pop('examples', None)  #remove examples - keep schema
 
                         content['schema'] = {
                             'type': 'object',
@@ -422,17 +425,15 @@ if settings.DEBUG:
                     if 'schema' in content:
                         original_schema = content['schema']
 
-                        data = {
-                                'type': 'array',
-                                'items': _extract_item_schema_from_reference(original_schema, result)
-                            }
-
                         #Create paginated response structure
                         content['schema'] = {
                             'type': 'object',
                             'properties': {
                                 'success': {'type': 'boolean', 'example': True},
-                                'data': data,
+                                'data': {
+                                    'type': 'array',
+                                    'items': _extract_item_schema_from_reference(original_schema, result)
+                                },
                                 'metadata': {
                                     'type': 'object',
                                     'properties': {
@@ -487,6 +488,7 @@ if settings.DEBUG:
                                                 'view.bills': {'type': 'boolean'},
                                                 'view.transactions': {'type': 'boolean'},
                                                 'view.invoices': {'type': 'boolean'},
+                                                'view.installments': {'type': 'boolean'},
                                                 'view.insuranceProviders': {'type': 'boolean'},
                                                 'view.doctorSchedules': {'type': 'boolean'},
                                                 'view.sterilizationLogs': {'type': 'boolean'},
@@ -628,7 +630,7 @@ if settings.DEBUG:
                 }
 
     
-    def _add_validation_error_responses(operation, path):
+    def _add_validation_error_responses(operation, path, method=None):
         '''Documents the standard error response structure across all operations.'''
 
         error_codes = {
@@ -706,7 +708,7 @@ if settings.DEBUG:
             }
         }
 
-        #TODO - account for new exceptions
+        #Document special exceptions
         if '/appointments/' in path:
             error_codes['409'] = 'Appointment conflict'
             error_schema_dict['409'] = {
@@ -731,20 +733,89 @@ if settings.DEBUG:
                 }
             }
         
-        elif '/whatsapp/' in path:
-            error_codes['400'] = 'Invalid phone number'
-            error_schema_dict['400'] = {
+        elif 'autogenerate-bill' in path:
+            error_codes['409'] = 'Installment bill exists'
+            error_schema_dict['409'] = {
                 'type': 'object',
                 'properties': {
                     'success': {'type': 'boolean', 'example': False},
                     'error': {
                         'type': 'object',
                         'properties': {
-                            'code': {'type': 'string', 'example': 'INVALID_PHONE_NUMBER'},
-                            'message': {'type': 'string', 'example': "Patient's phone number is invalid or not registered on WhatsApp."},
+                            'code': {'type': 'string', 'example': 'INSTALLMENT_BILL_ALREADY_EXISTS'},
+                            'message': {'type': 'string', 'example': 'An installment bill already exists for this treatment plan.'},
+                            'billId': {'type': 'string', 'example': 'd5f5f6b7-4567-8901-aeca-7912190321da'},
                         }
                     }
                 }
+            }
+        
+        # elif ('installments' in path and 'treatment-plans' in path) or\
+        elif ('installments' in path) and (method and method.upper() in ('PATCH', 'DELETE')):
+            error_codes['409'] = 'Installment plan in progress'
+            error_schema_dict['409'] = {
+                'type': 'object',
+                'properties': {
+                    'success': {'type': 'boolean', 'example': False},
+                    'error': {
+                        'type': 'object',
+                        'properties': {
+                            'code': {'type': 'string', 'example': 'INSTALLMENT_PLAN_IN_PROGRESS'},
+                            'message': {'type': 'string', 'example': 'This installment plan cannot be modified or deleted because one or more installments have already been paid.'},
+                        }
+                    }
+                }
+            }
+        
+        elif 'perio-charts' in path:
+            error_codes['409'] = 'Perio exam locked'
+            error_schema_dict['409'] = {
+                'type': 'object',
+                'properties': {
+                    'success': {'type': 'boolean', 'example': False},
+                    'error': {
+                        'type': 'object',
+                        'properties': {
+                            'code': {'type': 'string', 'example': 'PERIO_EXAM_LOCKED'},
+                            'message': {'type': 'string', 'example': 'This exam can no longer be corrected because it was recorded on an older date. Create a new exam instead to record current findings.'},
+                        }
+                    }
+                }
+            }
+        
+        elif '/whatsapp/' in path:
+            validation_error_schema = error_schema_dict['400']
+            error_codes['400'] = 'Validation error, invalid phone number, or WhatsApp API error'
+            error_schema_dict['400'] = {
+                'oneOf': [
+                    validation_error_schema,
+                    {
+                        'type': 'object',
+                        'properties': {
+                            'success': {'type': 'boolean', 'example': False},
+                            'error': {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {'type': 'string', 'example': 'INVALID_PHONE_NUMBER'},
+                                    'message': {'type': 'string', 'example': "Patient's phone number is invalid or can't be reached on WhatsApp."},
+                                }
+                            }
+                        }
+                    },
+                    {
+                        'type': 'object',
+                        'properties': {
+                            'success': {'type': 'boolean', 'example': False},
+                            'error': {
+                                'type': 'object',
+                                'properties': {
+                                    'code': {'type': 'string', 'example': 'WHATSAPP_API_ERROR'},
+                                    'message': {'type': 'string', 'example': 'WhatsApp API error.'},
+                                }
+                            }
+                        }
+                    }
+                ]
             }
             
         for code, description in error_codes.items():

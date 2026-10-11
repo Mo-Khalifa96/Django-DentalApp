@@ -17,14 +17,6 @@ from finances.docs import list_bills_schema, retrieve_bills_schema, bills_option
 logger = logging.getLogger(__name__)
 
 #BILLS SERIALIZERS 
-
-#Bill status labels
-# STATUS_LABELS = {
-#     'unpaid': _('unpaid'),
-#     'partial': _('partial'),
-#     'paid': _('paid')
-# }
-
 #Bills serializer
 @list_bills_schema
 class BillSerializer(serializers.ModelSerializer):
@@ -34,27 +26,19 @@ class BillSerializer(serializers.ModelSerializer):
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     installmentPlanId = serializers.PrimaryKeyRelatedField(source='installmentPlan', read_only=True)
     hasInstallmentPlan = serializers.BooleanField(read_only=True)
-    # status = serializers.SerializerMethodField()
     status = TranslatedChoiceField(choices=Bill.BillStatusChoices.choices, read_only=True)
     total = serializers.DecimalField(source='totalAmount', max_digits=10, decimal_places=2, read_only=True)
+    collectedFromPatient = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    collectedFromInsurer = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = Bill
         fields = ['id', 'patientId', 'patientName', 'visitIds', 'treatmentId', 'treatmentTitle', 
                   'installmentPlanId', 'hasInstallmentPlan', 'procedures', 'branchId', 'branchName', 
-                  'description', 'discount', 'subtotal', 'total', 'totalPaid', 'currency', 'status', 'createdBy', 
-                  'createdAt', 'updatedAt', 'isDeleted']
+                  'description', 'discount', 'subtotal', 'total', 'totalPaid', 'collectedFromPatient', 
+                  'collectedFromInsurer', 'currency', 'status', 'isCreditHeld', 'createdBy', 'createdAt', 
+                  'updatedAt', 'isDeleted']
 
-
-    # @extend_schema_field(
-    #     serializers.ChoiceField(
-    #         choices=[(choice,choice) for choice in STATUS_LABELS]
-    #     )
-    # )
-    # def get_status(self, obj):
-    #     value = getattr(obj, 'status', None)
-    #     return str(STATUS_LABELS.get(value, value)) if value else None
-    
     def get_fields(self):
         fields = super().get_fields()
         request = self.context.get('request')
@@ -79,16 +63,27 @@ class RetrieveBillSerializer(UserPermissionsMixin, BillSerializer):
 class CreateBillSerializer(ValidateBranchMixin, serializers.ModelSerializer):
     patientId = serializers.PrimaryKeyRelatedField(source='patient', queryset=Patient.objects.all(), required=True)
     treatmentId = serializers.PrimaryKeyRelatedField(source='treatment', queryset=TreatmentPlan.objects.all(), required=False, allow_null=True)
-    visitIds = serializers.PrimaryKeyRelatedField(many=True, source='visits', queryset=Visit.objects.all(), required=True)
+    visitIds = serializers.PrimaryKeyRelatedField(many=True, source='visits', queryset=Visit.objects.all(), required=False, allow_null=True, allow_empty=True)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', queryset=Branch.objects.all(), required=True, allow_null=True)
-    total = serializers.DecimalField(source='totalAmount', max_digits=10, decimal_places=2, required=False)
+    total = serializers.DecimalField(source='totalAmount', max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = Bill
-        fields = ['id', 'patientId', 'patientName', 'treatmentId', 'visitIds', 'branchId', 
+        fields = ['id', 'patientId', 'patientName', 'treatmentId', 'visitIds', 'branchId',
                   'description', 'discount', 'subtotal', 'total', 'currency', 'createdAt']
-        read_only_fields = ['id', 'patientName', 'createdAt']
-    
+        read_only_fields = ['id', 'patientName', 'total', 'createdAt']
+
+    def to_internal_value(self, data):
+        '''Convert null to empty list.'''
+        #get data copy
+        data = data.copy()
+
+        #convert null to empty list
+        if 'visitIds' in data and data['visitIds'] is None:
+            data['visitIds'] = []
+
+        return super().to_internal_value(data) 
+
 
     def validate(self, data):
         #get request user 
@@ -100,7 +95,6 @@ class CreateBillSerializer(ValidateBranchMixin, serializers.ModelSerializer):
         visits = data.get('visits', [])
         subtotal = data.get('subtotal')
         discount = data.get('discount', Decimal('0'))
-        totalAmount = data.get('totalAmount', None)
 
         #assign user's name to 'createdBy' field
         data['createdBy'] = user.name
@@ -109,7 +103,7 @@ class CreateBillSerializer(ValidateBranchMixin, serializers.ModelSerializer):
         errors = {}
 
         #validate all visits belong to the same patient
-        if any([visit for visit in visits if visit.patient_id != patient.id]):
+        if visits and any([visit for visit in visits if visit.patient_id != patient.id]):
             errors['visitIds'] = _('One or more visits do not belong to this patient.')
 
         #treatment-related validations
@@ -137,14 +131,7 @@ class CreateBillSerializer(ValidateBranchMixin, serializers.ModelSerializer):
             errors['discount'] = _('Discount cannot exceed subtotal amount.')
 
         #handle total amount calculation
-        recalculated_total = subtotal - discount
-        if totalAmount and (round(totalAmount,2) != round(recalculated_total,2)
-         or abs(totalAmount - recalculated_total) > 0.01):
-            logger.error(f'FRONTEND BUG: Bill total amount miscalculated. '
-             f'Provided: {totalAmount}, Actual: {recalculated_total}')
-            
-        #assign recalculated total anyway
-        data['totalAmount'] = recalculated_total
+        data['totalAmount'] = subtotal - discount
 
         #return val errors (if any)
         if errors:
@@ -175,15 +162,15 @@ class UpdateBillSerializer(serializers.ModelSerializer):
     treatmentId = serializers.PrimaryKeyRelatedField(source='treatment', queryset=TreatmentPlan.objects.all(), required=False, allow_null=True)
     visitIds = serializers.PrimaryKeyRelatedField(many=True, source='visits', queryset=Visit.objects.all(), required=False, allow_empty=False)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
-    total = serializers.DecimalField(max_digits=10, decimal_places=2, source='totalAmount', required=False)
+    total = serializers.DecimalField(source='totalAmount', max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = Bill
         fields = ['id', 'patientId', 'patientName', 'treatmentId', 'visitIds', 'branchId', 
                   'description', 'discount', 'subtotal', 'total', 'currency', 'updatedAt']
-        read_only_fields = ['id', 'patientId', 'patientName', 'branchId', 'updatedAt']
+        read_only_fields = ['id', 'patientId', 'patientName', 'total', 'branchId', 'updatedAt']
         extra_kwargs = {field: {'required': False} for field in 
-            ('description', 'discount', 'subtotal', 'total', 'currency')
+            ('description', 'discount', 'subtotal', 'currency')
             }
 
     def validate(self, data):
@@ -192,7 +179,6 @@ class UpdateBillSerializer(serializers.ModelSerializer):
         treatment = data.get('treatment', None)
         subtotal = data.get('subtotal', self.instance.subtotal)
         discount = data.get('discount', self.instance.discount)
-        totalAmount = data.get('totalAmount', self.instance.totalAmount)
 
         #validate visits are not removed  -- TODO: confirm with frontend
         # if 'visits' in data:
@@ -227,14 +213,7 @@ class UpdateBillSerializer(serializers.ModelSerializer):
             errors['discount'] = _('Discount cannot exceed subtotal amount.')
 
         #handle total amount calculation
-        recalculated_total = subtotal - discount
-        if 'totalAmount' in data and (round(totalAmount,2) != round(recalculated_total,2)
-         or abs(totalAmount - recalculated_total) > 0.01):
-            logger.error(f'FRONTEND BUG: Bill total amount miscalculated. '
-             f'Provided: {totalAmount}, Actual: {recalculated_total}')
-        
-        #assign recalculated total anyway
-        data['totalAmount'] = recalculated_total
+        data['totalAmount'] = subtotal - discount
 
         #return val errors (if any)
         if errors:
@@ -271,8 +250,6 @@ class UpdateBillSerializer(serializers.ModelSerializer):
 class AutogenerateInvoiceSerializer(serializers.ModelSerializer):
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
     patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
-    patientName = serializers.CharField(source='patient.name', read_only=True)
-    patientNationalId = serializers.CharField(source='patient.nationalId', read_only=True)
     billId = serializers.PrimaryKeyRelatedField(source='bill', queryset=Bill.objects.all(), required=True)
     # items = InvoiceItemsSerializer(many=True, read_only=True)
 

@@ -77,7 +77,7 @@ class TestListCreateAppointmentsAPIView:
         self, api_client, dentist_user, other_dentist_user,
         patient_factory, procedure_factory, appointment_factory
     ):
-        proc    = procedure_factory()
+        proc = procedure_factory()
         visible = appointment_factory(patient=patient_factory(doctor=dentist_user),
                                       doctor=dentist_user, procedure=proc)
         appointment_factory(patient=patient_factory(doctor=other_dentist_user),
@@ -98,8 +98,8 @@ class TestListCreateAppointmentsAPIView:
         recept = user_factory(role='receptionist')
         recept.branches.set([b1])
 
-        proc    = procedure_factory()
-        a_own   = appointment_factory(patient=patient_factory(), doctor=dentist_user,
+        proc = procedure_factory()
+        a_own = appointment_factory(patient=patient_factory(), doctor=dentist_user,
                                       procedure=proc, branch=b1)
         a_other = appointment_factory(patient=patient_factory(), doctor=dentist_user,
                                       procedure=proc, branch=b2)
@@ -117,8 +117,8 @@ class TestListCreateAppointmentsAPIView:
     ):
         """AppointmentsManager: filter(patient__is_deleted=False)."""
         ghost = patient_factory()
-        proc  = procedure_factory()
-        appt  = appointment_factory(patient=ghost, doctor=dentist_user, procedure=proc)
+        proc = procedure_factory()
+        appt = appointment_factory(patient=ghost, doctor=dentist_user, procedure=proc)
         ghost.is_deleted = True
         ghost.save(update_fields=['is_deleted'])
 
@@ -138,7 +138,7 @@ class TestListCreateAppointmentsAPIView:
         patient_factory, procedure_factory
     ):
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.post(
             reverse(self.LIST_URL),
@@ -152,7 +152,7 @@ class TestListCreateAppointmentsAPIView:
     ):
         """Appointment.save(): status defaults to 'pending'."""
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
             reverse(self.LIST_URL),
@@ -167,7 +167,7 @@ class TestListCreateAppointmentsAPIView:
         self, api_client, admin_user, dentist_user, patient_factory, procedure_factory
     ):
         """Appointment.save(): procedureName and doctorName captured on creation."""
-        proc    = procedure_factory(name='Root Canal')
+        proc = procedure_factory(name='Root Canal')
         patient = patient_factory()
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
@@ -178,14 +178,14 @@ class TestListCreateAppointmentsAPIView:
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         appt = Appointment.objects.get(id=response.data['data']['id'])
         assert appt.procedureName == 'Root Canal'
-        assert appt.doctorName    == dentist_user.name
+        assert appt.doctorName == dentist_user.name
 
     def test_create_updates_patient_next_appointment(
         self, api_client, receptionist_user, dentist_user, patient_factory, procedure_factory
     ):
         """Appointment.save(): patient.nextAppointment updated to the new appointment date."""
-        patient  = patient_factory(doctor=None)
-        proc     = procedure_factory()
+        patient = patient_factory(doctor=None)
+        proc = procedure_factory()
         appt_date = timezone.localdate() + timedelta(days=5)
         api_client.force_authenticate(user=receptionist_user)
         api_client.post(
@@ -202,7 +202,7 @@ class TestListCreateAppointmentsAPIView:
     ):
         """CreateAppointmentSerializer.create(): existing patient.doctor = appointment.doctor."""
         patient = patient_factory(doctor=None)
-        proc    = procedure_factory()
+        proc = procedure_factory()
         api_client.force_authenticate(user=receptionist_user)
         api_client.post(
             reverse(self.LIST_URL),
@@ -249,7 +249,7 @@ class TestListCreateAppointmentsAPIView:
         procedure_factory, appointment_factory, branch
     ):
         """Appointment.validate_availability() raises AppointmentConflictError (409)."""
-        proc     = procedure_factory()
+        proc = procedure_factory()
         patient1 = patient_factory()
         patient2 = patient_factory()
         appt_date = timezone.localdate() + timedelta(days=2)
@@ -280,7 +280,7 @@ class TestListCreateAppointmentsAPIView:
 
         b1 = branch_factory()
         b2 = branch_factory()
-        proc     = procedure_factory()
+        proc = procedure_factory()
         patient1 = patient_factory()
         patient2 = patient_factory()
         appt_date = timezone.localdate() + timedelta(days=4)
@@ -305,9 +305,9 @@ class TestListCreateAppointmentsAPIView:
         procedure_factory, appointment_factory
     ):
         """Non-overlapping times for the same doctor on the same day → 201."""
-        proc      = procedure_factory()
-        patient1  = patient_factory()
-        patient2  = patient_factory()
+        proc = procedure_factory()
+        patient1 = patient_factory()
+        patient2 = patient_factory()
         appt_date = timezone.localdate() + timedelta(days=5)
         appointment_factory(patient=patient1, doctor=dentist_user, procedure=proc,
                             date=appt_date, startTime=time(9, 0), endTime=time(10, 0))
@@ -326,7 +326,7 @@ class TestListCreateAppointmentsAPIView:
         self, api_client, admin_user, dentist_user, patient_factory, procedure_factory
     ):
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
             reverse(self.LIST_URL),
@@ -353,8 +353,8 @@ class TestRetrieveUpdateCancelAppointmentAPIView:
     ):
         """RetrieveAppointmentSerializer.get_patientPhone() normalizes the phone."""
         patient = patient_factory(phone='01012345678', countryCode='20')
-        proc    = procedure_factory()
-        appt    = appointment_factory(patient=patient, doctor=dentist_user, procedure=proc)
+        proc = procedure_factory()
+        appt = appointment_factory(patient=patient, doctor=dentist_user, procedure=proc)
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(_appt_url(appt.id))
@@ -397,7 +397,7 @@ class TestRetrieveUpdateCancelAppointmentAPIView:
         procedure_factory, appointment_factory
     ):
         """UpdateAppointmentSerializer.validate() also calls validate_availability."""
-        proc     = procedure_factory()
+        proc = procedure_factory()
         patient1 = patient_factory()
         patient2 = patient_factory()
         appt_date = timezone.localdate() + timedelta(days=6)
@@ -449,7 +449,7 @@ class TestRetrieveUpdateCancelAppointmentAPIView:
 
         appt.refresh_from_db()
         assert appt.status == 'cancelled'
-        assert appt.notes  == 'Patient not available.'
+        assert appt.notes == 'Patient not available.'
 
     def test_cancel_without_reason_still_succeeds(
         self, api_client, admin_user, dentist_user, patient_factory,
@@ -468,10 +468,10 @@ class TestRetrieveUpdateCancelAppointmentAPIView:
         self, api_client, admin_user, dentist_user, patient_factory,
         procedure_factory, appointment_factory
     ):
-        patient   = patient_factory()
-        proc      = procedure_factory()
+        patient = patient_factory()
+        proc = procedure_factory()
         appt_date = timezone.localdate() + timedelta(days=7)
-        appt      = appointment_factory(patient=patient, doctor=dentist_user,
+        appt = appointment_factory(patient=patient, doctor=dentist_user,
                                         procedure=proc, date=appt_date)
         patient.refresh_from_db()
         assert patient.nextAppointment == appt_date   #set on creation

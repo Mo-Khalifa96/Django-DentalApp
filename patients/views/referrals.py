@@ -74,7 +74,7 @@ class ListCreateInboundReferralsAPIView(FilterListCreateAPIView):
 #Retrieve/update/delete inbound referral API view
 @extend_schema(tags=['Referrals'])
 class RetrieveUpdateDeleteInboundReferralAPIView(RetrieveUpdateDeleteAPIView):
-    queryset =  InboundReferral.objects.select_related('branch', 'referredByUser')\
+    queryset = InboundReferral.objects.select_related('branch', 'referredByUser')\
         .annotate(patientCount=Count('referred_patients')).all()
     permission_classes = [SystemUserPermissions]
     lookup_url_kwarg = 'id'
@@ -164,6 +164,13 @@ class ListCreateOutboundReferralsAPIView(ListCreateAPIView):
         return patient.patient_outbound_referrals.select_related(
             'branch', 'referredToUser', 'referredToEntity'
         ).all()
+
+    def get_serializer_class(self):
+        req_method = self.request.method
+        if req_method == 'POST':
+            return CreateOutboundReferralSerializer
+        return OutboundReferralSerializer
+
 
     def get_serializer_context(self): 
         serializer_context = super().get_serializer_context()

@@ -110,7 +110,7 @@ class CreateTreatmentPlanSerializer(TreatmentPlanSerializer):
         return treatment_plan   #return created treatment plan instance
 
 
-#Update treatment plan serializer 
+#Update treatment plan serializer -- PUT only
 class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
     items = TreatmentPlanItemsSerializer(many=True, source='treatment_items', required=False, allow_empty=False)
     status = TranslatedChoiceField(choices=TreatmentPlan.TreatmentStatusChoices.choices,
@@ -121,7 +121,7 @@ class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
         read_only_fields = ['id', 'patientId']
         extra_kwargs = {field: {'required': False} for field in 
             ('title', 'status', 'items', 'totalCost', 'sessions')
-            }
+        }
 
     def validate(self, data):
         #validate total cost against treatment items
@@ -175,65 +175,12 @@ class UpdateTreatmentPlanSerializer(TreatmentPlanSerializer):
               ]
             )
 
-        
-        #preserve old cost before updating for later checks
-        totalCost_old = instance.totalCost
-        
         #Update remaining fields
         for field, value in validated_data.items():
             setattr(instance, field, value)   #i.e. instance.field = value
 
-        #Fetch installment plan for updates
-        plan = getattr(instance, 'installment_plan', None)
-
-        #Check if treatment cost changed to change installment plan's totalAmount accordingly
-        totalCost_new = validated_data.get('totalCost')
-        cost_changed = totalCost_new is not None and totalCost_new != totalCost_old
-        if cost_changed and plan:
-            cost_difference = round(totalCost_new - totalCost_old, 2)
-            plan.totalAmount = Decimal(str(plan.totalAmount + cost_difference))
-            #update installment plan's total
-            plan_update_fields = ['totalAmount', 'updatedAt']
-    
-            #update amount per installment on the plan  #TODO -- move to a signal instead
-            remaining_installments = plan.installments.filter(type='installment', paidAt__isnull=True)
-            total_remaining = plan.totalAmount - (plan.totalPaid or Decimal('0')) #- (plan.downPayment or Decimal('0'))
-            if remaining_installments:
-                amount_per_installment = Decimal(str(total_remaining / len(remaining_installments)))
-                remaining_installments.update(amount=amount_per_installment)
-            else:
-                if cost_difference > 0:
-                    #add new installment with remaining
-                    #update installment months
-                    plan.installmentMonths = plan.installmentMonths+1
-                    plan_update_fields.append('installmentMonths')
-                    
-                    #Create new installment with remaining amount
-                    Installment.objects.create(
-                        installmentPlan=plan,
-                        amount=total_remaining,
-                        sequence=(plan.installmentMonths+1),
-                        dueDate=timezone.localdate(timezone.now()),
-                        type='installment'
-                    )
-            
-            #update installment plan
-            plan.save(update_fields=plan_update_fields)
-
-        #update treatment instance
+        #update and return treatment instance
         instance.save(update_fields=list(validated_data.keys()))
-        
-        #update the amount on the associated bill too -- let the bill update after the treatment
-        if cost_changed:
-            if plan and plan.active_bill:
-                plan.active_bill.totalAmount = plan.totalAmount
-                plan.active_bill.save(update_fields=['totalAmount', 'treatmentTitle', 'procedures', 'updatedAt'])
-            else:
-                treatment_bill = instance.treatment_bills.filter(treatment_id=instance.id).first()
-                if treatment_bill:
-                    treatment_bill.totalAmount = instance.totalAmount
-                    treatment_bill.save(update_fields=['totalAmount', 'treatmentTitle', 'procedures', 'updatedAt'])
-
         return instance
 
 

@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from utils.swagger_utils import extend_schema
 from rest_framework.exceptions import NotFound
 from services.docs import message_history_schema
+from utils.exceptions import InvalidPhoneNumberError
 from users.permissions import PatientDataPermissions
 from utils.pagination import MessagesHistoryPaginator
 from django.utils.translation import gettext_lazy as _
@@ -46,12 +47,18 @@ class SendWhatsAppMessageAPIView(CreateAPIView):
             send_twilio_message_task(message, is_instance=True)  #TODO - remove after successful whatsapp integration
             #send_whatsapp_message_task(message, is_instance=True)
             
-        except WhatsAppAPIError:
-            #Sync failed — switch to async retry and return 'pending'
+        except WhatsAppAPIError as exc:
+            #Sync failed
+            #determine if number cannot be reached/invalid
+            # if str(exc.error_code) == '131026':   #for Meta -- TODO - use this when switching from twilio
+            if str(exc.error_code) == '63024':
+                raise InvalidPhoneNumberError()
+
+
+            #Try again - switch to async retry and return 'pending'
             message.status = 'pending'
             message.save(update_fields=['status'])
             
-
             #Employ async django-q for the task
             transaction.on_commit(
                 lambda: async_task(

@@ -60,7 +60,7 @@ class TwilioWhatsAppClient:
 
         except Exception as exc:
             logger.error(f'Twilio Error: {exc}')
-            raise WhatsAppAPIError(str(exc))
+            raise WhatsAppAPIError(str(exc), error_code=getattr(exc, 'code', None))
 
     def _build_body_from_components(self, components, template_name):
         '''Extract text parameters from components and build a readable message body.'''

@@ -74,7 +74,7 @@ class TestListCreateInsuranceProvidersAPIView:
         user.branches.set([b1])
         _grant(user, 'view.insuranceProviders')
 
-        p_own   = insurance_provider_factory(branch=b1)
+        p_own = insurance_provider_factory(branch=b1)
         p_other = insurance_provider_factory(branch=b2)
 
         api_client.force_authenticate(user=user)
@@ -91,9 +91,9 @@ class TestListCreateInsuranceProvidersAPIView:
         '''InsuranceProviderManager: Q(branch__is_deleted=False) hides stale entries.'''
 
         active = branch_factory()
-        dying  = branch_factory()
+        dying = branch_factory()
         visible = insurance_provider_factory(branch=active)
-        hidden  = insurance_provider_factory(branch=dying)
+        hidden = insurance_provider_factory(branch=dying)
 
         dying.is_deleted = True
         dying.save(update_fields=['is_deleted'])

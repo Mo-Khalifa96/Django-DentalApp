@@ -90,7 +90,7 @@ class TestListCreateSterilizationLogsAPIView:
         user = user_factory(role='assistant')
         user.branches.set([b1])
 
-        log_own   = log_factory(branch=b1)
+        log_own = log_factory(branch=b1)
         log_other = log_factory(branch=b2)
 
         api_client.force_authenticate(user=user)
@@ -105,9 +105,9 @@ class TestListCreateSterilizationLogsAPIView:
         self, api_client, admin_user, log_factory, branch_factory
     ):
         active = branch_factory()
-        dying  = branch_factory()
+        dying = branch_factory()
         visible = log_factory(branch=active)
-        hidden  = log_factory(branch=dying)
+        hidden = log_factory(branch=dying)
 
         dying.is_deleted = True
         dying.save(update_fields=['is_deleted'])

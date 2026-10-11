@@ -25,7 +25,7 @@ python manage.py setup_scheduled_tasks || true
 
 if [ ! -f "/app/.seeded" ]; then
     echo "Creating dummy data..."
-    python seed.py && echo "Seeding completed successfully." && touch /app/.seeded
+    python manage.py seed && echo "Seeding completed successfully." && touch /app/.seeded
 fi
 
 

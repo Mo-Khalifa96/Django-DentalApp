@@ -151,9 +151,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         #Patients permissions
         'patients': (
             'view.patients',
-            'view.patientDetail',  #extends to dental chart
-            'create.patient',
-            'update.patient',    #extends to dental chart 
+            'view.patientDetail',  #extends to dental chart / periodontal chart
+            'create.patient',     #extends to periodontal chart
+            'update.patient',    #extends to dental chart  / periodontal chart
             'delete.patient'
         ),
 
@@ -223,31 +223,33 @@ class User(AbstractBaseUser, PermissionsMixin):
         #Billing permissions
         'bills': (
             'view.bills',  #admin/accountant/doctor(if patient)
-            'create.bill',  #all except assistant (unless bills are created for labs)
+            'create.bill',  #all except assistant (unless bills are created for labs?)
             'update.bill',  #admin/accountant/doctor(if patient)
-            'delete.bill'  #admin/accountant/doctor(if patient) -- admin views them
+            'delete.bill'  #all except assistant -- admin views them
         ),
 
         #Transactions permissions
         'transactions': (
-            'view.transactions',  #all except assistant (unless bills are created for labs?)
-            'create.transaction', #all except assistant --> TODO: extends to `reversals`
-            'delete.transaction'  #admin/accountant/doctor (if patient) -- admin views them
+            'view.transactions',  #all except assistant
+            'create.transaction', #all except assistant
+            'update.transaction', #admin only
+            'delete.transaction'  #all except assistant -- admin views them
         ),
 
         #Invoices permissions
         'invoices': (
-            'view.invoices',  #all except assistant (unless bills are created for labs)
-            'create.invoice', #all except assistant (unless bills are created for labs)
+            'view.invoices',  #all except assistant 
+            'create.invoice', #all except assistant 
             'update.invoice', #admin/accountant/doctor(if patient)
-            'delete.invoice' #admin/accountant/doctor(if patient) -- admin views them
+            'delete.invoice' #all except assistant -- admin views them
         ),
 
+        #Installments permissions
         'installments': (
-            'view.installments',
-            'create.installments',
-            'update.installments',
-            'delete.installments'
+            'view.installments', #admin/accountant/doctor(if patient)
+            'create.installments', #admin/accountant/doctor(if patient)
+            'update.installments', #admin/accountant/doctor(if patient)
+            'delete.installments' #admin/accountant/doctor(if patient) -- admin views them
         ),
 
         #Insurance permissions
@@ -333,20 +335,20 @@ class User(AbstractBaseUser, PermissionsMixin):
         
         'dentist': [
             perm for perm in USER_PERMISSIONS 
-            if perm not in ('view.financialAnalytics')
+            if perm not in ('view.financialAnalytics', 'update.transaction', 'send.whatsappMessage')
         ], 
 
-        #NOTE - view.patientDetail extends to detal-chart detail view
-        #     - update.patient extends to dental-chart and periochart update view
+        #NOTE:
+        #  - view.patientDetail extends to dental-chart and periochart detail view
+        #  - update.patient extends to dental-chart and periochart update view
 
         'receptionist': [
             'view.calendar', 'view.waitingRoom', 'view.patients', 'create.patient', 'update.patient', 
             'view.appointments', 'view.appointmentDetail', 'create.appointment', 'update.appointment', 
             'delete.appointment', 'view.recalls', 'create.recall', 'update.recall', 'delete.recall', 
-            'send.whatsappMessage', 'view.insuranceProviders', 'view.bills', 'create.bill', 
-            'view.transactions', 'create.transaction', 'view.invoices', 'create.invoice', 
-            'view.patientInsurance', 'update.patientInsurance', 'view.doctorSchedules', 
-            'view.clinicalAnalytics', 'view.settings'
+            'send.whatsappMessage', 'view.insuranceProviders', 'view.bills', 'create.bill', 'delete.bill',
+            'view.transactions', 'create.transaction', 'view.invoices', 'create.invoice', 'view.patientInsurance', 
+            'update.patientInsurance', 'view.doctorSchedules', 'view.clinicalAnalytics', 'view.settings'
         ],
         
         'assistant': [  

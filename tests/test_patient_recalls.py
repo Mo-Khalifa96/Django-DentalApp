@@ -93,9 +93,9 @@ class TestListCreatePatientRecallsAPIView:
         self, api_client, dentist_user, other_dentist_user, patient_factory, recall_factory
     ):
         """get_queryset: dentist path → filter(patient__doctor=user)."""
-        patient_own   = patient_factory(doctor=dentist_user)
+        patient_own = patient_factory(doctor=dentist_user)
         patient_other = patient_factory(doctor=other_dentist_user)
-        recall_own   = recall_factory(patient=patient_own)
+        recall_own = recall_factory(patient=patient_own)
         recall_other = recall_factory(patient=patient_other)
 
         api_client.force_authenticate(user=dentist_user)
@@ -114,7 +114,7 @@ class TestListCreatePatientRecallsAPIView:
         user = user_factory(role='receptionist')
         user.branches.set([b1])
 
-        recall_own   = recall_factory(branch=b1)
+        recall_own = recall_factory(branch=b1)
         recall_other = recall_factory(branch=b2)
 
         api_client.force_authenticate(user=user)
@@ -488,7 +488,7 @@ class TestRetrievePatientRecallsOptionsAPIView:
         self, api_client, admin_user, patient_factory, dentist_user
     ):
         """doctorId QP filters patients by doctor FK."""
-        p_own   = patient_factory(doctor=dentist_user)
+        p_own = patient_factory(doctor=dentist_user)
         p_other = patient_factory()
 
         api_client.force_authenticate(user=admin_user)

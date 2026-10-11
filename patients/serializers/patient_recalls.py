@@ -40,13 +40,13 @@ class CreatePatientRecallSerializer(ValidateBranchMixin, PatientRecallSerializer
     def create(self, validated_data):
         patient = validated_data.pop('patient')
         recall_type = validated_data.pop('type')
-        recall_status = validated_data.pop('status', None) or PatientRecall.RecallStatusChoices.PENDING
+        recall_status = validated_data.pop('status', None) or 'pending'
 
-        if recall_status == PatientRecall.RecallStatusChoices.PENDING\
-         and recall_type == PatientRecall.RecallTypeChoices.CHECKUP:
+        if recall_status == 'pending'\
+         and recall_type == 'checkup':
             recall, _ = PatientRecall.objects.update_or_create(
                         patient=patient,
-                        type=PatientRecall.RecallTypeChoices.CHECKUP,
+                        type='checkup',
                         status='pending',
                         defaults=validated_data
                     )

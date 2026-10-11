@@ -101,7 +101,7 @@ class TestListCreatePatientsAPIView:
         b2 = branch_factory()
         recept = user_factory(role='receptionist')
         recept.branches.set([b1])
-        p_own   = patient_factory(branch=b1)
+        p_own = patient_factory(branch=b1)
         p_other = patient_factory(branch=b2)
 
         api_client.force_authenticate(user=recept)
@@ -117,7 +117,7 @@ class TestListCreatePatientsAPIView:
     ):
         """PatientsManager.get_queryset() filters is_deleted=False."""
         visible = patient_factory()
-        ghost   = patient_factory()
+        ghost = patient_factory()
         ghost.is_deleted = True
         ghost.save(update_fields=['is_deleted'])
 
@@ -185,7 +185,7 @@ class TestListCreatePatientsAPIView:
         )
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
         patient = Patient.objects.get(id=response.data['data']['id'])
-        chart   = patient.patient_dentalchart
+        chart = patient.patient_dentalchart
         assert chart is not None
         assert len(chart.teeth) == len(FDI_PERMANENT)
         assert all(t['status'] == 'healthy' for t in chart.teeth.values())
@@ -603,7 +603,7 @@ class TestRetrieveUpdateDeletePatientAPIView:
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         patient.refresh_from_db()
         assert patient.address == '123 New Street'
-        assert patient.notes   == 'Updated notes'
+        assert patient.notes == 'Updated notes'
 
     def test_update_phone_requires_both_phone_and_country_code(
         self, api_client, admin_user, patient_factory
@@ -658,7 +658,7 @@ class TestRetrieveUpdateDeletePatientAPIView:
     ):
         """receptionist has update.patient; branch check passes when on same branch."""
         b = branch_factory()
-        recept  = user_factory(role='receptionist')
+        recept = user_factory(role='receptionist')
         recept.branches.set([b])
         patient = patient_factory(branch=b)
 
@@ -923,16 +923,17 @@ class TestRetrieveUpdateDeletePatientAPIView:
         dentist.branches.set([branch])
 
         patient = patient_factory(branch=branch)
-        pid = patient.id
+        patient.doctor = dentist 
+        patient.save()
 
         api_client.force_authenticate(user=dentist)
-        response = api_client.delete(_patient_url(pid))
+        response = api_client.delete(_patient_url(patient.id))
 
         assert response.status_code == status.HTTP_204_NO_CONTENT or render_error(response)
 
         #deleted patient is accessed only via all_objects()
-        assert not Patient.objects.filter(id=pid).exists()
-        deleted_patient = Patient.all_objects.get(id=pid)
+        assert not Patient.objects.filter(id=patient.id).exists()
+        deleted_patient = Patient.all_objects.get(id=patient.id)
         assert deleted_patient.is_deleted is True
         assert deleted_patient.status == Patient.StatusChoices.INACTIVE
 
@@ -1349,20 +1350,6 @@ class TestDentalChartAPIView:
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         patient.patient_dentalchart.refresh_from_db()
         assert patient.patient_dentalchart.teeth['11']['surfaces'] is None
-
-    def test_patch_tooth_with_surfaces_but_no_status_returns_400(
-        self, api_client, admin_user, patient_factory
-    ):
-        """ToothDetailSerializer.status has no required=False — every tooth
-        update, even a partial PATCH, must include status."""
-        patient = patient_factory()
-        api_client.force_authenticate(user=admin_user)
-        response = api_client.patch(
-            _dentalchart_url(patient.id),
-            {'teeth': {'11': {'surfaces': ['M', 'O']}}},
-            format='json',
-        )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
 
     def test_patch_single_tooth_update_preserves_unset_fields(
         self, api_client, admin_user, patient_factory

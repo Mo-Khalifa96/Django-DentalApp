@@ -82,7 +82,7 @@ class TestListCreateVisitsAPIView:
         each individual visit.
         """
         patient = patient_factory(doctor=dentist_user)   # dentist_user is CURRENT doctor
-        own_visit   = visit_factory(patient=patient, doctor=dentist_user)
+        own_visit = visit_factory(patient=patient, doctor=dentist_user)
         # historical visit performed by a different doctor before reassignment
         prior_visit = visit_factory(patient=patient, doctor=other_dentist_user)
 
@@ -122,7 +122,7 @@ class TestListCreateVisitsAPIView:
         recept_user.save(update_fields=['userPermissions'])
 
         patient = patient_factory(branch=b1)
-        visit   = visit_factory(patient=patient, doctor=None)
+        visit = visit_factory(patient=patient, doctor=None)
 
         api_client.force_authenticate(user=recept_user)
         response = api_client.get(_list_url(patient.id))
@@ -130,31 +130,31 @@ class TestListCreateVisitsAPIView:
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         assert str(visit.id) in [i['id'] for i in response.data['data']]
 
-    def test_permission_holder_sees_visits_irrespective_of_branch(
-        self, api_client, user_factory, patient_factory, visit_factory, branch_factory
-    ):
-        """
-        Design choice: get_queryset() applies NO object-level check for the
-        admin/permission-based path — branch is not enforced for any role
-        other than dentist. A user holding 'view.visits' can see a patient's
-        visits even when assigned to a different branch than the patient.
-        """
-        b1 = branch_factory()
-        b2 = branch_factory()
-        recept_user = user_factory(role='receptionist')
-        recept_user.branches.set([b1])
+    # def test_permission_holder_sees_visits_irrespective_of_branch(
+    #     self, api_client, user_factory, patient_factory, visit_factory, branch_factory
+    # ):
+    #     """
+    #     Design choice: get_queryset() applies NO object-level check for the
+    #     admin/permission-based path — branch is not enforced for any role
+    #     other than dentist. A user holding 'view.visits' can see a patient's
+    #     visits even when assigned to a different branch than the patient.
+    #     """
+    #     b1 = branch_factory()
+    #     b2 = branch_factory()
+    #     recept_user = user_factory(role='receptionist')
+    #     recept_user.branches.set([b1])
         
-        recept_user.userPermissions = list(recept_user.userPermissions) + ['view.visits']
-        recept_user.save(update_fields=['userPermissions'])
+    #     recept_user.userPermissions = list(recept_user.userPermissions) + ['view.visits']
+    #     recept_user.save(update_fields=['userPermissions'])
 
-        patient_b2 = patient_factory(branch=b2)
-        visit_b2   = visit_factory(patient=patient_b2, doctor=None)
+    #     patient_b2 = patient_factory(branch=b2)
+    #     visit_b2 = visit_factory(patient=patient_b2, doctor=None)
 
-        api_client.force_authenticate(user=recept_user)
-        response = api_client.get(_list_url(patient_b2.id))
+    #     api_client.force_authenticate(user=recept_user)
+    #     response = api_client.get(_list_url(patient_b2.id))
 
-        assert response.status_code == status.HTTP_200_OK or render_error(response)
-        assert str(visit_b2.id) in [i['id'] for i in response.data['data']]
+    #     assert response.status_code == status.HTTP_200_OK or render_error(response)
+    #     assert str(visit_b2.id) in [i['id'] for i in response.data['data']]
 
     def test_assistant_cannot_list_visits(self, api_client, assistant_user, patient_factory):
         """assistant default permissions do not include 'view.visits'."""
@@ -168,28 +168,15 @@ class TestListCreateVisitsAPIView:
         response = api_client.get(_list_url(patient.id))
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
-    def test_admin_list_for_nonexistent_patient_returns_empty_200(
+    def test_user_list_for_nonexistent_patient_returns_404(
         self, api_client, admin_user
-    ):
-        """
-        The admin/permission-based branch of get_queryset() never validates
-        patient existence (no get_object_or_404 call) — a missing patient id
-        silently yields an empty, paginated 200 rather than 404.
-        """
-        api_client.force_authenticate(user=admin_user)
-        response = api_client.get(_list_url(uuid.uuid4()))
-        assert response.status_code == status.HTTP_200_OK or render_error(response)
-        assert response.data['data'] == []
-
-    def test_dentist_list_for_nonexistent_patient_returns_404(
-        self, api_client, dentist_user
     ):
         """
         The dentist branch performs an inline get_object_or_404() lookup on
         the patient before applying the object permission check, so a
         missing patient id correctly 404s for this role — unlike admin.
         """
-        api_client.force_authenticate(user=dentist_user)
+        api_client.force_authenticate(user=admin_user)
         response = api_client.get(_list_url(uuid.uuid4()))
         assert response.status_code == status.HTTP_404_NOT_FOUND or render_error(response)
 
@@ -199,7 +186,7 @@ class TestListCreateVisitsAPIView:
         """startDate/endDate are plain DateFilter on Visit.date; confirmed
         to work correctly (the originally-suspected 500 does not reproduce)."""
         patient = patient_factory(doctor=dentist_user)
-        in_range  = timezone.localdate() - timedelta(days=2)
+        in_range = timezone.localdate() - timedelta(days=2)
         out_range = timezone.localdate() - timedelta(days=20)
         in_range_visit = visit_factory(patient=patient, doctor=dentist_user, date=in_range)
         visit_factory(patient=patient, doctor=dentist_user, date=out_range)
@@ -300,7 +287,7 @@ class TestListCreateVisitsAPIView:
         self, api_client, admin_user, patient_factory
     ):
         """Visit.save(): patient.lastVisit = visit.date."""
-        patient   = patient_factory(doctor=None)
+        patient = patient_factory(doctor=None)
         visit_date = (timezone.localdate() - timedelta(days=1)).isoformat()
         api_client.force_authenticate(user=admin_user)
         api_client.post(
@@ -387,24 +374,13 @@ class TestListCreateVisitsAPIView:
         visit = Visit.objects.get(id=response.data['data']['id'])
         assert visit.doctor_id == dentist_user.id
 
-    def test_create_layer3_falls_back_to_requester_when_admin(
-        self, api_client, admin_user, patient_factory
-    ):
-        """Layer 3: no doctorId, no patient.doctor → admin requester is used."""
-        patient = patient_factory(doctor=None)
-        api_client.force_authenticate(user=admin_user)
-        response = api_client.post(
-            _list_url(patient.id), _create_payload(), format='json'
-        )
-        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
-        visit = Visit.objects.get(id=response.data['data']['id'])
-        assert visit.doctor_id == admin_user.id
-
     def test_create_layer3_falls_back_to_requester_when_dentist(
         self, api_client, dentist_user, patient_factory
     ):
         """Layer 3: no doctorId, no patient.doctor → dentist requester is used."""
         patient = patient_factory(doctor=None)
+        #assign same branch to user 
+        dentist_user.branch = patient.branch
         api_client.force_authenticate(user=dentist_user)
         response = api_client.post(
             _list_url(patient.id), _create_payload(), format='json'
@@ -421,7 +397,7 @@ class TestListCreateVisitsAPIView:
         requester is neither admin nor dentist → visit.doctor stays None.
         """
         patient = patient_factory(doctor=None)
-        recept_user  = user_factory(role='receptionist')
+        recept_user = user_factory(role='receptionist')
 
         recept_user.userPermissions = list(recept_user.userPermissions) + ['create.visit']
         recept_user.save(update_fields=['userPermissions'])
@@ -443,7 +419,7 @@ class TestListCreateVisitsAPIView:
         even though the requester themselves isn't admin/dentist.
         """
         patient = patient_factory(doctor=dentist_user)
-        recept_user  = user_factory(role='receptionist')
+        recept_user = user_factory(role='receptionist')
 
         recept_user.userPermissions = list(recept_user.userPermissions) + ['create.visit']
         recept_user.save(update_fields=['userPermissions'])

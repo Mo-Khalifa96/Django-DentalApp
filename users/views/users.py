@@ -198,13 +198,13 @@ class DefaultRolesAPIView(GenericAPIView):
             {
                 'role': 'dentist',
                 'label': 'Dentist',
-                'description': 'Default permissions include all clinical and patient records.',
+                'description': 'Default permissions include all clinical and patient records, as well as patient-related finances.',
                 'permissions': User.DEFAULT_ROLE_PERMISSIONS.get('dentist')
             },
             {
                 'role': 'receptionist',
                 'label': 'Receptionist',
-                'description': 'Default permissions cover some patient records, appointments, waiting room, and patient recall.',
+                'description': 'Default permissions cover some patient records, appointments, waiting room, patient recalls, and basic payments processing.',
                 'permissions': User.DEFAULT_ROLE_PERMISSIONS.get('receptionist')
             },
             {
@@ -242,17 +242,17 @@ class PermissionsAPIView(GenericAPIView):
             {
                 'key': 'view.calendar',
                 'label': 'View doctor appointments on dashboard',
-                'module': 'Dashboard'
+                'module': 'Dashboard and Analytics'
             },
             {
                 'key': 'view.clinicalAnalytics',
                 'label': 'View dashboard clinical analytics',
-                'module': 'Dashboard'
+                'module': 'Dashboard and Analytics'
             },
             {
                 'key': 'view.financialAnalytics',
                 'label': 'View dashboard financial analytics',
-                'module': 'Dashboard'
+                'module': 'Dashboard and Analytics'
             },
             {
                 'key': 'view.waitingRoom',
@@ -470,6 +470,11 @@ class PermissionsAPIView(GenericAPIView):
                 'module': 'Transactions'
             },
             {
+                'key': 'update.transaction',
+                'label': 'Update transaction',
+                'module': 'Transactions'
+            },
+            {
                 'key': 'delete.transaction',
                 'label': 'Delete transaction',
                 'module': 'Transactions'
@@ -493,6 +498,26 @@ class PermissionsAPIView(GenericAPIView):
                 'key': 'delete.invoice',
                 'label': 'Delete invoice',
                 'module': 'Invoices'
+            },
+            {
+                'key': 'view.installments',
+                'label': 'View installments list',
+                'module': 'Installments'
+            },
+            {
+                'key': 'create.installments',
+                'label': 'Create new installment plan',
+                'module': 'Installments'
+            },
+            {
+                'key': 'update.installments',
+                'label': 'Update installment plan',
+                'module': 'Installments'
+            },
+            {
+                'key': 'delete.installments',
+                'label': 'Delete installment plan',
+                'module': 'Installments'
             },
             {
                 'key': 'view.insuranceProviders',

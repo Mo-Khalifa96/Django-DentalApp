@@ -737,7 +737,7 @@ class TestListCreateLabOrdersAPIView:
         user = user_factory(role='assistant')
         user.branches.set([b1])
 
-        order_own   = lab_order_factory(branch=b1)
+        order_own = lab_order_factory(branch=b1)
         order_other = lab_order_factory(branch=b2)
 
         api_client.force_authenticate(user=user)
@@ -756,9 +756,9 @@ class TestListCreateLabOrdersAPIView:
         branch has been soft-deleted.
         """
         active = branch_factory()
-        dying  = branch_factory()
+        dying = branch_factory()
         visible = lab_order_factory(branch=active)
-        hidden  = lab_order_factory(branch=dying)
+        hidden = lab_order_factory(branch=dying)
 
         dying.is_deleted = True
         dying.save(update_fields=['is_deleted'])
@@ -784,7 +784,7 @@ class TestListCreateLabOrdersAPIView:
         self, api_client, admin_user, lab_factory, lab_order_factory
     ):
         target_lab = lab_factory(name='Unique Ceramics Lab')
-        other_lab  = lab_factory(name='Other Lab')
+        other_lab = lab_factory(name='Other Lab')
         target_order = lab_order_factory(lab=target_lab)
         lab_order_factory(lab=other_lab)
 
@@ -812,9 +812,9 @@ class TestListCreateLabOrdersAPIView:
     def test_admin_can_create_lab_order(
         self, api_client, admin_user, lab_factory, patient_factory, procedure_factory
     ):
-        lab     = lab_factory()
+        lab = lab_factory()
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
@@ -829,9 +829,9 @@ class TestListCreateLabOrdersAPIView:
         self, api_client, admin_user, lab_factory, patient_factory, procedure_factory
     ):
         """labName, patientName, procedureName must be captured from FKs on save()."""
-        lab     = lab_factory(name='Porcelain Lab')
+        lab = lab_factory(name='Porcelain Lab')
         patient = patient_factory(name='Test Patient Snapshot')
-        proc    = procedure_factory(name='Crown Procedure')
+        proc = procedure_factory(name='Crown Procedure')
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
@@ -844,23 +844,23 @@ class TestListCreateLabOrdersAPIView:
         data = response.data['data']
 
         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
-        assert data['labName']       == 'Porcelain Lab'
-        assert data['patientName']   == 'Test Patient Snapshot'
+        assert data['labName'] == 'Porcelain Lab'
+        assert data['patientName'] == 'Test Patient Snapshot'
         assert data['procedureName'] == 'Crown Procedure'
 
         #Verify persistence in the DB as well
         order = LabOrder.objects.get(id=data['id'])
-        assert order.labName       == 'Porcelain Lab'
-        assert order.patientName   == 'Test Patient Snapshot'
+        assert order.labName == 'Porcelain Lab'
+        assert order.patientName == 'Test Patient Snapshot'
         assert order.procedureName == 'Crown Procedure'
 
     def test_create_defaults_status_to_sent(
         self, api_client, admin_user, lab_factory, patient_factory, procedure_factory
     ):
         """LabOrder.save() sets status = 'sent' when none is supplied."""
-        lab     = lab_factory()
+        lab = lab_factory()
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
 
         api_client.force_authenticate(user=admin_user)
         api_client.post(
@@ -874,9 +874,9 @@ class TestListCreateLabOrdersAPIView:
     def test_create_with_explicit_status(
         self, api_client, admin_user, lab_factory, patient_factory, procedure_factory
     ):
-        lab     = lab_factory()
+        lab = lab_factory()
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
@@ -892,9 +892,9 @@ class TestListCreateLabOrdersAPIView:
         self, api_client, admin_user, lab_factory, patient_factory, procedure_factory
     ):
         """ValidateBranchMixin: empty Branch table → branch=None is accepted."""
-        lab     = lab_factory()
+        lab = lab_factory()
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
@@ -910,9 +910,9 @@ class TestListCreateLabOrdersAPIView:
         branch
     ):
         """ValidateBranchMixin: branches exist + no branchId + non-admin + no active branch → 400."""
-        lab     = lab_factory()
+        lab = lab_factory()
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
         
         api_client.force_authenticate(user=assistant_user)
         response = api_client.post(
@@ -931,9 +931,9 @@ class TestListCreateLabOrdersAPIView:
         admin_user.branches.add(branch)
         admin_user.save(update_fields=['branch', 'updatedAt'])
 
-        lab     = lab_factory()
+        lab = lab_factory()
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
@@ -948,9 +948,9 @@ class TestListCreateLabOrdersAPIView:
         self, api_client, assistant_user, lab_factory, patient_factory, procedure_factory
     ):
         """assistant has create.labOrder by default; no branches exist so branch=None."""
-        lab     = lab_factory()
+        lab = lab_factory()
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
 
         api_client.force_authenticate(user=assistant_user)
         response = api_client.post(
@@ -963,9 +963,9 @@ class TestListCreateLabOrdersAPIView:
     def test_create_response_is_wrapped(
         self, api_client, admin_user, lab_factory, patient_factory, procedure_factory
     ):
-        lab     = lab_factory()
+        lab = lab_factory()
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
@@ -981,9 +981,9 @@ class TestListCreateLabOrdersAPIView:
         self, api_client, admin_user, lab_factory, patient_factory, procedure_factory
     ):
         """UserPermissionsMixin only injects metadata on GET; POST skips it."""
-        lab     = lab_factory()
+        lab = lab_factory()
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
@@ -1004,9 +1004,9 @@ class TestListCreateLabOrdersAPIView:
     def test_create_with_invalid_tooth_number_returns_400(
         self, api_client, admin_user, lab_factory, patient_factory, procedure_factory
     ):
-        lab     = lab_factory()
+        lab = lab_factory()
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
@@ -1019,9 +1019,9 @@ class TestListCreateLabOrdersAPIView:
     def test_user_without_create_permission_cannot_create(
         self, api_client, receptionist_user, lab_factory, patient_factory, procedure_factory
     ):
-        lab     = lab_factory()
+        lab = lab_factory()
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
 
         api_client.force_authenticate(user=receptionist_user)
         response = api_client.post(
@@ -1034,9 +1034,9 @@ class TestListCreateLabOrdersAPIView:
     def test_unauthenticated_cannot_create_lab_order(
         self, api_client, lab_factory, patient_factory, procedure_factory
     ):
-        lab     = lab_factory()
+        lab = lab_factory()
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
 
         response = api_client.post(
             reverse(self.URL),
@@ -1203,7 +1203,7 @@ class TestUpdateDeleteLabOrderAPIView:
     ):
         order = lab_order_factory()
         different_lab = lab_factory()
-        original_tooth    = order.toothNumber
+        original_tooth = order.toothNumber
         original_sent_str = str(order.sentDate)
 
         order.status = 'in_production'
@@ -1220,8 +1220,8 @@ class TestUpdateDeleteLabOrderAPIView:
             format='json',
         )
         order.refresh_from_db()
-        assert order.toothNumber    == original_tooth
-        assert str(order.sentDate)  == original_sent_str
+        assert order.toothNumber == original_tooth
+        assert str(order.sentDate) == original_sent_str
         assert order.lab            != different_lab
 
     def test_labid_patientid_procedureid_toothnumber_editable_while_status_is_sent(
@@ -1229,8 +1229,8 @@ class TestUpdateDeleteLabOrderAPIView:
         procedure_factory
     ):
         order = lab_order_factory(status='sent')
-        new_lab       = lab_factory()
-        new_patient   = patient_factory()
+        new_lab = lab_factory()
+        new_patient = patient_factory()
         new_procedure = procedure_factory()
 
         api_client.force_authenticate(user=admin_user)
@@ -1246,9 +1246,9 @@ class TestUpdateDeleteLabOrderAPIView:
         )
         assert response.status_code == status.HTTP_200_OK or render_error(response)
         order.refresh_from_db()
-        assert order.lab         == new_lab
-        assert order.patient     == new_patient
-        assert order.procedure   == new_procedure
+        assert order.lab == new_lab
+        assert order.patient == new_patient
+        assert order.procedure == new_procedure
         assert order.toothNumber == '21'
 
 
@@ -1256,7 +1256,7 @@ class TestUpdateDeleteLabOrderAPIView:
         self, api_client, admin_user, lab_order_factory, patient_factory, procedure_factory
     ):
         order = lab_order_factory()
-        different_patient   = patient_factory()
+        different_patient = patient_factory()
         different_procedure = procedure_factory()
 
         order.status = 'in_production'
@@ -1420,8 +1420,8 @@ class TestRetrieveLabOrdersOptionsAPIView:
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))   #o branchId QP
 
-        assert response.data['labChoices']       == []
-        assert response.data['patientChoices']   == []
+        assert response.data['labChoices'] == []
+        assert response.data['patientChoices'] == []
         assert response.data['procedureChoices'] == []
 
     def test_choices_filtered_by_branch_id_query_param(
@@ -1432,19 +1432,19 @@ class TestRetrieveLabOrdersOptionsAPIView:
         b1 = branch_factory()
         b2 = branch_factory()
 
-        lab_b1     = lab_factory(branch=b1)
+        lab_b1 = lab_factory(branch=b1)
         patient_b1 = patient_factory(branch=b1)
-        proc_b1    = procedure_factory(branch=b1)
-        lab_b2     = lab_factory(branch=b2)
+        proc_b1 = procedure_factory(branch=b1)
+        lab_b2 = lab_factory(branch=b2)
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL), {'branchId': str(b1.id)})
 
         assert response.status_code == status.HTTP_200_OK or render_error(response)
 
-        lab_ids     = {str(c['labId'])       for c in response.data['labChoices']}
+        lab_ids = {str(c['labId'])       for c in response.data['labChoices']}
         patient_ids = {str(c['patientId'])   for c in response.data['patientChoices']}
-        proc_ids    = {str(c['procedureId']) for c in response.data['procedureChoices']}
+        proc_ids = {str(c['procedureId']) for c in response.data['procedureChoices']}
 
         assert str(lab_b1.id)     in lab_ids
         assert str(lab_b2.id)     not in lab_ids
@@ -1455,9 +1455,9 @@ class TestRetrieveLabOrdersOptionsAPIView:
         self, api_client, admin_user, lab_factory, patient_factory, procedure_factory
     ):
         """With no Branch rows: filters = {} → all labs/patients/procedures returned."""
-        lab     = lab_factory()
+        lab = lab_factory()
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))

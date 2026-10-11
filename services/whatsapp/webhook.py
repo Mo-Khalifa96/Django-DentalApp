@@ -45,7 +45,7 @@ class WhatsAppWebhookAPIView(View):
 
                     for status_update in value.get('statuses', []):
                         provider_id = status_update.get('id')
-                        new_status  = status_update.get('status')  # sent, delivered, read, failed
+                        new_status = status_update.get('status')  # sent, delivered, read, failed
 
                         if provider_id and new_status:
                             updated = Message.objects.filter(

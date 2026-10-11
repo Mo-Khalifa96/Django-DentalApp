@@ -4,6 +4,7 @@ from users.models import User
 from django.http import Http404
 from django.db import transaction
 from django.utils import timezone
+from patients.models import TreatmentPlan
 from utils.validators import validate_uuid
 from rest_framework import status, generics
 from rest_framework.response import Response
@@ -13,22 +14,19 @@ from utils.filters import CustomOrderingFilter
 from rest_framework.filters import SearchFilter
 from users.utils import get_required_permission
 from utils.mixins import BranchToSerializerMixin
-from patients.models import Patient, TreatmentPlan
 from users.permissions import PatientDataPermissions
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from django.utils.translation import gettext_lazy as _
-from finances.models import InstallmentPlan, Installment
 from utils.exceptions import InstallmentPlanInProgressError
 from django_filters.rest_framework import DjangoFilterBackend
+from finances.models import InstallmentPlan, Installment, Transaction
 from django.db.models import Q, F, Prefetch, Case, When, Value, CharField
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
-from finances.serializers.installments import (InstallmentPlanSerializer, 
-                                               RetrievePatientInstallmentPlanSerializer, 
-                                               GenerateInstallmentPlanSerializer, 
-                                               UpdateInstallmentPlanSerializer, 
-                                               AutogenerateInstallmentsBillSerializer,
-                                               CreateInstallmentTransactionSerializer,
+from finances.serializers.installments import (InstallmentPlanSerializer, RetrievePatientInstallmentPlanSerializer, 
+                                               GenerateInstallmentPlanSerializer, UpdateInstallmentPlanSerializer, 
+                                               AutogenerateInstallmentsBillSerializer, CreateInstallmentTransactionSerializer,
+                                               RetrieveInstallmentTransactionSerializer, UpdateInstallmentTransactionSerializer,
                                                InstallmentsOptionsSerializer)
 
 
@@ -153,15 +151,15 @@ class ListInstallmentPlansAPIView(FilterListAPIView):
             )
         )
         
-        installment_plans =  InstallmentPlan.objects.select_related('treatment', 'branch')\
+        installment_plans = InstallmentPlan.objects.select_related('treatment', 'branch')\
          .prefetch_related('bill', Prefetch('installments', queryset=installments_qs))\
          .annotate(
              status=Case(
-                 When(Q(totalPaid__isnull=True) | Q(totalPaid=Decimal('0')), then=Value('pending')),   #TODO - are these values translatable? Do I use InstallmentPlan.InstallmentPlanStatusChoices.PENDING?
+                 When(Q(totalPaid__isnull=True) | Q(totalPaid=Decimal('0')), then=Value('pending')),
                  When(totalPaid__gte=F('totalAmount'), then=Value('completed')),
                  When(totalPaid__lt=F('totalAmount'), then=Value('partial')),
-                 default=Value('pending'),
-                 output_field=CharField()
+                default=Value('pending'),
+                output_field=CharField()
              )
          )
 
@@ -282,7 +280,8 @@ class CreateInstallmentTransactionAPIView(CreateAPIView):
             #fetch installment plan
             plan = InstallmentPlan.objects.select_related('treatment')\
                 .prefetch_related(
-                    'bill', 'bill__branch', 'bill__patient', 'bill__patient__patient_insurance'
+                    'bill', 'bill__branch', 'bill__patient', 
+                    'bill__patient__patient_insurance'
                 ).get(
                     id=self.kwargs.get('id')
                 )
@@ -300,7 +299,65 @@ class CreateInstallmentTransactionAPIView(CreateAPIView):
             #pass installment plan to bill serializer
             serializer_context['installment_plan'] = self.get_installment_plan()
         return serializer_context
+
+
+#Retrieve/Update/Delete installment transaction API view
+# GET api/installments/{id}/transactions/{transactionId}/ --> RetrieveInstallmentTransactionSerializer
+# PUT api/installments/{id}/transactions/{transactionId}/ --> UpdateInstallmentTransactionSerializer
+# DELETE api/installments/{id}/transactions/{transactionId}/ --> None
+@extend_schema(tags=['Installments'])
+class RetrieveUpdateDeleteInstallmentTransactionAPIView(RetrieveUpdateDeleteAPIView):
+    permission_classes = [PatientDataPermissions]
+    lookup_url_kwarg = 'transactionId'  #lookup field/keyword as defined on url
+    lookup_field = 'id'  #model's lookup field
+
+    def initial(self, request, *args, **kwargs):
+        #determine required permission
+        self.required_permission = get_required_permission('transactions', request, self)
+        super().initial(request, *args, **kwargs)
+
+    def get_installment_plan(self):
+        try:
+            #fetch installment plan
+            plan = InstallmentPlan.objects.only('id').get(id=self.kwargs.get('id'))
+            
+        except (InstallmentPlan.DoesNotExist, Http404):
+            raise NotFound(_('Installment plan was not found or does not exist.'))
+
+        #check object permission and return installment plan
+        self.check_object_permissions(self.request, plan)
+        return plan
     
+    def get_queryset(self):
+        #get current plan from url and check perms
+        plan = self.get_installment_plan()
+
+        #admin gets all objects
+        user = self.request.user
+        if getattr(user, 'role', None) == 'admin':
+            transactions = Transaction.all_objects.prefetch_related('installments')\
+             .select_related('patient', 'bill', 'bill__installmentPlan', 'branch')\
+             .filter(Q(bill__installmentPlan_id=plan.id) | Q(installments__installmentPlan_id=plan.id)).all()  #keep only transactions associated with the plan
+        else:
+            transactions = Transaction.objects.prefetch_related('installments')\
+             .select_related('patient', 'bill', 'bill__installmentPlan', 'branch')\
+             .filter(Q(bill__installmentPlan_id=plan.id) | Q(installments__installmentPlan_id=plan.id)).all()
+        return transactions
+
+    def get_serializer_class(self):
+        if self.request.method == 'PATCH':
+            return UpdateInstallmentTransactionSerializer
+        return RetrieveInstallmentTransactionSerializer
+
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        #get bill object
+        transaction = self.get_object()
+
+        #soft delete bill and return response
+        Transaction.objects.delete_transaction(user=request.user, transaction=transaction)
+        return Response({}, status=status.HTTP_204_NO_CONTENT)
+
 
 #Retrieve installments options API view
 # GET api/installments/options/ --> InstallmentsOptionsSerializer

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-28 20:21+0300\n"
+"POT-Creation-Date: 2026-10-08 19:59+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -59,199 +59,360 @@ msgstr "قيد العلاج"
 msgid "Done"
 msgstr "مكتمل"
 
-#: clinic/models.py:180 patients/models.py:233
+#: clinic/models.py:184 patients/models.py:311
 msgid "Routine Checkup"
 msgstr "فحص روتيني"
 
-#: clinic/models.py:181
+#: clinic/models.py:185
 msgid "Cosmetic"
 msgstr "تجميلي"
 
-#: clinic/models.py:182
+#: clinic/models.py:186
 msgid "Diagnostic"
 msgstr "تشخيصي"
 
-#: clinic/models.py:183
+#: clinic/models.py:187
 msgid "Endodontic"
 msgstr "علاج جذور"
 
-#: clinic/models.py:184
+#: clinic/models.py:188
 msgid "Implant"
 msgstr "زراعة أسنان"
 
-#: clinic/models.py:185
+#: clinic/models.py:189
 msgid "Preventive"
 msgstr "وقائي"
 
-#: clinic/models.py:186
+#: clinic/models.py:190
 msgid "Prosthetic"
 msgstr "تركيبات"
 
-#: clinic/models.py:187
+#: clinic/models.py:191
 msgid "Restorative"
 msgstr "ترميمي"
 
-#: clinic/models.py:188
+#: clinic/models.py:192
 msgid "Surgical"
 msgstr "جراحي"
 
-#: clinic/models.py:324
+#: clinic/models.py:335 patients/models.py:941
 msgid "Sent"
 msgstr "تم الإرسال"
 
-#: clinic/models.py:325
+#: clinic/models.py:336
 msgid "In production"
 msgstr "قيد التصنيع"
 
-#: clinic/models.py:326
+#: clinic/models.py:337
 msgid "Delivered"
 msgstr "تم التسليم"
 
-#: clinic/models.py:327
+#: clinic/models.py:338
 msgid "Received"
 msgstr "تم الاستلام"
 
-#: clinic/models.py:422
+#: clinic/models.py:433
 msgid "Passed"
 msgstr "ناجح"
 
-#: clinic/models.py:423
+#: clinic/models.py:434
 msgid "Failed"
 msgstr "فاشل"
 
-#: clinic/serializers/dashboard.py:49
+#: clinic/serializers/dashboard.py:58
+msgid "today"
+msgstr "اليوم"
+
+#: clinic/serializers/dashboard.py:59
+msgid "week"
+msgstr "الأسبوع"
+
+#: clinic/serializers/dashboard.py:60
+msgid "month"
+msgstr "الشهر" 
+
+#: clinic/serializers/dashboard.py:61
+msgid "quarter"
+msgstr "ربع سنوي"
+
+#: clinic/serializers/dashboard.py:62
+msgid "year"
+msgstr "السنة"
+
+#: clinic/serializers/dashboard.py:77
 msgid "Permission denied. You do not have access to this branch."
-msgstr "تم رفض الوصول. ليس لديك صلاحية للوصول إلى هذا الفرع."
+msgstr "العملية مرفوضة. ليس لديك صلاحية للوصول إلى هذا الفرع."
 
 #: clinic/serializers/sterilization_logs.py:48
 msgid "At least one instrument set is required."
 msgstr "يجب تحديد مجموعة أدوات واحدة على الأقل."
 
-#: clinic/serializers/waiting_room.py:82
-#, fuzzy
-#| msgid "Existing patient ID or new patient details are required."
+#: clinic/serializers/waiting_room.py:83
 msgid "Either a patient ID or an appointment ID is required."
-msgstr "يجب إدخال رقم مريض موجود أو بيانات مريض جديد."
+msgstr "يجب إدخال معرّف المريض أو معرّف الموعد."
 
-#: clinic/serializers/waiting_room.py:86
+#: clinic/serializers/waiting_room.py:87
 msgid ""
 "An appointment is required if a patient is not registered as a walk-in "
-"patient. Either assign an appointment or change walk-in status to True."
+"patient. Either assign an appointment or register the patient as a walk-in."
 msgstr ""
-"يجب تعيين او اختيار موعد للمريض في حال عدم اختيار 'زيارة بدون موعد'."
-"اما ان تحدد موعد او تغير حالة 'زيارة بدون موعد' الى 'صحيح'."
+"يجب تعيين او اختيار موعد للمريض في حال عدم اختيار 'زيارة بدون موعد'. "
+"اما ان تحدد موعد او تختار 'زيارة بدون موعد'."
 
-#: clinic/serializers/waiting_room.py:99 clinic/serializers/waiting_room.py:155
+#: clinic/serializers/waiting_room.py:100
+#: clinic/serializers/waiting_room.py:156
 msgid "Doctor not found or does not exist."
 msgstr "الطبيب غير موجود."
 
-#: clinic/serializers/waiting_room.py:108
-#, fuzzy
-#| msgid "Treatment plan does not belong to this patient."
+#: clinic/serializers/waiting_room.py:109
 msgid "Patient does not match the appointment's patient."
-msgstr "هذا المريض لا يتطابق مع المريض المسجل بالموعد"
+msgstr "المريض المدخل لا يتطابق مع المريض المسجل بالموعد."
 
-#: clinic/views/labs.py:156 finances/views/bills.py:161
-#: finances/views/invoices.py:130 finances/views/transactions.py:138
-#: patients/views/appointments.py:159 patients/views/patient_insurance.py:115
+#: clinic/views/labs.py:156 finances/views/bills.py:206
+#: finances/views/installments.py:390 finances/views/invoices.py:137
+#: finances/views/transactions.py:196 patients/views/appointments.py:159
+#: patients/views/patient_insurance.py:210 patients/views/referrals.py:238
 msgid "User not found or not registered as a doctor."
 msgstr "المستخدم غير موجود أو غير مسجل كطبيب."
 
-#: finances/models.py:202
-msgid "Cash"
-msgstr "كاش"
-
-#: finances/models.py:203
-msgid "Card"
-msgstr "بطاقة"
-
-#: finances/models.py:204
-msgid "Bank transfer"
-msgstr "تحويل بنكي"
-
-#: finances/models.py:205
-msgid "Insurance"
-msgstr "تأمين"
-
-#: finances/models.py:206
-msgid "Mobile wallet"
-msgstr "محفظة إلكترونية"
-
-#: finances/models.py:209
-#, fuzzy
-#| msgid "completed"
-msgid "Completed"
-msgstr "مكتمل"
-
-#: finances/models.py:210
-msgid "Refunded"
-msgstr "تم استرداده"
-
-#: finances/models.py:298
-msgid "Issued"
-msgstr "تم الإصدار"
-
-#: finances/models.py:299
-msgid "Submitted"
-msgstr "تم التقديم"
-
-#: finances/models.py:300
-msgid "Accepted"
-msgstr "مقبول"
-
-#: finances/models.py:301
-msgid "Rejected"
-msgstr "مرفوض"
-
-#: finances/models.py:427
-msgid "Government"
-msgstr "حكومي"
-
-#: finances/models.py:428
-msgid "Universal"
-msgstr "شامل"
-
-#: finances/models.py:429
-msgid "Corporate"
-msgstr "مؤسسي"
-
-#: finances/models.py:430
-msgid "Direct"
-msgstr "مباشر"
-
-#: finances/serializers/bills.py:21
+#: finances/models.py:78
 msgid "unpaid"
 msgstr "غير مدفوع"
 
-#: finances/serializers/bills.py:22
+#: finances/models.py:79
 msgid "partial"
 msgstr "مدفوع جزئيًا"
 
-#: finances/serializers/bills.py:23
+#: finances/models.py:80
 msgid "paid"
 msgstr "مدفوع"
 
-#: finances/serializers/bills.py:112 finances/serializers/bills.py:208
-msgid "Treatment plan does not belong to this patient."
-msgstr "خطة العلاج لا تخص هذا المريض."
+#: finances/models.py:228
+msgid "Cash"
+msgstr "كاش"
 
-#: finances/serializers/bills.py:120 finances/serializers/bills.py:214
-msgid ""
-"Total amount cannot be higher than treatment plan cost if a treatment plan "
-"with no installments is assigned."
-msgstr ""
-"لا يمكن أن يتجاوز المبلغ الإجمالي تكلفة خطة العلاج عند اختيار خطة بدون أقساط."
+#: finances/models.py:229
+msgid "Card"
+msgstr "بطاقة"
 
-#: finances/serializers/bills.py:125 finances/serializers/bills.py:219
+#: finances/models.py:230
+msgid "Bank transfer"
+msgstr "تحويل بنكي"
+
+#: finances/models.py:231
+msgid "Insurance"
+msgstr "تأمين"
+
+#: finances/models.py:232
+msgid "Mobile wallet"
+msgstr "محفظة إلكترونية"
+
+#: finances/models.py:235
+msgid "Treatment payment"
+msgstr "تكلفة علاج"
+
+#: finances/models.py:236 finances/models.py:429
+msgid "Installment"
+msgstr "قسط"
+
+#: finances/models.py:237
+msgid "Visit fee"
+msgstr "رسوم زيارة"
+
+#: finances/models.py:238
+msgid "Deposit"
+msgstr "إيداع" 
+
+#: finances/models.py:242
+msgid "Pending correction"
+msgstr "يتطلب تصحيح"
+
+#: finances/models.py:243
+msgid "Refunded"
+msgstr "تم استرداده"
+
+#: finances/models.py:244 finances/models.py:385 patients/models.py:943
+msgid "Completed"
+msgstr "مكتمل"
+
+#: finances/models.py:377
+msgid "Full payment"
+msgstr "دفع كامل"
+
+#: finances/models.py:378
+msgid "3 months"
+msgstr "٣ أشهر"
+
+#: finances/models.py:379
+msgid "6 months"
+msgstr "٦ أشهر"
+
+#: finances/models.py:380
+msgid "12 months"
+msgstr "١٢ شهر"
+
+#: finances/models.py:383 finances/models.py:432 patients/models.py:789
+msgid "Pending"
+msgstr "قيد الانتظار"
+
+#: finances/models.py:384
+msgid "Partial"
+msgstr "مدفوع جزئياً"
+
+
+#: finances/models.py:428
+msgid "Down payment"
+msgstr "دفع مقدم" 
+
+#: finances/models.py:433
+msgid "Paid"
+msgstr "مدفوع"
+
+#: finances/models.py:434
+msgid "Overdue"
+msgstr "متأخر السداد"
+
+#: finances/models.py:492
+msgid "Issued"
+msgstr "تم الإصدار"
+
+#: finances/models.py:493
+msgid "Submitted"
+msgstr "تم التقديم"
+
+#: finances/models.py:494
+msgid "Accepted"
+msgstr "مقبول"
+
+#: finances/models.py:495
+msgid "Rejected"
+msgstr "مرفوض"
+
+#: finances/models.py:627
+msgid "Government"
+msgstr "حكومي"
+
+#: finances/models.py:628
+msgid "Universal"
+msgstr "شامل"
+
+#: finances/models.py:629
+msgid "Corporate"
+msgstr "مؤسسي"
+
+#: finances/models.py:630
+msgid "Direct"
+msgstr "مباشر"
+
+#: finances/serializers/bills.py:96 finances/serializers/bills.py:187
 msgid "One or more visits do not belong to this patient."
 msgstr "واحدة أو أكثر من الزيارات لا تخص هذا المريض."
 
-#: finances/serializers/bills.py:130 finances/serializers/bills.py:223
-#: finances/serializers/invoices.py:150
+#: finances/serializers/bills.py:103 finances/serializers/bills.py:193
+#: finances/serializers/transactions.py:162
+msgid "Treatment plan does not belong to this patient."
+msgstr "خطة العلاج لا تخص هذا المريض."
+
+#: finances/serializers/bills.py:109 utils/exceptions.py:41
+msgid "An installment bill already exists for this treatment plan."
+msgstr "يوجد بالفعل فاتورة أقساط لخطة العلاج هذه."
+
+#: finances/serializers/bills.py:116 finances/serializers/bills.py:198
+msgid "Total amount cannot be higher than treatment plan cost."
+msgstr "لا يمكن أن يتجاوز المبلغ الإجمالي تكلفة خطة العلاج."
+
+#: finances/serializers/bills.py:120 finances/serializers/bills.py:202
+#: finances/serializers/invoices.py:200
 msgid "Discount cannot exceed subtotal amount."
 msgstr "لا يمكن أن تتجاوز قيمة الخصم المبلغ الفرعي."
 
-#: finances/serializers/invoices.py:132 patients/serializers/appointments.py:98
+#: finances/serializers/installments.py:160
+msgid ""
+"An installment plan already exists for this treatment plan with paid "
+"installments marked as complete."
+msgstr "يوجد بالفعل نظام تقسيط لخطة العلاج هذه، وتتضمن أقساطاً مدفوعة تم تسجيلها كمكتملة."
+
+
+#: finances/serializers/installments.py:300
+msgid ""
+"This installment plan cannot be modified because one or more installments "
+"have already been paid."
+msgstr "لا يمكن تعديل نظام التقسيط هذا لأنه تم سداد قسط واحد على الأقل على النظام الحالي."
+
+#: finances/serializers/installments.py:424
+msgid "This installment plan does not belong to the current treatment."
+msgstr "نظام التقسيط هذا لا يخص خطة العلاج الحالية."
+
+#: finances/serializers/installments.py:426
+msgid ""
+"Installment plan id mismatch. The installment plan might be deleted or does "
+"not exist. If you believe this not to be the case, please contact the "
+"support team immediately."
+msgstr ""
+"معرّف نظام التقسيط غير مطابق. قد يكون نظام التقسيط محذوفة أو غير موجود. "
+"إذا كنت تعتقد أن هذا غير صحيح، فيرجى التواصل مع فريق الدعم على الفور."
+
+#: finances/serializers/installments.py:488
+msgid ""
+"The installment plan to which these installments belong does not have a "
+"corresponding bill. Make sure a bill is generated for the associated "
+"installment plan first before making a transaction."
+msgstr ""
+"لا يوجد فاتورة مرتبطة بنظام التقسيط التابع لهذه الاقساط. "
+"يرجى التأكد من إصدار فاتورة للاقساط المعنية قبل إجراء أي معاملة مالية." 
+
+#: finances/serializers/installments.py:500
+msgid "At least one or more of the chosen installments has already been paid."
+msgstr "تم بالفعل سداد قسط واحد على الأقل من الأقساط المحددة."
+
+#: finances/serializers/installments.py:504
+msgid ""
+"At least one or more of the chosen installments does not belong to the "
+"current installment plan."
+msgstr "قسط واحد على الأقل من الأقساط المحددة لا ينتمي إلى نظام التقسيط الحالي."
+
+#: finances/serializers/installments.py:515
+#: finances/serializers/installments.py:669
+msgid ""
+"Installments must be paid in sequence according to the installment plan. "
+"Please select installments with the earliest due dates first before paying "
+"subsequent ones."
+msgstr ""
+"يجب سداد الأقساط وفقا للتسلسل المحدد في نظام التقسيط الحالي. "
+"يرجى تحديد الأقساط الأقرب إلى تاريخ الاستحقاق أولًا قبل سداد الأقساط اللاحقة."
+
+#: finances/serializers/installments.py:634
+msgid ""
+"The installment plan to which these installments belong does not have a "
+"corresponding bill. The bill may have been removed or deleted. Make sure a "
+"bill is generated for the installment plan before updating."
+msgstr ""
+"لا يوجد فاتورة مرتبطة بنظام التقسيط الذي ينتمي إليه هذه الأقساط. "
+"قد تكون الفاتورة محذوفة. "
+"يرجى التأكد من إصدار فاتورة لنظام التقسيط المحدد قبل إجراء التحديث." 
+
+#: finances/serializers/installments.py:655
+msgid ""
+"At least one or more of the chosen installments has already been paid "
+"through a different transaction."
+msgstr "تم بالفعل سداد قسط واحد على الأقل من الأقساط المحددة من خلال معاملة مالية مسبقة."
+
+#: finances/serializers/invoices.py:160
+msgid ""
+"Non-patient recipient details cannot be provided when a patient or patient "
+"bill is also provided. Choose one or the other to create an invoice."
+msgstr ""
+"لا يمكن إدخال بيانات مستلم اخر في حال تعيين مريض أو فاتورة خاصة بمريض. "
+"يرجى اختيار أحد الخيارين لإنشاء وصل."
+
+#: finances/serializers/invoices.py:165
+msgid ""
+"An invoice needs a patient, a bill, or a non-patient recipient name to be "
+"created."
+msgstr "يجب تعيين مريض أو فاتورة أو اسم ادخال بيانات مستلم من غير المرضى لإنشاء وصل." 
+
+
+#: finances/serializers/invoices.py:182 patients/serializers/appointments.py:98
 #: patients/serializers/appointments.py:184 utils/mixins.py:56
 msgid ""
 "Clinic branch must be provided when at least one branch is registered. "
@@ -261,10 +422,55 @@ msgstr ""
 "يجب تحديد فرع العيادة عند وجود فرع واحد على الأقل. يرجى اختيار الفرع أو "
 "التواصل مع المسؤول لتعيين فرع لحسابك."
 
-#: finances/views/bills.py:157 finances/views/transactions.py:134
-#: services/views.py:95
+#: finances/serializers/invoices.py:294
+msgid ""
+"This invoice is linked to an existing patient and cannot be assigned "
+"different recipient details."
+msgstr "هذا الوصل مرتبط بمريض مسجل بالفعل ولا يمكن ادخال بيانات مستلم مختلف."
+
+#: finances/serializers/transactions.py:159 finances/views/installments.py:59
+msgid "Treatment plan was not found or does not exist."
+msgstr "خطة العلاج غير موجودة."
+
+#: finances/serializers/transactions.py:166
+msgid "Insurance is not a valid payment method for deposit payments."
+msgstr "لا يمكن استخدام التأمين كطريقة دفع للايداعات." 
+
+#: finances/views/bills.py:160
+msgid ""
+"Request denied. A deposit bill cannot be modified or deleted until the held "
+"money is refunded to the patient."
+msgstr "العملية مرفوضة. لا يمكن تعديل او حذف فاتورة ايداع قبل رد المبلغ المحتجز إلى المريض."
+
+#: finances/views/bills.py:202 finances/views/transactions.py:192
+#: services/views.py:102
 msgid "Patient was not found or does not exist."
 msgstr "المريض غير موجود."
+
+#: finances/views/installments.py:94
+msgid ""
+"The current treatment plan doesn't have an installment plan to generate a "
+"bill for. The installment plan might be deleted or does not exist. If you "
+"believe this not to be the case, please contact the support team immediately."
+msgstr ""
+"لا يوجد نظام تقسيط مرتبط بخطة العلاج الحالية لإصدار فاتورة. "
+"قد يكون نظام التقسيط محذوف أو غير موجود. "
+"إذا كنت تعتقد أن هذا غير صحيح، فيرجى التواصل مع فريق الدعم على الفور." 
+
+#: finances/views/installments.py:105 finances/views/installments.py:290
+#: finances/views/installments.py:325 finances/views/installments.py:386
+msgid "Installment plan was not found or does not exist."
+msgstr "نظام التقسيط غير موجود."
+
+#: finances/views/installments.py:206
+msgid "The requested installment plan was not found or does not exist."
+msgstr "نظام التقسيط المطلوب غير موجود."
+
+#: finances/views/installments.py:225 finances/views/installments.py:262
+msgid ""
+"This installment plan cannot be deleted because one or more installments "
+"have already been paid."
+msgstr "لا يمكن حذف نظام التقسيط الحالي لأنه تم سداد قسط واحد على الأقل."
 
 #: finances/views/tax_config.py:41
 msgid "The requested tax configuration was not found or does not exist."
@@ -287,123 +493,181 @@ msgstr "أنثى"
 msgid "inactive"
 msgstr "غير نشط"
 
-#: patients/models.py:234
+#: patients/models.py:312
 msgid "Follow up"
 msgstr "متابعة"
 
-#: patients/models.py:235
+#: patients/models.py:313
 msgid "Emergency"
 msgstr "طارئ"
 
-#: patients/models.py:328
+#: patients/models.py:405
 msgid "Consent"
 msgstr "وثيقق موافقة"
 
-#: patients/models.py:329
+#: patients/models.py:406
 msgid "Medical history"
 msgstr "تاريخ طبي"
 
-#: patients/models.py:330
+#: patients/models.py:407
 msgid "ID document"
 msgstr "هوية شخصية"
 
-#: patients/models.py:331
+#: patients/models.py:408
 msgid "Referral letter"
 msgstr "خطاب احالة"
 
-#: patients/models.py:332
+#: patients/models.py:409
 msgid "Radiograph"
 msgstr "صورة راديوجراف"
 
-#: patients/models.py:333
-msgid "Other"
-msgstr "مستندات اخرى"
-
-#: patients/models.py:370 patients/models.py:551
+#: patients/models.py:447 patients/models.py:621
 msgid "pending"
 msgstr "قيد الانتظار"
 
-#: patients/models.py:371
+#: patients/models.py:448
 msgid "confirmed"
 msgstr "مؤكد"
 
-#: patients/models.py:372 patients/models.py:497 patients/models.py:553
+#: patients/models.py:449 patients/models.py:573 patients/models.py:623
 msgid "completed"
 msgstr "مكتمل"
 
-#: patients/models.py:373 patients/models.py:498
+#: patients/models.py:450 patients/models.py:574
 msgid "cancelled"
 msgstr "ملغي"
 
-#: patients/models.py:501
-msgid "Full payment"
-msgstr "دفع كامل"
-
-#: patients/models.py:502
-msgid "3 months"
-msgstr "٣ أشهر"
-
-#: patients/models.py:503
-msgid "6 months"
-msgstr "٦ أشهر"
-
-#: patients/models.py:504
-msgid "12 months"
-msgstr "١٢ شهر"
-
-#: patients/models.py:552
+#: patients/models.py:622
 msgid "in progress"
 msgstr "قيد التنفيذ"
 
-#: patients/models.py:589
-msgid "Checkup"
-msgstr "فحص"
-
-#: patients/models.py:590
-msgid "Post-procedure"
-msgstr "بعد الإجراء"
-
-#: patients/models.py:591
-msgid "Treatment"
-msgstr "علاج"
-
-#: patients/models.py:592
-msgid "Custom"
-msgstr "حسب الطلب"
-
-#: patients/models.py:595
-msgid "Pending"
-msgstr "قيد الانتظار"
-
-#: patients/models.py:596
-msgid "Contacted"
-msgstr "تم التواصل"
-
-#: patients/models.py:597
-msgid "Confirmed"
-msgstr "تم التأكيد"
-
-#: patients/models.py:598
-msgid "No answer"
-msgstr "لا يوجد رد"
-
-#: patients/models.py:599
-msgid "Declined"
-msgstr "تم الرفض"
-
-#: patients/models.py:667
-#, fuzzy
-#| msgid "Expired"
+#: patients/models.py:660
 msgid "Expiring"
 msgstr "سينتهي قريباً"
 
-#: patients/models.py:668
+#: patients/models.py:661
 msgid "Expired"
 msgstr "منتهي"
 
-#: patients/models.py:669
+#: patients/models.py:662
+msgid "Limit Reached"
+msgstr "بلغ الحد الاقصى"
+
+#: patients/models.py:663
 msgid "None"
 msgstr "لا يوجد"
+
+#: patients/models.py:746
+msgid ""
+"The current patient is not associated with any known insurance provider. "
+"Either update their insurance details or change the transaction method to "
+"complete the transaction."
+msgstr ""
+"المريض الحالي غير مرتبط بأي جهة تأمين مسجلة. "
+"يرجى تحديث بيانات التأمين أو تغيير طريقة الدفع لإتمام العملية."
+
+#: patients/models.py:751
+msgid ""
+"The current patient's insurance coverage is expired. Either update their "
+"insurance details or change the transaction method to complete the "
+"transaction."
+msgstr ""
+"انتهت صلاحية التغطية التأمينية للمريض الحالي. "
+"يرجى تحديث بيانات التأمين أو تغيير طريقة الدفع لإتمام العملية."
+
+#: patients/models.py:756
+msgid ""
+"The current patient's insurance coverage has reached the maximum allowance "
+"from their insurer. Either update their insurance details or change the "
+"transaction method to complete the transaction."
+msgstr ""
+"بلغت التغطية التأمينية للمريض الحالي الحد الأقصى الذي تسمح به جهة التأمين. "
+"يرجى تحديث بيانات التأمين أو تغيير طريقة الدفع لإتمام العملية."
+
+
+#: patients/models.py:761
+msgid ""
+"The current patient didn't meet the minimum deductible amount required to "
+"activate their insurance coverage. Either update their insurance details or "
+"change the transaction method to complete the transaction."
+msgstr ""
+"لم يستوف المريض الحالي الحد الأدنى لمبلغ التحمل المطلوب لتفعيل التغطية التأمينية. "
+"يرجى تحديث بيانات التأمين أو تغيير طريقة الدفع لإتمام العملية."  
+
+#: patients/models.py:769
+msgid ""
+"Either divide the payment into different transactions and/or change the "
+"transaction method to complete the transaction."
+msgstr "يرجى تقسيم المبلغ على عدة معاملات مالية و/أو تغيير طريقة الدفع لإتمام العملية."
+
+#: patients/models.py:783
+msgid "Checkup"
+msgstr "فحص"
+
+#: patients/models.py:784
+msgid "Post-procedure"
+msgstr "بعد الإجراء"
+
+#: patients/models.py:785
+msgid "Treatment"
+msgstr "علاج"
+
+#: patients/models.py:786
+msgid "Custom"
+msgstr "حسب الطلب"
+
+#: patients/models.py:790
+msgid "Contacted"
+msgstr "تم التواصل"
+
+#: patients/models.py:791
+msgid "Confirmed"
+msgstr "تم التأكيد"
+
+#: patients/models.py:792
+msgid "No answer"
+msgstr "لا يوجد رد"
+
+#: patients/models.py:793 patients/models.py:944
+msgid "Declined"
+msgstr "تم الرفض"
+
+#: patients/models.py:874
+msgid "General"
+msgstr "عام" 
+
+#: patients/models.py:875
+msgid "Orthodontics"
+msgstr "تقويم الأسنان"
+
+#: patients/models.py:876
+msgid "Oral Surgery"
+msgstr "جراحة الفم"
+
+
+#: patients/models.py:877
+msgid "Endodontics"
+msgstr "علاج جذور"
+
+#: patients/models.py:878
+msgid "Periodontics"
+msgstr "علاج اللثة و دواعم الاسنان"
+
+#: patients/models.py:879
+msgid "Prosthodontics"
+msgstr "تركيبات"
+
+#: patients/models.py:880
+msgid "Pediatric"
+msgstr "طب أسنان الأطفال" 
+
+#: patients/models.py:881
+msgid "Radiology"
+msgstr "اخصائي اشعة"
+
+#: patients/models.py:942
+msgid "Scheduled"
+msgstr "مجدول"
 
 #: patients/serializers/appointments.py:72
 msgid "Patient details are required if creating a new patient."
@@ -417,44 +681,100 @@ msgstr "لا يمكن اختيار مريض موجود في حال إنشاء م
 msgid "Existing patient ID or new patient details are required."
 msgstr "يجب إدخال رقم مريض موجود أو بيانات مريض جديد."
 
-#: patients/serializers/patient_insurance.py:69
-#: patients/serializers/patient_insurance.py:190
+#: patients/serializers/dental_chart.py:49
+msgid "Teeth data missing or incomplete."
+msgstr "بيانات الأسنان غير مكتملة."
+
+#: patients/serializers/dental_chart.py:51
+msgid "Teeth data required for update."
+msgstr "بيانات الأسنان مطلوبة لإجراء التحديث."
+
+#: patients/serializers/dental_chart.py:56
+msgid "Invalid FDI tooth number."
+msgstr "رقم السن غير صالح وفقاً لنظام ترقيم FDI."
+
+#: patients/serializers/patient_insurance.py:70
+#: patients/serializers/patient_insurance.py:191
 msgid "Insurance provider's details are required if creating a new provider."
 msgstr "يجب إدخال بيانات متكفل تأمين في حال إنشاء متكفل جديد."
 
-#: patients/serializers/patient_insurance.py:71
-#: patients/serializers/patient_insurance.py:192
+#: patients/serializers/patient_insurance.py:72
+#: patients/serializers/patient_insurance.py:193
 msgid ""
 "Cannot assign an existing insurance provider if choosing to create a new one."
 msgstr "لا يمكن اختيار متكفل تأمين مسجل في حال إنشاء متكفل جديد."
 
-#: patients/serializers/patient_insurance.py:89
+#: patients/serializers/patient_insurance.py:90
 msgid "An insurance provider is required to create a new insurance plan."
 msgstr "يجب إدخال بيانات متكفل تأمين لانشاء تغطية تأمينية جديدة للمريض"
 
-#: patients/serializers/patients.py:57
+#: patients/serializers/patients.py:62
 msgid "Country code is required."
 msgstr "رمز الدولة مطلوب."
 
-#: patients/serializers/patients.py:60
+#: patients/serializers/patients.py:65
 msgid "Country code entered is invalid. Please enter a valid number."
 msgstr "رمز الدولة المدخل غير صالح. يرجى إدخال رمز صحيح."
 
-#: patients/serializers/patients.py:266
+#: patients/serializers/patients.py:310
 msgid "Both country code and phone are required to update."
 msgstr "يجب إدخال رمز الدولة ورقم الهاتف معًا للتحديث."
 
-#: patients/serializers/patients.py:414
-msgid "Invalid data format."
-msgstr "البيانات غير صالحة."
+#: patients/serializers/patients.py:477
+msgid "Invalid file URL."
+msgstr "رابط الملف غير صالح."
 
-#: patients/serializers/patients.py:416
-msgid "Teeth data missing or incomplete."
-msgstr "بيانات الأسنان غير مكتملة."
+#: patients/serializers/patients.py:488
+msgid "File not found or does not exist."
+msgstr "الملف غير موجود."
 
-#: patients/serializers/patients.py:418
-msgid "Teeth data required for update."
-msgstr "بيانات الأسنان مطلوبة لإجراء التحديث."
+#: patients/serializers/patients.py:490 patients/serializers/patients.py:492
+msgid "Multiple files match the provided url."
+msgstr "يوجد عدة ملفات تطابق الرابط المدخل." 
+
+#: patients/serializers/perio_exams.py:63
+#: patients/serializers/perio_exams.py:64
+msgid "Probing depth must be between 0mm and 13mm."
+msgstr "يجب أن يتراوح عمق الجيب اللثوي بين 0 و 13 مم." 
+
+#: patients/serializers/perio_exams.py:77
+#: patients/serializers/perio_exams.py:78
+msgid "Mobility value must be between 0 and 3."
+msgstr "يجب أن تتراوح درجة حركة السن بين 0 و 3." 
+
+#: patients/serializers/perio_exams.py:82
+#: patients/serializers/perio_exams.py:83
+msgid "Furcation value must be between 0 and 3."
+msgstr "يجب أن تتراوح درجة إصابة منطقة تفرع جذور السن بين 0 و 3."
+
+#: patients/serializers/perio_exams.py:109 patients/validators.py:89
+msgid "Invalid tooth number. Does not comply with FDI notation."
+msgstr "رقم السن غير صالح ولا يتوافق مع نظام ترقيم FDI."
+
+#: patients/serializers/perio_exams.py:115
+#, python-format
+msgid "Invalid tooth site(s): %(sites)s"
+msgstr "موضع واحد أو اكثر من مواضع الأسنان المدخلة غير صالح: %(sites)s"
+
+#: patients/serializers/referrals.py:44 patients/serializers/referrals.py:70
+msgid "Referrer's name is required when no system doctor is assigned."
+msgstr "اسم الطبيب المحيل مطلوب في حال عدم تعيين طبيب مسجل في النظام." 
+
+#: patients/serializers/referrals.py:50 patients/serializers/referrals.py:78
+msgid "This doctor is already registered as a referral source for this branch."
+msgstr "هذا الطبيب مسجل بالفعل كمصدر إحالة لهذا الفرع." 
+
+#: patients/serializers/referrals.py:120 patients/serializers/referrals.py:165
+msgid ""
+"A referral record cannot target both a system doctor and an outside referral "
+"source. Choose one or the other."
+msgstr "لا يمكن ربط سجل الإحالة بطبيب مسجل في النظام و تعيين مصدر إحالة خارجي في الوقت ذاته. يرجى اختيار أحدهما."
+
+#: patients/serializers/referrals.py:124 patients/serializers/referrals.py:169
+msgid ""
+"Name is required when no system doctor or a known referral source is "
+"assigned."
+msgstr "الاسم مطلوب في حال عدم تعيين طبيب مسجل في النظام أو مصدر إحالة معروف." 
 
 #: patients/validators.py:30
 msgid ""
@@ -471,23 +791,27 @@ msgstr "رمز الدولة غير صالح. يرجى إدخال رمز صحيح
 msgid "Invalid tooth number."
 msgstr "رقم السن غير صالح."
 
-#: patients/validators.py:89
-msgid "Invalid tooth number. Does not comply with FDI notation."
-msgstr "رقم السن غير صالح ولا يتوافق مع نظام ترقيم FDI."
-
 #: patients/views/appointments.py:137
 msgid "Appointment cancelled successfully."
 msgstr "تم الغاء الموعد بنجاح"
+
+#: patients/views/patient_insurance.py:127 utils/mixins.py:108
+msgid "Branch was not found or does not exist."
+msgstr "الفرع غير موجود."
 
 #: patients/views/patient_recalls.py:114
 msgid "User not found or not registered as 'dentist'."
 msgstr "المستخدم غير موجود أو غير مسجل كطبيب أسنان."
 
-#: patients/views/treatments.py:46
+#: patients/views/referrals.py:161 patients/views/treatments.py:46
 msgid "The requested patient was not found or does not exist."
 msgstr "المريض المطلوب غير موجود."
 
-#: patients/views/treatments.py:88
+#: patients/views/referrals.py:199
+msgid "The requested patient referral record was not found or does not exist."
+msgstr "سجل إحالة المريض المطلوب غير موجود."
+
+#: patients/views/treatments.py:90
 msgid "The requested treatment plan was not found or does not exist."
 msgstr "خطة العلاج المطلوبة غير موجودة."
 
@@ -500,8 +824,6 @@ msgid "recall"
 msgstr "استدعاء"
 
 #: services/models.py:20
-#, fuzzy
-#| msgid "Custom"
 msgid "custom"
 msgstr "حسب الطلب"
 
@@ -545,15 +867,15 @@ msgstr "انجليزية"
 msgid "Arabic"
 msgstr "عربية"
 
-#: users/models.py:494
+#: users/models.py:514
 msgid "Off"
 msgstr "إجازة"
 
-#: users/models.py:495
+#: users/models.py:515
 msgid "Vacation"
 msgstr "إجازة سنوية"
 
-#: users/models.py:496
+#: users/models.py:516
 msgid "Conference"
 msgstr "مؤتمر"
 
@@ -636,11 +958,11 @@ msgstr "يجب أن تحتوي كلمة المرور على حرف capital وا�
 
 #: users/views/doctor_schedules.py:82 users/views/doctor_schedules.py:116
 msgid "Permission denied. You do not have permission to perform this action."
-msgstr "تم رفض الوصول. ليس لديك صلاحية لتنفيذ هذا الإجراء."
+msgstr "العملية مرفوضة. ليس لديك صلاحية لتنفيذ هذا الإجراء."
 
 #: users/views/doctor_schedules.py:86
 msgid "A schedule already exists for this doctor."
-msgstr "يوجد جدول مواعيد مسجل لهذا الطبيب بالفعل."
+msgstr "يوجد بالفعل جدول مواعيد مسجل لهذا الطبيب."
 
 #: users/views/doctor_schedules.py:152
 msgid "Invalid date format. Expected YYYY-MM-DD."
@@ -662,14 +984,53 @@ msgstr "معرف الفرع مطلوب لتفعيل فرع المستخدم."
 msgid "This appointment conflicts with an existing one."
 msgstr "يتعارض هذا الموعد مع موعد اخر موجود."
 
-#: utils/exceptions.py:29
-msgid "Patient's phone number is invalid or not registered on WhatsApp."
-msgstr "رقم هاتف المريض غير صالح أو غير مسجل على واتساب."
+#: utils/exceptions.py:28
+msgid ""
+"This exam can no longer be corrected because it was recorded on an older "
+"date. Create a new exam instead to record current findings."
+msgstr ""
+"لا يمكن تعديل هذا الفحص لأنه سُجّل في تاريخ سابق. "
+"يرجى إنشاء فحص جديد لتسجيل النتائج الحالية."
 
-#: utils/mixins.py:108
-msgid "Branch was not found or does not exist."
-msgstr "الفرع غير موجود."
+#: utils/exceptions.py:35
+msgid "Patient's phone number is invalid or can't be reached on WhatsApp."
+msgstr "رقم هاتف المريض غير صالح أو لا يمكن التواصل معه عبر الواتساب."
 
+#: utils/exceptions.py:47
+msgid ""
+"This installment plan cannot be modified or deleted because one or more "
+"installments have already been paid."
+msgstr "لا يمكن تعديل او حذف نظام التقسيط الحالي لأنه تم سداد قسط واحد على الأقل."
+
+#: utils/exceptions.py:255
+msgid ""
+"A referral cannot be linked to both a system doctor and an outside referral "
+"source. Please provide one or neither."
+msgstr ""
+"لا يمكن ربط الإحالة بطبيب مسجل في النظام و تعيين مصدر إحالة خارجي في الوقت ذاته. "
+"يرجى تحديد أحدهما أو عدم تحديد أي منهما."
+
+#: utils/exceptions.py:268
+msgid ""
+"This record cannot be deleted because it is still referenced by other "
+"records."
+msgstr "لا يمكن حذف هذا السجل لأنه لا يزال مرتبط بسجلات أخرى."
+
+#: utils/exceptions.py:279
+msgid "A record with this unique identifier already exists."
+msgstr "السجل موجود بالفعل."
+
+#: utils/exceptions.py:284
+msgid "This record violates a data integrity rule."
+msgstr "هذا السجل يخالف إحدى قواعد تعيين البيانات."
+
+#: utils/exceptions.py:293
+msgid "A referenced record does not exist."
+msgstr "لم يتم العثور على السجل المرتبط." 
+
+#: utils/exceptions.py:300
+msgid "A data integrity error occurred."
+msgstr "حدث خطأ في تعيين البيانات."
 
 msgctxt "patient_status"
 msgid "active"
@@ -682,3 +1043,15 @@ msgstr "قيد التنفيذ"
 msgctxt "insurance_status"
 msgid "active"
 msgstr "ساري"
+
+msgctxt "transaction_type"
+msgid "Other"
+msgstr "تكاليف اخرى"
+
+msgctxt "speciality_choice"
+msgid "Other"
+msgstr "اخر"
+
+msgctxt "document_type"
+msgid "Other"
+msgstr "مستندات اخرى"

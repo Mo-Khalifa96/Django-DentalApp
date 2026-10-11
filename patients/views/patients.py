@@ -1,6 +1,5 @@
 from utils.base_views import *
 from decimal import Decimal
-from finances.models import Bill
 from patients.models import Patient
 from rest_framework import status, generics
 from rest_framework.response import Response
@@ -10,7 +9,7 @@ from users.utils import get_required_permission
 from utils.filters import CustomOrderingFilter
 from rest_framework.filters import SearchFilter
 from utils.mixins import BranchToSerializerMixin
-from patients.docs import get_dentalchart_schema
+from finances.models import Bill, InstallmentPlan
 from users.permissions import PatientDataPermissions
 from rest_framework.permissions import IsAuthenticated
 from nested_multipart_parser.drf import DrfNestedParser
@@ -18,12 +17,11 @@ from django.db.models.functions import Coalesce, Greatest
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from utils.swagger_utils import extend_schema, OpenApiParameter, OpenApiTypes
-from django.db.models import F, Sum, Value, Subquery, OuterRef, DecimalField, ExpressionWrapper
+from django.db.models import F, Sum, Value, Exists,  ExpressionWrapper, Subquery, OuterRef, DecimalField
 from patients.serializers.patients import (ListPatientSerializer, RetrievePatientSerializer, 
                                            CreatePatientSerializer, FullUpdatePatientSerializer,
-                                           PartialUpdatePatientSerializer, DentalChartSerializer, 
-                                           UploadDocumentSerializer, PatientsOptionsSerializer, 
-                                           DentalChartOptionsSerializer)
+                                           PartialUpdatePatientSerializer, UploadDocumentSerializer, 
+                                           DeleteFileSerializer, PatientsOptionsSerializer)
 
 
 #PATIENTS API VIEWS
@@ -51,7 +49,7 @@ class ListCreatePatientsAPIView(FilterListCreateAPIView):
                     .prefetch_related('patient_documents').all()
         
         #Create a patient outstanding balance subquery 
-        outstanding_subquery = Bill.objects.filter(patient_id=OuterRef('id'))\
+        bills_outstanding_subquery = Bill.objects.earnings().filter(patient_id=OuterRef('id'))\
             .order_by().values('patient_id').annotate(
                 total_outstanding=Sum(
                     ExpressionWrapper(
@@ -60,19 +58,49 @@ class ListCreatePatientsAPIView(FilterListCreateAPIView):
                     )
                 )
             ).values('total_outstanding')
+        
 
-        #Fetch patients data 
+        #Installments subquery for installment plans without an active bill
+        installments_outstanding_subquery = InstallmentPlan.objects.filter(treatment__patient_id=OuterRef('id'))\
+            .annotate(
+                has_active_bill=Exists(
+                    Bill.objects.earnings().filter(treatment_id=OuterRef('treatment_id'))
+                )
+            ).filter(has_active_bill=False)\
+            .order_by().values('treatment__patient_id').annotate(
+                total_outstanding=Sum(
+                    ExpressionWrapper(F('totalAmount') - Coalesce(F('totalPaid'), Decimal('0')), output_field=DecimalField())
+                )
+            ).values('total_outstanding')
+
+        #Fetch patients data
         patients = Patient.objects.select_related(
                 'patient_insurance', 'branch', 'doctor'
             ).annotate(
                 outstandingBalance=Greatest(
                     Coalesce(
-                        Subquery(outstanding_subquery, output_field=DecimalField()),
+                        Subquery(bills_outstanding_subquery, output_field=DecimalField()), 
                         Value(Decimal('0'), output_field=DecimalField())
+                    ) + Coalesce(
+                            Subquery(installments_outstanding_subquery, output_field=DecimalField()), 
+                            Value(Decimal('0'), output_field=DecimalField())
                     ),
                     Value(Decimal('0'), output_field=DecimalField())
                 )
             )
+
+        #old pattern (bills outstanding only)
+        # patients = Patient.objects.select_related(
+        #         'patient_insurance', 'branch', 'doctor'
+        #     ).annotate(
+        #         outstandingBalance=Greatest(
+        #             Coalesce(
+        #                 Subquery(bills_outstanding_subquery, output_field=DecimalField()),
+        #                 Value(Decimal('0'), output_field=DecimalField())
+        #             ),
+        #             Value(Decimal('0'), output_field=DecimalField())
+        #         )
+        #     )
 
         #Filter queryset for list view by role
         if getattr(user, 'role', None) == 'admin':
@@ -141,45 +169,10 @@ class RetrievePatientsOptionsAPIView(BranchToSerializerMixin, generics.GenericAP
         return Response(self.get_serializer(instance={}).data, status=status.HTTP_200_OK)
 
 
-######################
-
-#Initialize schema for retrieving patient dental chart
-dentalchart_view_schema = get_dentalchart_schema()
+#########
 
 
-#PATIENT DENTAL CHART API VIEWS 
-#Retrieve/update patient dental chart API view
-@dentalchart_view_schema
-class RetrieveUpdateDentalChartAPIView(RetrieveUpdateAPIView):
-    queryset = Patient.objects.prefetch_related('patient_dentalchart').all()
-    serializer_class = DentalChartSerializer
-    permission_classes = [PatientDataPermissions]
-    lookup_field = 'id'
-    lookup_url_kwarg = 'id'
-
-    def get_object(self):
-        #return patient's dental chart instance
-        patient = super().get_object()
-        return patient.patient_dentalchart
-
-    def initial(self, request, *args, **kwargs):
-        #determine required permission 
-        # self.required_permission = 'view.patientDetail' if request.method == 'GET' else 'update.patient'
-        self.required_permission = get_required_permission('patients', request, self)
-        super().initial(request, *args, **kwargs)
-
-
-#API view for serving optional choices data 
-@extend_schema(tags=['Dental Chart'])
-class RetrieveDentalChartOptionsAPIView(generics.GenericAPIView):
-    serializer_class = DentalChartOptionsSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        return Response(self.get_serializer(instance={}).data, status=status.HTTP_200_OK)
-
-
-#Other
+#OTHER
 #API view for individual document uploads
 @extend_schema(
     tags=['Patients'],
@@ -216,3 +209,18 @@ class UploadDocumentAPIView(generics.GenericAPIView):
         return Response(status=status.HTTP_201_CREATED)
 
 
+#API view for deleting files
+@extend_schema(tags=['Patients'])
+class DeleteFileAPIView(DeleteAPIView):
+    serializer_class = DeleteFileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def destroy(self, request, *args, **kwargs):
+        #serialize the sent file
+        serializer = DeleteFileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        #delete file and return response
+        serializer.delete_file()
+        return Response({}, status=status.HTTP_204_NO_CONTENT)
+    

@@ -147,14 +147,13 @@ class WaitingRoom(models.Model):
         #Assign dates on creation and updates
         if self._state.adding:
             #set status to waiting
-            self.status = self.StatusChoices.WAITING
-
+            self.status = 'waiting'
             #record arrival time on creation
             self.arrivedAt = timezone.localtime(timezone.now())
 
-        # if self.status == self.StatusChoices.IN_CHAIR and not self.startedAt:
+        # if self.status == 'in_chair' and not self.startedAt:
         #     self.startedAt = timezone.localtime(timezone.now())
-        # elif self.status == self.StatusChoices.DONE and not self.completedAt:
+        # elif self.status == 'done' and not self.completedAt:
         #     self.completedAt = timezone.localtime(timezone.now())
 
         #     #also update appointment-related details (if not a walk-in)
@@ -222,6 +221,13 @@ class Procedure(models.Model):
         db_table = 'Procedures'
         verbose_name_plural = 'Procedures'
         ordering = ['branch__name', 'name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'branch'], 
+                name='unique_procedure_per_branch',
+                nulls_distinct=False
+            )
+        ]
 
     def __str__(self):
         return f'{self.name} ({self.category})'
@@ -376,13 +382,13 @@ class LabOrder(models.Model):
         #Assign dates on creation and updates
         if self._state.adding:
             if not self.status:
-                self.status = self.OrderStatusChoices.SENT
+                self.status = 'sent'
             if not self.sentDate:
                 self.sentDate = timezone.localtime(timezone.now()).date()
 
-        if self.status == self.OrderStatusChoices.RECEIVED:
+        if self.status == 'received':
             self.receivedDate = timezone.localtime(timezone.now()).date()
-        elif self.status == self.OrderStatusChoices.DELIVERED:
+        elif self.status == 'delivered':
             self.deliveredDate = timezone.localtime(timezone.now()).date()
         
         #snapshot fields (on create and update)
@@ -470,7 +476,7 @@ class SterilizationLog(models.Model):
             self.time = current_datetime.time()
         
         #if result is 'passed' and no sealed date, set date to today
-        if self.result == self.SterilizationResultChoices.PASSED and not self.sealedAt:
+        if self.result == 'passed' and not self.sealedAt:
             self.sealedAt = timezone.localtime(timezone.now()).date()
 
         #save changes 

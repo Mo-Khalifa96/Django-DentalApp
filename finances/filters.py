@@ -1,9 +1,9 @@
-from django.db.models import F,Q
+from decimal import Decimal
 from clinic.models import Branch
-from patients.models import Patient
 from utils.filters import BaseFilterSet
+from patients.models import Patient, PatientCoverage
 from finances.models import Bill, Transaction, Invoice, InstallmentPlan, InsuranceProvider
-from django_filters.rest_framework import (FilterSet, CharFilter, ChoiceFilter, ModelChoiceFilter, 
+from django_filters.rest_framework import (FilterSet, ChoiceFilter, ModelChoiceFilter, 
                                            BooleanFilter, DateFilter)
 
 
@@ -55,6 +55,7 @@ class TransactionsFilter(FilterSet):
     patientId = ModelChoiceFilter(field_name='patient', queryset=Patient.objects.all())
     date = DateFilter(field_name='date', lookup_expr='exact')
     type = ChoiceFilter(choices=Transaction.TransactionTypeChoices.choices)
+    status = ChoiceFilter(choices=Transaction.TransactionStatusChoices.choices)
     isDeleted = BooleanFilter(method='filter_deleted')
 
     def filter_deleted(self, queryset, name, value):
@@ -93,6 +94,7 @@ class InvoicesFilter(FilterSet):
 
 #Installments filter
 class InstallmentsFilter(FilterSet):
+    billId = ModelChoiceFilter(field_name='bill', queryset=Bill.objects.all())
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
     status = ChoiceFilter(choices=InstallmentPlan.InstallmentPlanStatusChoices.choices)
     installmentMonths = ChoiceFilter(choices=InstallmentPlan.InstallmentMonthsChoices.choices)
@@ -103,6 +105,43 @@ class InstallmentsFilter(FilterSet):
         fields = []
 
 
+
+#Patient accounts filter 
+class PatientAccountsFilter(FilterSet):
+    branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
+    insuranceCoverageStatus = ChoiceFilter(field_name='patient_insurance__eligibilityStatus', choices=PatientCoverage.EligibilityStatusChoices.choices)
+    hasCreditHeld = BooleanFilter(method='filter_byCreditHeld')
+    hasPendingInstallments = BooleanFilter(method='filter_byPendingInstallments')
+    hasPendingPayments = BooleanFilter(method='filter_byPendingPayments')
+
+
+    def filter_byCreditHeld(self, queryset, name, value):
+        if value == False:
+            return queryset.filter(totalCreditHeld=Decimal('0'))
+        elif value == True:
+            return queryset.filter(totalCreditHeld__gt=Decimal('0'))
+        return queryset
+    
+    def filter_byPendingInstallments(self, queryset, name, value):
+        if value == False:
+            return queryset.filter(pendingInstallmentsCount=0)
+        elif value == True:
+            return queryset.filter(pendingInstallmentsCount__gt=0)
+        return queryset
+    
+    def filter_byPendingPayments(self, queryset, name, value):
+        if value == False:
+            return queryset.filter(unsettledBillsCount=0)
+        elif value == True:
+            return queryset.filter(unsettledBillsCount__gt=0)
+        return queryset
+    
+    class Meta:
+        model = Patient 
+        fields = []
+
+
+
 #Insurance providers filter
 class InsuranceProvidersFilter(FilterSet):
     branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
@@ -111,3 +150,14 @@ class InsuranceProvidersFilter(FilterSet):
     class Meta:
         model = InsuranceProvider
         fields = []
+
+#Insurance providers statistics filter
+class InsuranceProvidersStatsFilter(FilterSet):
+    branchId = ModelChoiceFilter(field_name='branch', queryset=Branch.objects.all())
+    providerId = ModelChoiceFilter(field_name='id', queryset=InsuranceProvider.objects.all())
+    tier = ChoiceFilter(choices=InsuranceProvider.InuranceTierChoices.choices)
+
+    class Meta:
+        model = InsuranceProvider
+        fields = []
+

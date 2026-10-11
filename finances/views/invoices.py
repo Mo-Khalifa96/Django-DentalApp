@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from finances.filters import InvoicesFilter
 from utils.filters import CustomOrderingFilter
 from rest_framework.filters import SearchFilter
+from django.db.models.functions import Coalesce
 from users.utils import get_required_permission
 from utils.mixins import BranchToSerializerMixin
 from users.permissions import PatientDataPermissions
@@ -27,16 +28,17 @@ from finances.serializers.invoices import (InvoiceSerializer, RetrieveInvoiceSer
 class ListCreateInvoicesAPIView(FilterListCreateAPIView):
     permission_classes = [PatientDataPermissions]
     ordering = ['branch__name', '-issuedAt', '-submittedAt', 'patient__name']
-    ordering_fields = ['patientName', 'branchName', 'total', 'subtotal', 
+    ordering_fields = ['patientName', 'recipientName', 'branchName', 'total', 'subtotal', 
                        'issuedAt', 'submittedAt', 'createdBy', 'createdAt']
-    search_fields = ['patientName', 'branchName', 'invoice_items__description']
+    search_fields = ['patientName', 'recipientName', 'branchName', 'billedToAddress', 'invoice_items__description']
     filterset_class = InvoicesFilter
     filter_backends = [DjangoFilterBackend, SearchFilter, CustomOrderingFilter]
 
     def initial(self, request, *args, **kwargs):
         #add `createdBy` and `billDescription` to admin's search fields
         if getattr(request.user, 'role', None) == 'admin':
-            self.search_fields = ['patientName', 'branchName', 'billDescription', 'invoice_items__description', 'createdBy']
+            self.search_fields = ['patientName', 'recipientName', 'branchName', 'billDescription', 
+                                  'billedToAddress', 'invoice_items__description', 'createdBy']
         #determine required permission
         self.required_permission = get_required_permission('invoices', request, self)
         super().initial(request, *args, **kwargs)
@@ -45,15 +47,20 @@ class ListCreateInvoicesAPIView(FilterListCreateAPIView):
         #get current user 
         user = self.request.user 
 
+        #recepient name annotation
+        recipient_annotation = {'recipientName': Coalesce('patientName', 'billedToName')}
+
         #admin gets all objects
         if getattr(user, 'role', None) == 'admin':
             return Invoice.all_objects.prefetch_related('invoice_items')\
-                .select_related('bill', 'patient', 'branch').all()
+                .select_related('bill', 'patient', 'branch')\
+                .annotate(**recipient_annotation).all()
 
         #fetch invoices data normally for non-admins
         invoices = Invoice.objects.prefetch_related('invoice_items')\
-                .select_related('bill', 'patient', 'branch').all()
-        
+                .select_related('bill', 'patient', 'branch')\
+                .annotate(**recipient_annotation).all()
+                
         #return on post
         if self.request.method == 'POST':
             return invoices
@@ -86,7 +93,7 @@ class RetrieveUpdateDeleteInvoiceAPIView(RetrieveUpdateDeleteAPIView):
 
     def get_queryset(self):
         #admin gets all objects
-        user = self.request.user 
+        user = self.request.user
         if getattr(user, 'role', None) == 'admin':
             return Invoice.all_objects.prefetch_related('invoice_items')\
                 .select_related('bill', 'patient', 'branch').all()

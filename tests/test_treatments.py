@@ -4,6 +4,7 @@ from decimal import Decimal
 from .utils import render_error
 from django.urls import reverse
 from rest_framework import status
+from finances.models import InstallmentPlan
 from patients.models import TreatmentPlan, TreatmentPlanItem
 
 
@@ -66,10 +67,10 @@ class TestListCreateTreatmentPlansAPIView:
         self, api_client, admin_user, dentist_user, patient_factory,
         procedure_factory, treatment_plan_factory
     ):
-        patient  = patient_factory(doctor=dentist_user)
-        proc     = procedure_factory()
-        plan     = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
-        other_p  = patient_factory(doctor=dentist_user)
+        patient = patient_factory(doctor=dentist_user)
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        other_p = patient_factory(doctor=dentist_user)
         treatment_plan_factory(patient=other_p, procedure=proc, doctor=dentist_user)
 
         api_client.force_authenticate(user=admin_user)
@@ -90,8 +91,8 @@ class TestListCreateTreatmentPlansAPIView:
     ):
         """TreatmentPlansManager filters patient__is_deleted=False."""
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
 
         patient.is_deleted = True
         patient.save(update_fields=['is_deleted'])
@@ -121,8 +122,8 @@ class TestListCreateTreatmentPlansAPIView:
         self, api_client, dentist_user, patient_factory, procedure_factory
     ):
         patient = patient_factory(doctor=dentist_user)
-        proc1   = procedure_factory(name='Exam')
-        proc2   = procedure_factory(name='Filling')
+        proc1 = procedure_factory(name='Exam')
+        proc2 = procedure_factory(name='Filling')
 
         payload = _create_payload(
             (proc1, '100.00'),
@@ -143,7 +144,7 @@ class TestListCreateTreatmentPlansAPIView:
     ):
         """validate(): totalCost mismatch is logged but the correct sum is stored anyway."""
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
+        proc = procedure_factory()
 
         payload = _create_payload((proc, '100.00'), totalCost='999.00')
         api_client.force_authenticate(user=dentist_user)
@@ -158,7 +159,7 @@ class TestListCreateTreatmentPlansAPIView:
     ):
         """TreatmentPlan.save(): status defaults to 'active'."""
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
+        proc = procedure_factory()
         api_client.force_authenticate(user=dentist_user)
         response = api_client.post(
             _list_url(patient.id), _create_payload((proc, '100.00')), format='json'
@@ -171,7 +172,7 @@ class TestListCreateTreatmentPlansAPIView:
     ):
         """CreateTreatmentPlanSerializer.create(): dentist role → doctor = request.user."""
         patient = patient_factory(doctor=None)
-        proc    = procedure_factory()
+        proc = procedure_factory()
         api_client.force_authenticate(user=dentist_user)
         response = api_client.post(
             _list_url(patient.id), _create_payload((proc, '100.00')), format='json'
@@ -189,7 +190,7 @@ class TestListCreateTreatmentPlansAPIView:
         the model's save() falls back to patient.doctor if set.
         """
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
+        proc = procedure_factory()
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
             _list_url(patient.id), _create_payload((proc, '100.00')), format='json'
@@ -228,7 +229,7 @@ class TestListCreateTreatmentPlansAPIView:
     ):
         """create(): TreatmentPlanItem.procedureName captured from the FK."""
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory(name='Root Canal')
+        proc = procedure_factory(name='Root Canal')
         api_client.force_authenticate(user=dentist_user)
         response = api_client.post(
             _list_url(patient.id), _create_payload((proc, '300.00')), format='json'
@@ -241,7 +242,7 @@ class TestListCreateTreatmentPlansAPIView:
     ):
         """TreatmentPlanItem.save(): status defaults to 'pending'."""
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
+        proc = procedure_factory()
         api_client.force_authenticate(user=dentist_user)
         response = api_client.post(
             _list_url(patient.id), _create_payload((proc, '100.00')), format='json'
@@ -253,7 +254,7 @@ class TestListCreateTreatmentPlansAPIView:
         self, api_client, assistant_user, patient_factory, procedure_factory
     ):
         patient = patient_factory()
-        proc    = procedure_factory()
+        proc = procedure_factory()
         api_client.force_authenticate(user=assistant_user)
         response = api_client.post(
             _list_url(patient.id), _create_payload((proc, '100.00')), format='json'
@@ -264,7 +265,7 @@ class TestListCreateTreatmentPlansAPIView:
         self, api_client, dentist_user, patient_factory, procedure_factory
     ):
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
+        proc = procedure_factory()
         api_client.force_authenticate(user=dentist_user)
         response = api_client.post(
             _list_url(patient.id), _create_payload((proc, '100.00')), format='json'
@@ -289,8 +290,8 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
     ):
         """PATCH excluded from http_method_names → 405."""
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.patch(
@@ -305,8 +306,8 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
         procedure_factory, treatment_plan_factory
     ):
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(_detail_url(patient.id, plan.id))
@@ -319,8 +320,8 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
         procedure_factory, treatment_plan_factory
     ):
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
 
         api_client.force_authenticate(user=other_dentist_user)
         response = api_client.get(_detail_url(patient.id, plan.id))
@@ -333,8 +334,8 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
         """get_object(): filters by both patient_id AND treatmentId; mismatch → 404."""
         patient_a = patient_factory(doctor=dentist_user)
         patient_b = patient_factory(doctor=dentist_user)
-        proc      = procedure_factory()
-        plan      = treatment_plan_factory(patient=patient_a, procedure=proc, doctor=dentist_user)
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient_a, procedure=proc, doctor=dentist_user)
 
         api_client.force_authenticate(user=admin_user)
         # plan belongs to patient_a but we look it up under patient_b's URL
@@ -348,9 +349,9 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
         procedure_factory, treatment_plan_factory
     ):
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory(name='Cleaning')
+        proc = procedure_factory(name='Cleaning')
         new_proc = procedure_factory(name='Implant')
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.put(
@@ -380,8 +381,8 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
     ):
         """update(): 'items' present → delete + recreate."""
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
         assert plan.treatment_items.count() == 1
 
         new_proc = procedure_factory(name='New Item')
@@ -403,8 +404,8 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
     ):
         """update(): omitting 'items' leaves existing items untouched."""
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
 
         api_client.force_authenticate(user=admin_user)
         api_client.put(
@@ -418,8 +419,8 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
         procedure_factory, treatment_plan_factory
     ):
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
         first_item = plan.treatment_items.first()
 
         api_client.force_authenticate(user=other_dentist_user)
@@ -445,8 +446,8 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
         procedure_factory, treatment_plan_factory
     ):
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.put(
@@ -462,9 +463,9 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
         procedure_factory, treatment_plan_factory
     ):
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
-        pid     = plan.id
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        pid = plan.id
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(_detail_url(patient.id, pid))
@@ -478,9 +479,9 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
     ):
         """TreatmentPlanItem.treatmentPlan is on_delete=CASCADE."""
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
-        pid     = plan.id
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        pid = plan.id
 
         api_client.force_authenticate(user=admin_user)
         api_client.delete(_detail_url(patient.id, pid))
@@ -492,8 +493,8 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
         procedure_factory, treatment_plan_factory
     ):
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
 
         api_client.force_authenticate(user=other_dentist_user)
         response = api_client.delete(_detail_url(patient.id, plan.id))
@@ -503,8 +504,8 @@ class TestRetrieveUpdateDeleteTreatmentPlanAPIView:
         self, api_client, dentist_user, patient_factory, procedure_factory, treatment_plan_factory
     ):
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
         response = api_client.delete(_detail_url(patient.id, plan.id))
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
@@ -521,8 +522,8 @@ class TestLookupTreatmentPlanAPIView:
         procedure_factory, treatment_plan_factory
     ):
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(_lookup_url(plan.id))
@@ -535,8 +536,8 @@ class TestLookupTreatmentPlanAPIView:
         procedure_factory, treatment_plan_factory
     ):
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
 
         api_client.force_authenticate(user=other_dentist_user)
         response = api_client.get(_lookup_url(plan.id))
@@ -551,8 +552,8 @@ class TestLookupTreatmentPlanAPIView:
         self, api_client, dentist_user, patient_factory, procedure_factory, treatment_plan_factory
     ):
         patient = patient_factory(doctor=dentist_user)
-        proc    = procedure_factory()
-        plan    = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
+        proc = procedure_factory()
+        plan = treatment_plan_factory(patient=patient, procedure=proc, doctor=dentist_user)
         response = api_client.get(_lookup_url(plan.id))
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
@@ -573,16 +574,17 @@ class TestRetrieveTreatmentPlansOptionsAPIView:
         response = api_client.get(reverse(self.URL))
 
         assert response.status_code == status.HTTP_200_OK or render_error(response)
-        for key in ('installmentOptions', 'treatmentStatusChoices',
-                    'procedureChoices', 'itemStatusChoices', 'validToothNumbers'):
+        for key in ('treatmentStatusChoices', 'procedureChoices', 'itemStatusChoices', 
+                    'validToothNumbers', 'installmentMonthsChoices', 'installmentPlanStatusChoices',
+                    'installmentStatusChoices'):
             assert key in response.data, f"Missing key: {key}"
         assert {'procedureId': proc.id, 'name': proc.name} in response.data['procedureChoices']
 
     def test_installment_options_cover_all_choices(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
         response = api_client.get(reverse(self.URL))
-        returned = {c['value'] for c in response.data['installmentOptions']}
-        expected = {c.value for c in TreatmentPlan.InstallmentMonthsChoices}
+        returned = {c['value'] for c in response.data['installmentMonthsChoices']}
+        expected = {c.value for c in InstallmentPlan.InstallmentMonthsChoices}
         assert returned == expected
 
     def test_treatment_status_choices_cover_all_statuses(self, api_client, admin_user):

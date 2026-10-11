@@ -11,11 +11,19 @@ from clinic.docs import dashboard_stats_schema, dashboard_options_schema
 
 
 #DASHBOARD SERIALIZERS 
-#Revenue serializer -- Nested serializer
+#Appointments stats serializer -- nested serializer
+class AppointmentsStatsSerializer(serializers.Serializer):
+    appointmentsCount = serializers.IntegerField(allow_null=True)   #today by default -- total appointments count
+    appointmentsCompleted = serializers.IntegerField(allow_null=True)  #today by default -- total appointments completed
+    appointmentsCancelled = serializers.IntegerField(allow_null=True)  #today by default -- total appointments cancelled
+    appointmentsNoShow = serializers.IntegerField(allow_null=True)     #today by default -- total appointments where patient didn't show up
+
+#Revenue serializer -- nested serializer
 class ClinicRevenueSerializer(serializers.Serializer):
     billedInPeriod = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
     collectedInPeriod = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
     totalOutstanding = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)  #total not paid (irrespective of time period)
+    totalCreditHeld = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
     collectedByMethod = serializers.DictField(
         child=serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True),
      allow_null=True)
@@ -27,10 +35,7 @@ class ClinicRevenueSerializer(serializers.Serializer):
 class DashboardStatisticsSerializer(UserPermissionsMixin, serializers.Serializer):
     patientsTotal = serializers.IntegerField(allow_null=True)  #total patients (irrespective of time period) 
     patientsNew = serializers.IntegerField(allow_null=True)   #monthly by default
-    appointmentsCount = serializers.IntegerField(allow_null=True)   #today by default -- total appointments count
-    appointmentsCompleted = serializers.IntegerField(allow_null=True)  #today by default -- total appointments completed
-    appointmentsCancelled = serializers.IntegerField(allow_null=True)  #today by default -- total appointments cancelled
-    appointmentsNoShow = serializers.IntegerField(allow_null=True)     #today by default -- total appointments where patient didn't show up
+    appointments = AppointmentsStatsSerializer(many=False, allow_null=True)
     revenue = ClinicRevenueSerializer(many=False, allow_null=True)
     waitingRoom = serializers.DictField(child=serializers.IntegerField(allow_null=True), allow_null=True) #today only -- standardized filtering
     recalls = serializers.DictField(child=serializers.IntegerField(allow_null=True), allow_null=True)  #custom -- standardized filtering
@@ -48,16 +53,17 @@ class DashboardStatisticsSerializer(UserPermissionsMixin, serializers.Serializer
     #     return fields
 
 
+#Date range choices (for filtering)
+DATE_RANGE_CHOICES = [
+    ('today', _('today')), 
+    ('week', _('week')), 
+    ('month', _('month')),
+    ('quarter', _('quarter')),
+    ('year', _('year'))
+]
+
 #serializer for validating query parameters to dashboard/stats/
 class DashboardQueryParamSerializer(serializers.Serializer):
-    DATE_RANGE_CHOICES = [
-        ('today', 'today'), 
-        ('week', 'week'), 
-        ('month', 'month'),
-        ('quarter', 'quarter'),
-        ('year', 'year')
-    ]
-
     branchId = serializers.UUIDField(required=False, allow_null=True)
     dateRange = serializers.ChoiceField(choices=DATE_RANGE_CHOICES, required=False, 
                                         allow_blank=True, allow_null=True)
@@ -94,6 +100,7 @@ class DashboardAppointmentTodaySerializer(serializers.ModelSerializer):
 class DashboardOptionsSerializer(serializers.Serializer):
     branchChoices = serializers.SerializerMethodField()
     doctorChoices = serializers.SerializerMethodField()
+    dateRangeChoices = serializers.SerializerMethodField()
     
     #Get branch choices (with id and name)
     @extend_schema_field(
@@ -124,3 +131,13 @@ class DashboardOptionsSerializer(serializers.Serializer):
                  for doctor_id,name in User.objects.only('id','name','role', 'branch')\
                     .filter(**filters).values_list('id', 'name').order_by('name')
             ]
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.DictField(child=serializers.CharField())
+    ))
+    def get_dateRangeChoices(self, obj):
+        return [
+            {'value': choice[0], 'label': choice[1]}
+             for choice in DATE_RANGE_CHOICES
+        ]

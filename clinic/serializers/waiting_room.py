@@ -68,6 +68,7 @@ class WaitingRoomSerializer(ValidateBranchMixin, serializers.ModelSerializer):
             rep['doctorId'] = instance.doctorId or None
         return rep
 
+
     def validate(self, data):
         appointment = data.get('appointment')
         patient = data.get('patient')
@@ -168,10 +169,10 @@ class UpdateWaitingRoomSerializer(serializers.ModelSerializer):
 
         if status and status != instance.status:
 
-            if status == WaitingRoom.StatusChoices.IN_CHAIR:
+            if status == 'in_chair':
                 instance.startedAt = timezone.localtime(timezone.now())
 
-            elif status == WaitingRoom.StatusChoices.DONE:
+            elif status == 'done':
                 #set completedAt to now
                 completedAt = timezone.localtime(timezone.now())
                 #update completedAt
