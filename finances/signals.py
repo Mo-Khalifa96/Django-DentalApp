@@ -122,6 +122,8 @@ def update_transaction_aggregates(sender, instance, **kwargs):
 
     if (instance.type != 'deposit') and has_coverage:  #exclude deposits
         if instance.method == 'insurance' or prev_method == 'insurance':
+            usedYTD_before = coverage.usedYTD
+
             #calculate total ytd used from insurance-type payments
             coverage.usedYTD = Transaction.objects.completed().filter(
                     patient=instance.patient, method='insurance', date__year=timezone.now().year)\
@@ -129,6 +131,12 @@ def update_transaction_aggregates(sender, instance, **kwargs):
                 .aggregate(
                      total_ytd=Coalesce(Sum('amount'), Decimal('0'))
                 )['total_ytd']
+            
+            #Account for refunds to change eligibility back to 'active'
+            if (usedYTD_before > coverage.usedYTD < coverage.annualMax)\
+             and coverage.eligibilityStatus == 'limit_reached':
+                coverage.eligibilityStatus = 'active'
+                coverage.eligibilityChecked = timezone.localdate(timezone.now())
     
         #else, check if patient has insurance and deductible amount is met
         elif (coverage.coveragePercent != 100 or not coverage.deductibleMet)\
@@ -137,7 +145,7 @@ def update_transaction_aggregates(sender, instance, **kwargs):
             total_paid = Transaction.objects.completed().filter(
                     patient=instance.patient, date__year=timezone.now().year
                 ).exclude(
-                    Q(id__in=exclude_ids) | Q(method='insurance')
+                    Q(id__in=exclude_ids) | Q(method='insurance') | Q(type='deposit')
                 ).aggregate(
                     total_paid=Coalesce(Sum('amount'), Decimal('0'))
                 )['total_paid']

@@ -345,7 +345,6 @@ def bill_factory(patient_factory, dentist_user, visit_factory):
     return _create
 
 
-
 @pytest.fixture
 def plan_bill_factory():
     from finances.models import Bill
@@ -447,6 +446,21 @@ def deposit_factory(treatment_plan_factory, patient_factory, procedure_factory):
             amount=amount, treatment=treatment, **overrides
         )
     return _create
+
+
+@pytest.fixture
+def coverage_factory(insurance_provider_factory):
+    """Attaches a provider to the patient's auto-created coverage row."""
+    def _setup(patient, provider=None, **coverage_fields):
+        provider = provider or insurance_provider_factory()
+        coverage = patient.patient_insurance
+        coverage.provider = provider
+        for key, value in {'eligibilityStatus': 'active', 'deductibleMet': True, **coverage_fields}.items():
+            setattr(coverage, key, value)
+        coverage.save()
+        return coverage
+    return _setup
+
 
 @pytest.fixture
 def insurance_provider_factory():

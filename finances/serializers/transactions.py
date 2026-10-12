@@ -1,13 +1,15 @@
 from django.http import Http404
 from clinic.models import Branch
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 from finances.models import Bill, Transaction
 from utils.swagger_utils import extend_schema_field
 from django.utils.translation import gettext_lazy as _
-from patients.models import Patient, Visit, TreatmentPlan
+from rest_framework.exceptions import ValidationError
 from utils.mixins import ValidateBranchMixin, UserPermissionsMixin
 from services.translation.serializers import TranslatedChoiceField
+from patients.models import Patient, Visit, TreatmentPlan, PatientCoverage
 from finances.docs import list_transactions_schema, retrieve_transaction_schema, transactions_options_schema
 
 
@@ -82,9 +84,18 @@ class CreateTransactionSerializer(TransactionSerializer):
         bill = data.get('bill')
         amount = data.get('amount')
         method = data.get('method', 'cash')
+        visit = data.get('visit')
 
+        if getattr(bill, 'installmentPlan_id', None):
+            raise ValidationError('Invalid transactions route for installment plans.')
+        elif bill.isDepositBill:
+            raise ValidationError('This bill records a deposit and cannot receive payments.')
+        
+        if visit and visit.patient_id != bill.patient_id:
+            raise serializers.ValidationError({'visitId': _("Visit does not belong to this bill's patient.")})
+        
         #if insurance payment, validate insurance is still active
-        coverage = bill.patient.patient_insurance
+        coverage = bill.patient.patient_insurance #PatientCoverage.objects.filter(patient=bill.patient).first()
         if coverage and method == 'insurance':
             coverage.validate_coverage_for_transaction(transaction_amount=amount)
                     
@@ -122,10 +133,13 @@ class UpdateTransactionSerializer(TransactionSerializer):
             method = data.get('method') or self.instance.method
 
             coverage = bill.patient.patient_insurance
-            if coverage and (method == 'insurance')\
-             and (amount and amount != self.instance.amount):
-                updated_amount = amount - self.instance.amount
-                coverage.validate_coverage_for_transaction(transaction_amount=updated_amount)
+            if coverage and method == 'insurance':
+                if amount and amount > self.instance.amount:
+                    updated_amount = amount - self.instance.amount
+                    coverage.validate_coverage_for_transaction(transaction_amount=updated_amount)                
+                elif self.instance.method != 'insurance':
+                    amount = amount if amount else self.instance.amount
+                    coverage.validate_coverage_for_transaction(transaction_amount=amount)
             
         return data
 
@@ -213,6 +227,12 @@ class RefundTransactionSerializer(TransactionSerializer):
             'refundReason': {'required': True, 'allow_blank': False, 'allow_null': False}
         }
 
+    def validate(self, data):
+        reason = data.get('refundReason')
+        if not reason:
+            raise serializers.ValidationError(_('Reason is required before completing the refund.'))
+        return data
+
     @transaction.atomic
     def update(self, instance, validated_data):
         refundReason = validated_data.get('refundReason')
@@ -236,7 +256,13 @@ class RequestCorrectionSerializer(TransactionSerializer):
         extra_kwargs = {
             'correctionReason': {'required': True, 'allow_blank': False, 'allow_null': False}
         }
-    
+
+    def validate(self, data):
+        reason = data.get('correctionReason')
+        if not reason:
+            raise serializers.ValidationError(_('Correction reason is required.'))
+        return data
+
     @transaction.atomic
     def update(self, instance, validated_data):
         correctionReason = validated_data.get('correctionReason')

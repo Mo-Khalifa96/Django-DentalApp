@@ -1,9 +1,9 @@
 import uuid
 import pytest
-from datetime import date
 from decimal import Decimal
 from .utils import render_error
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from finances.models import Transaction
 
@@ -15,12 +15,12 @@ from finances.models import Transaction
 def _transaction_url(transaction_id):
     return reverse('retrieve_update_delete_transaction', kwargs={'id': transaction_id})
 
-def _create_payload(bill, visit, **overrides):
+def _create_payload(bill, visit=None, **overrides):
     base = {
-        'billId':  str(bill.id),
-        'visitId': str(visit.id),
-        'date':    str(date.today()),
-        'amount':  '150.00',
+        'billId': str(bill.id),
+        'visitId': (str(visit.id) if visit else None),
+        'date': str(timezone.localdate()),
+        'amount': '150.00',
         'currency': '$',
     }
     base.update(overrides)
@@ -242,6 +242,131 @@ class TestListCreateTransactionsAPIView:
         assert response.data.get('success') is True
         assert 'data' in response.data
 
+@pytest.mark.django_db
+class TestTransactionListFields:
+
+    def _list_item(self, api_client, txn):
+        response = api_client.get(reverse('list_create_transactions'))
+        return next(t for t in response.data['data'] if t['id'] == str(txn.id))
+
+    def test_installment_plan_id_is_null_for_plain_bills_and_set_for_plan_bills(
+        self, api_client, admin_user, transaction_factory, installment_plan_factory, plan_bill_factory
+    ):
+        plain = transaction_factory()
+        plan = installment_plan_factory()
+        plan_txn = transaction_factory(bill=plan_bill_factory(plan), type='installment')
+
+        api_client.force_authenticate(user=admin_user)
+        assert self._list_item(api_client, plain)['installmentPlanId'] is None
+        assert str(self._list_item(api_client, plan_txn)['installmentPlanId']) == str(plan.id)
+
+    def test_list_includes_the_type_of_each_transaction(self, api_client, admin_user, transaction_factory):
+        txn = transaction_factory()
+        api_client.force_authenticate(user=admin_user)
+        assert self._list_item(api_client, txn)['type'] is not None
+
+    def test_non_admin_sees_refunded_rows_with_status_and_type(
+        self, api_client, user_factory, transaction_factory, refund_transaction
+    ):
+        """Fails if get_fields() still strips 'status' for non-admins; refunds are no longer hidden from them."""
+        txn = refund_transaction(transaction=transaction_factory())
+        api_client.force_authenticate(user=user_factory(role='accountant'))
+        item = self._list_item(api_client, txn)
+
+        assert 'status' in item
+        assert 'type' in item
+
+@pytest.mark.django_db
+class TestCreateTransactionRules:
+    URL = 'list_create_transactions'
+
+    def _post(self, api_client, user, bill, visit=None, **overrides):
+        api_client.force_authenticate(user=user)
+        return api_client.post(reverse(self.URL), _create_payload(bill, visit, **overrides), format='json')
+
+    def test_visit_is_optional_and_visit_totals_are_untouched(self, api_client, admin_user, bill_factory):
+        bill = bill_factory()
+        visit = bill.visits.first()
+        response = self._post(api_client, admin_user, bill)
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+        txn = Transaction.objects.get(bill=bill)
+        assert txn.visit is None
+        assert txn.patient == bill.patient
+        visit.refresh_from_db()
+        assert visit.paid == Decimal('150.00')   # factory default; a visit-less payment must not change it
+
+    def test_type_is_visit_fee_when_visit_given_and_bill_has_no_treatment(self, api_client, admin_user, bill_factory):
+        bill = bill_factory()
+        self._post(api_client, admin_user, bill, visit=bill.visits.first())
+        assert Transaction.objects.get(bill=bill).type == 'visit_fee'
+
+    def test_type_is_treatment_payment_when_bill_has_treatment(
+        self, api_client, admin_user, bill_factory, patient_factory, procedure_factory, treatment_plan_factory
+    ):
+        patient = patient_factory()
+        treatment = treatment_plan_factory(patient=patient, procedure=procedure_factory())
+        bill = bill_factory(patient=patient, treatment=treatment, visits=[])
+        self._post(api_client, admin_user, bill)
+        assert Transaction.objects.get(bill=bill).type == 'treatment_payment'
+
+    def test_treatment_wins_over_visit_when_deriving_type(
+        self, api_client, admin_user, bill_factory, patient_factory, procedure_factory, treatment_plan_factory,
+        visit_factory, dentist_user
+    ):
+        patient = patient_factory()
+        treatment = treatment_plan_factory(patient=patient, procedure=procedure_factory())
+        visit = visit_factory(patient=patient, doctor=dentist_user)
+        bill = bill_factory(patient=patient, treatment=treatment, visits=[visit])
+        self._post(api_client, admin_user, bill, visit=visit)
+        assert Transaction.objects.get(bill=bill).type == 'treatment_payment'
+
+    def test_type_is_other_with_neither_visit_nor_treatment(self, api_client, admin_user, bill_factory):
+        bill = bill_factory(visits=[])
+        self._post(api_client, admin_user, bill)
+        assert Transaction.objects.get(bill=bill).type == 'other'
+
+    def test_negative_amount_returns_400(self, api_client, admin_user, bill_factory):
+        bill = bill_factory()
+        response = self._post(api_client, admin_user, bill, amount='-5.00')
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+        assert not Transaction.objects.filter(bill=bill).exists()
+
+    # ── Rejections (fail until the validations in "Findings" 1 and 3 are added) ──
+
+    def test_plain_transaction_on_installment_bill_is_rejected(
+        self, api_client, admin_user, installment_plan_factory, plan_bill_factory
+    ):
+        plan = installment_plan_factory()
+        bill = plan_bill_factory(plan)
+        response = self._post(api_client, admin_user, bill)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+
+        #plan total paid shouldn't have gotten changed
+        plan.refresh_from_db()
+        assert plan.totalPaid == Decimal('0') 
+
+    def test_transaction_on_deposit_bill_is_rejected(self, api_client, admin_user, deposit_factory):
+        deposit = deposit_factory(amount=Decimal('500.00'))
+        response = self._post(api_client, admin_user, deposit.bill)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+        deposit.bill.refresh_from_db()
+        assert deposit.bill.totalPaid == Decimal('500.00')
+
+    def test_visit_of_another_patient_is_rejected(
+        self, api_client, admin_user, bill_factory, patient_factory, visit_factory, dentist_user
+    ):
+        bill = bill_factory()
+        other_visit = visit_factory(patient=patient_factory(), doctor=dentist_user)
+        response = self._post(api_client, admin_user, bill, visit=other_visit)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+        assert 'visitId' in response.data['error']['fields']
+        other_visit.refresh_from_db()
+        assert other_visit.paid == Decimal('150.00')
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PATCH | DELETE  /transactions/<id>/
@@ -304,7 +429,7 @@ class TestUpdateDeleteTransactionAPIView:
         assert not Transaction.objects.filter(id=tid).exists()
         assert not Transaction.all_objects.filter(id=tid).exists()
 
-    def test_admin_hard_delete_does_updates_bill_total_paid_to_zero(
+    def test_admin_hard_delete_does_update_bill_total_paid_to_zero(
         self, api_client, admin_user, transaction_factory
     ):
         """
@@ -324,6 +449,22 @@ class TestUpdateDeleteTransactionAPIView:
         bill.refresh_from_db()
         assert bill.totalPaid == Decimal('0')
 
+    def test_admin_hard_delete_recalculates_bill_and_visit_totals(
+        self, api_client, admin_user, transaction_factory
+    ):
+        """pre_delete recomputes aggregates without the deleted row."""
+        transaction = transaction_factory(amount=Decimal('150.00'))
+        bill, visit = transaction.bill, transaction.visit
+        bill.refresh_from_db()
+        assert bill.totalPaid == Decimal('150.00')
+
+        api_client.force_authenticate(user=admin_user)
+        api_client.delete(_transaction_url(transaction.id))
+
+        bill.refresh_from_db(); visit.refresh_from_db()
+        assert bill.totalPaid == Decimal('0.00')
+        assert visit.paid == Decimal('0.00')
+        
     def test_non_admin_soft_deletes_transaction(
         self, api_client, user_factory, transaction_factory
     ):
@@ -379,6 +520,400 @@ class TestUpdateDeleteTransactionAPIView:
     def test_unauthenticated_cannot_delete(self, api_client, transaction_factory):
         transaction = transaction_factory()
         response = api_client.delete(_transaction_url(transaction.id))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Insurance payments — coverage rules and allowance tracking
+# ══════════════════════════════════════════════════════════════════════════════
+
+@pytest.mark.django_db
+class TestInsurancePayments:
+    URL = 'list_create_transactions'
+
+    def _post_insurance(self, api_client, user, bill, **overrides):
+        api_client.force_authenticate(user=user)
+        return api_client.post(
+            reverse(self.URL), _create_payload(bill, method='insurance', **overrides), format='json'
+        )
+
+    def test_insurance_payment_without_provider_returns_400(self, api_client, admin_user, bill_factory):
+        bill = bill_factory()   # the patient's coverage row has no provider
+        response = self._post_insurance(api_client, admin_user, bill)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+        assert 'method' in response.data['error']['fields']
+        assert not Transaction.objects.filter(bill=bill).exists()
+
+    def test_valid_insurance_payment_consumes_allowance(
+        self, api_client, admin_user, patient_factory, bill_factory, coverage_factory
+    ):
+        patient = patient_factory()
+        coverage = coverage_factory(patient)
+        bill = bill_factory(patient=patient)
+        response = self._post_insurance(api_client, admin_user, bill)
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+        coverage.refresh_from_db()
+        assert coverage.usedYTD == Decimal('150.00')
+
+    @pytest.mark.parametrize('eligibility', ['expired', 'limit_reached'])
+    def test_inactive_coverage_blocks_insurance_payment(
+        self, api_client, admin_user, patient_factory, bill_factory, coverage_factory, eligibility
+    ):
+        patient = patient_factory()
+        coverage_factory(patient, eligibilityStatus=eligibility)
+        response = self._post_insurance(api_client, admin_user, bill_factory(patient=patient))
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+        assert 'method' in response.data['error']['fields']
+
+    def test_unmet_deductible_blocks_insurance_payment(
+        self, api_client, admin_user, patient_factory, bill_factory, coverage_factory
+    ):
+        patient = patient_factory()
+        coverage_factory(patient, deductibleMet=False)   # provider covers 80%, so the deductible applies
+        response = self._post_insurance(api_client, admin_user, bill_factory(patient=patient))
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+
+    def test_payment_exceeding_annual_max_is_blocked(
+        self, api_client, admin_user, patient_factory, bill_factory, coverage_factory
+    ):
+        patient = patient_factory()
+        coverage_factory(patient, usedYTD=Decimal('9950.00'))   # provider max is 10000
+        response = self._post_insurance(api_client, admin_user, bill_factory(patient=patient))   # 150
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+
+    def test_cash_payment_ignores_coverage_state(
+        self, api_client, admin_user, patient_factory, bill_factory, coverage_factory
+    ):
+        patient = patient_factory()
+        coverage_factory(patient, eligibilityStatus='expired')
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            reverse(self.URL), _create_payload(bill_factory(patient=patient)), format='json'
+        )
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+
+    def test_refunding_an_insurance_payment_returns_the_allowance(
+        self, patient_factory, bill_factory, coverage_factory, transaction_factory, refund_transaction
+    ):
+        patient = patient_factory()
+        coverage = coverage_factory(patient)
+        txn = transaction_factory(bill=bill_factory(patient=patient), method='insurance', amount=Decimal('150.00'))
+        coverage.refresh_from_db()
+        assert coverage.usedYTD == Decimal('150.00')
+
+        refund_transaction(transaction=txn)
+
+        coverage.refresh_from_db()
+        assert coverage.usedYTD == Decimal('0.00')
+
+    def test_cash_payments_accumulate_toward_the_deductible(
+        self, patient_factory, bill_factory, coverage_factory, insurance_provider_factory, transaction_factory
+    ):
+        provider = insurance_provider_factory(deductible=Decimal('100.00'))
+        patient = patient_factory()
+        coverage = coverage_factory(patient, provider=provider, deductibleMet=False)
+        transaction_factory(bill=bill_factory(patient=patient), amount=Decimal('150.00'))
+
+        coverage.refresh_from_db()
+        assert coverage.deductibleMet is True
+
+    def test_deposit_does_not_count_toward_the_deductible(
+        self, patient_factory, bill_factory, coverage_factory, insurance_provider_factory,
+        transaction_factory, deposit_factory, treatment_plan_factory, procedure_factory
+    ):
+        """Fails until the signal's deductible aggregate excludes type='deposit' (Findings 4)."""
+        provider = insurance_provider_factory(deductible=Decimal('100.00'))
+        patient = patient_factory()
+        coverage = coverage_factory(patient, provider=provider, deductibleMet=False)
+        treatment = treatment_plan_factory(patient=patient, procedure=procedure_factory())
+        deposit_factory(treatment=treatment, amount=Decimal('500.00'))
+        transaction_factory(bill=bill_factory(patient=patient), amount=Decimal('50.00'))   # below the deductible
+
+        coverage.refresh_from_db()
+        assert coverage.deductibleMet is False
+
+    def test_patch_method_to_insurance_validates_coverage(
+        self, api_client, admin_user, bill_factory, transaction_factory
+    ):
+        """Fails until the method-change check is added (Findings 2)."""
+        txn = transaction_factory(bill=bill_factory())   # cash; the patient has no provider
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.patch(_transaction_url(txn.id), {'method': 'insurance'}, format='json')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+        txn.refresh_from_db()
+        assert txn.method == 'cash'
+
+    def test_patch_method_to_insurance_updates_allowance(
+        self, api_client, admin_user, patient_factory, bill_factory, coverage_factory, transaction_factory
+    ):
+        patient = patient_factory()
+        coverage = coverage_factory(patient)
+        txn = transaction_factory(bill=bill_factory(patient=patient))
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.patch(_transaction_url(txn.id), {'method': 'insurance'}, format='json')
+
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
+        coverage.refresh_from_db()
+        assert coverage.usedYTD == Decimal('150.00')
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Refunds and corrections (status changes; the row stays visible)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@pytest.mark.django_db
+class TestRefundsAndCorrections:
+
+    def test_refund_removes_only_that_payment_from_bill_and_visit_totals(
+        self, bill_factory, transaction_factory, refund_transaction
+    ):
+        bill = bill_factory()
+        visit = bill.visits.first()
+        first = transaction_factory(bill=bill, amount=Decimal('100.00'))
+        transaction_factory(bill=bill, amount=Decimal('60.00'))
+
+        refund_transaction(transaction=first)
+
+        bill.refresh_from_db(); visit.refresh_from_db()
+        assert bill.totalPaid == Decimal('60.00')
+        assert visit.paid == Decimal('60.00')
+
+    def test_refunded_transaction_is_not_soft_deleted(self, transaction_factory, refund_transaction):
+        txn = refund_transaction(transaction=transaction_factory())
+        assert txn.isDeleted is False
+        assert Transaction.objects.filter(id=txn.id).exists()   # still reachable through the default manager
+
+    def test_reversing_a_refund_restores_totals_and_clears_the_reason(
+        self, bill_factory, transaction_factory, refund_transaction
+    ):
+        bill = bill_factory()
+        txn = transaction_factory(bill=bill, amount=Decimal('100.00'))
+        refund_transaction(transaction=txn, reason='Patient cancelled')
+        txn.refresh_from_db()
+        assert txn.refundReason == 'Patient cancelled'
+
+        txn.status = 'completed'
+        txn.save()
+
+        txn.refresh_from_db(); bill.refresh_from_db()
+        assert txn.refundReason is None
+        assert bill.totalPaid == Decimal('100.00')
+
+    def test_pending_correction_stays_in_circulation_and_reason_clears_when_resolved(
+        self, bill_factory, transaction_factory
+    ):
+        bill = bill_factory()
+        visit = bill.visits.first()
+        txn = transaction_factory(bill=bill, amount=Decimal('100.00'))
+        txn.status = 'pending_correction'
+        txn.correctionReason = 'Wrong amount entered'
+        txn.save(update_fields=['status', 'correctionReason'])
+
+        bill.refresh_from_db(); visit.refresh_from_db()
+        assert bill.totalPaid == Decimal('100.00')
+        assert visit.paid == Decimal('100.00')
+
+        txn.status = 'completed'
+        txn.save()
+        txn.refresh_from_db()
+        assert txn.correctionReason is None
+
+    def test_admin_can_refund_through_the_generic_patch(
+        self, api_client, admin_user, bill_factory, transaction_factory
+    ):
+        bill = bill_factory()
+        txn = transaction_factory(bill=bill, amount=Decimal('100.00'))
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.patch(_transaction_url(txn.id), {'status': 'refunded'}, format='json')
+
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
+        bill.refresh_from_db()
+        assert bill.totalPaid == Decimal('0.00')
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Deletes and refunds on installment-settling transactions
+# ══════════════════════════════════════════════════════════════════════════════
+
+@pytest.mark.django_db
+class TestInstallmentTransactionCascades:
+
+    @pytest.fixture
+    def settled(self, installment_plan_factory, plan_bill_factory, transaction_factory):
+        plan = installment_plan_factory()
+        bill = plan_bill_factory(plan)
+        installment = plan.installments.get(sequence=1)
+        txn = transaction_factory(bill=bill, patient=bill.patient, amount=installment.amount, type='installment')
+        installment.transaction = txn
+        installment.paidAt = timezone.now()
+        installment.save()
+        return plan, installment, txn
+
+    def _assert_unlinked(self, plan, installment):
+        installment.refresh_from_db(); plan.refresh_from_db()
+        assert installment.paidAt is None
+        assert installment.transaction_id is None
+        assert plan.totalPaid == Decimal('0')
+
+    def test_admin_hard_delete_unlinks_installments_and_resets_plan_total(self, api_client, admin_user, settled):
+        plan, installment, txn = settled
+        api_client.force_authenticate(user=admin_user)
+        api_client.delete(_transaction_url(txn.id))
+        self._assert_unlinked(plan, installment)
+
+    def test_non_admin_soft_delete_unlinks_installments(self, api_client, user_factory, settled):
+        plan, installment, txn = settled
+        api_client.force_authenticate(user=user_factory(role='accountant'))
+        api_client.delete(_transaction_url(txn.id))
+        self._assert_unlinked(plan, installment)
+
+    def test_refund_unlinks_installments(self, settled, refund_transaction):
+        plan, installment, txn = settled
+        refund_transaction(transaction=txn)
+        self._assert_unlinked(plan, installment)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Refund endpoint (route name and PATCH method assumed above)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@pytest.mark.django_db
+class TestRefundTransactionAPI:
+
+    def _refund(self, api_client, txn, **payload):
+        return api_client.patch(reverse('refund_transaction', kwargs={'id': txn.id}), payload, format='json')
+
+    def test_user_without_edit_permission_can_refund_with_a_reason(
+        self, api_client, user_factory, bill_factory, transaction_factory
+    ):
+        bill = bill_factory()
+        txn = transaction_factory(bill=bill, amount=Decimal('100.00'))
+        api_client.force_authenticate(user=user_factory(role='accountant'))
+        response = self._refund(api_client, txn, refundReason='Patient cancelled')
+
+        assert response.status_code == status.HTTP_200_OK or render_error(response)
+        txn.refresh_from_db(); bill.refresh_from_db()
+        assert txn.status == 'refunded'
+        assert txn.refundReason == 'Patient cancelled'
+        assert txn.isDeleted is False
+        assert bill.totalPaid == Decimal('0.00')
+
+    @pytest.mark.parametrize('payload', [{}, {'refundReason': ''}, {'refundReason': None}])
+    def test_reason_is_required(self, api_client, admin_user, transaction_factory, payload):
+        txn = transaction_factory()
+        api_client.force_authenticate(user=admin_user)
+
+        response = self._refund(api_client, txn, **payload)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+        txn.refresh_from_db()
+        assert txn.status == 'completed'
+
+    def test_refund_cannot_change_the_amount(self, api_client, admin_user, transaction_factory):
+        txn = transaction_factory(amount=Decimal('100.00'))
+        api_client.force_authenticate(user=admin_user)
+        self._refund(api_client, txn, refundReason='Mistake', amount='1.00')
+        txn.refresh_from_db()
+        assert txn.amount == Decimal('100.00')
+
+    def test_user_without_transaction_permissions_gets_403(self, api_client, assistant_user, transaction_factory):
+        api_client.force_authenticate(user=assistant_user)
+        response = self._refund(api_client, transaction_factory(), refundReason='x')
+        assert response.status_code == status.HTTP_403_FORBIDDEN or render_error(response)
+
+    def test_unauthenticated_gets_401(self, api_client, transaction_factory):
+        response = self._refund(api_client, transaction_factory(), refundReason='x')
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Deposit endpoint (route name assumed above)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@pytest.mark.django_db
+class TestCreateDepositAPI:
+
+    @staticmethod
+    def _payload(patient, **overrides):
+        base = {
+            'patientId': str(patient.id),
+            'date': str(timezone.localdate()),
+            'amount': '500.00',
+            'currency': '$',
+            'branchId': None,
+        }
+        base.update(overrides)
+        return base
+
+    def _post(self, api_client, user, payload):
+        api_client.force_authenticate(user=user)
+        return api_client.post(reverse('create_deposit_transaction'), payload, format='json')
+
+    def test_deposit_creates_a_dedicated_settled_bill(self, api_client, admin_user, patient_factory):
+        patient = patient_factory()
+        response = self._post(api_client, admin_user, self._payload(patient))
+
+        assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+        txn = Transaction.objects.get(patient=patient)
+        bill = txn.bill
+        assert (txn.type, txn.status, txn.createdBy) == ('deposit', 'completed', admin_user.name)
+        assert bill.isDepositBill is True
+        assert bill.isCreditHeld is True
+        assert bill.totalAmount == bill.totalPaid == txn.amount == Decimal('500.00')
+        assert bill.visits.count() == 0
+
+    def test_deposit_can_be_linked_to_the_patients_treatment(
+        self, api_client, admin_user, patient_factory, procedure_factory, treatment_plan_factory
+    ):
+        patient = patient_factory()
+        treatment = treatment_plan_factory(patient=patient, procedure=procedure_factory())
+        self._post(api_client, admin_user, self._payload(patient, treatmentId=str(treatment.id)))
+
+        txn = Transaction.objects.get(patient=patient)
+        assert txn.treatmentId == treatment.id
+        assert txn.bill.treatment == treatment
+
+    def test_treatment_of_another_patient_returns_400(
+        self, api_client, admin_user, patient_factory, procedure_factory, treatment_plan_factory
+    ):
+        patient, other = patient_factory(), patient_factory()
+        treatment = treatment_plan_factory(patient=other, procedure=procedure_factory())
+        response = self._post(api_client, admin_user, self._payload(patient, treatmentId=str(treatment.id)))
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+        assert not Transaction.objects.filter(type='deposit').exists()
+
+    def test_unknown_treatment_returns_400(self, api_client, admin_user, patient_factory):
+        response = self._post(api_client, admin_user, self._payload(patient_factory(), treatmentId=str(uuid.uuid4())))
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+
+    def test_insurance_method_is_rejected_without_creating_anything(self, api_client, admin_user, patient_factory):
+        response = self._post(api_client, admin_user, self._payload(patient_factory(), method='insurance'))
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+        assert not Transaction.objects.filter(type='deposit').exists()
+
+    def test_negative_amount_returns_400(self, api_client, admin_user, patient_factory):
+        response = self._post(api_client, admin_user, self._payload(patient_factory(), amount='-10.00'))
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+
+    def test_deposit_does_not_consume_the_insurance_allowance(
+        self, api_client, admin_user, patient_factory, coverage_factory
+    ):
+        patient = patient_factory()
+        coverage = coverage_factory(patient)
+        self._post(api_client, admin_user, self._payload(patient))
+        coverage.refresh_from_db()
+        assert coverage.usedYTD == Decimal('0.00')
+
+    def test_unauthenticated_gets_401(self, api_client, patient_factory):
+        response = api_client.post(reverse('create_deposit_transaction'), self._payload(patient_factory()), format='json')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
 

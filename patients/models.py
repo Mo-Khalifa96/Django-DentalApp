@@ -725,9 +725,6 @@ class PatientCoverage(models.Model):
                 if self.usedYTD >= self.annualMax:
                     self.eligibilityStatus = 'limit_reached'
                     self.eligibilityChecked = timezone.localdate(timezone.now())
-                elif self.eligibilityStatus == 'limit_reached':  #to account for refunds
-                    self.eligibilityStatus = 'active'
-                    self.eligibilityChecked = timezone.localdate(timezone.now())
 
         #handle null usedYTD
         if self.usedYTD in (None, ''):
