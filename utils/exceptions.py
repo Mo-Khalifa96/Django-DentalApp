@@ -56,7 +56,7 @@ class InstallmentPlanInProgressError(APIException):
 
 #GLOBAL EXCEPTION HANDLER 
 #Define global exception handler 
-def DentalTechExceptionHandler(exc, context):  
+def DentalTechExceptionHandler(exc, context):
     '''Main (global) exception handler for the system.'''
     #Let DRF convert Http404 and Django's PermissionDenied first
     response = exception_handler(exc, context)
@@ -79,7 +79,7 @@ def DentalTechExceptionHandler(exc, context):
                     'success': False,
                     'error': {
                         'code': 'APPOINTMENT_CONFLICT',
-                        'message': str(data.get('detail') or exc.default_detail) if isinstance(data, dict) else str(exc.detail),
+                        'message': _extract_exception_message(data, exc),
                         'conflictWith': data.get('conflictWith'),
                     }
                 },
@@ -92,7 +92,7 @@ def DentalTechExceptionHandler(exc, context):
                     'success': False,
                     'error': {
                         'code': 'PERIO_EXAM_LOCKED',
-                        'message': str(data.get('detail') or exc.default_detail) if isinstance(data, dict) else str(exc.detail)
+                        'message': _extract_exception_message(data, exc)
                     }
                 },
                 status=exc.status_code,
@@ -105,7 +105,7 @@ def DentalTechExceptionHandler(exc, context):
                     'success': False,
                     'error': {
                         'code': exc.default_code,
-                        'message': str(data.get('detail') or exc.default_detail) if isinstance(data, dict) else str(exc.detail)
+                        'message': _extract_exception_message(data, exc)
                     }
                 },
                 status=exc.status_code,
@@ -118,11 +118,8 @@ def DentalTechExceptionHandler(exc, context):
                     'success': False,
                     'error': {
                         'code': exc.default_code,
-                        'message': str(data.get('detail') or exc.default_detail) if isinstance(data, dict) else str(exc.detail),
+                        'message': _extract_exception_message(data, exc),
                         'billId': data.get('billId'),
-                        
-                        # 'message': str(data.get('detail', exc.default_detail)), #TODO - confirm which one is right
-                        # 'billId': str(data['billId']) if data.get('billId') else None,
                     }
                 },
                 status=exc.status_code,
@@ -135,7 +132,7 @@ def DentalTechExceptionHandler(exc, context):
                     'success': False,
                     'error': {
                         'code': getattr(exc, 'error_code', None) or 'WHATSAPP_API_ERROR',
-                        'message': str(data.get('detail') or exc.default_detail) if isinstance(data, dict) else str(exc.detail)
+                        'message': _extract_exception_message(data, exc)
                     }
                 },
                 status=exc.status_code,
@@ -148,7 +145,7 @@ def DentalTechExceptionHandler(exc, context):
                     'success': False,
                     'error': {
                         'code': exc.default_code,
-                        'message': str(data.get('detail') or exc.default_detail) if isinstance(data, dict) else str(exc.detail)
+                        'message': _extract_exception_message(data, exc)
                     }
                 },
                 status=status.HTTP_400_BAD_REQUEST
@@ -175,7 +172,7 @@ def DentalTechExceptionHandler(exc, context):
                 'error': {
                     'code': 'VALIDATION_ERROR',
                     'message': 'Validation failed.',
-                    'fields': _extract_messages(data),
+                    'fields': _extract_validation_messages(data),
                 }
             },
             status=response.status_code,
@@ -199,6 +196,7 @@ def DentalTechExceptionHandler(exc, context):
         )
 
 #Define helper functions for message and code extraction
+#Function to get error code
 def _extract_code(exc):
     '''Extracts a single uppercase string code from any exception type.'''
     try:
@@ -216,8 +214,17 @@ def _extract_code(exc):
     except Exception:
         return 'NOT_FOUND' if isinstance(exc, Http404) else 'ERROR'
 
-def _extract_messages(messages):
+#Function to extract exception message for custom exceptions
+def _extract_exception_message(data, exc):
+    if isinstance(data, dict):
+        return str(data.get('detail') or exc.default_detail) 
+    else:
+        return str(exc.detail)
+
+#Function to extract messages for validation error exceptions
+def _extract_validation_messages(messages):
     '''Normalizes field messages to a single string regardless of input type.'''
+    
     if isinstance(messages, ErrorDetail):
         return str(messages)
 
@@ -226,23 +233,23 @@ def _extract_messages(messages):
         #standard:
         # if len(messages) == 1 and 'non_field_errors' in messages:
         #     return {
-        #         'nonFieldErrors': _extract_messages(messages['non_field_errors'])
+        #         'nonFieldErrors': _extract_validation_messages(messages['non_field_errors'])
         #     }
 
         #collapse non_field_errors into single string message
         if len(messages) == 1 and 'non_field_errors' in messages:
-            return _extract_messages(messages['non_field_errors'])
+            return _extract_validation_messages(messages['non_field_errors'])
         
 
         #Handle validation errors for field errors
         return {
-            field: _extract_messages(value)
+            field: _extract_validation_messages(value)
             for field, value in messages.items()
         }
 
     #Handle list-nested error messages 
     if isinstance(messages, list):
-        normalized_messages = [_extract_messages(item) for item in messages]
+        normalized_messages = [_extract_validation_messages(item) for item in messages]
         #Flatten only plain message lists, not nested serializer lists
         if all(not isinstance(item, (dict, list)) for item in normalized_messages):
             return normalized_messages[0] if len(normalized_messages) == 1 else normalized_messages

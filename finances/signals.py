@@ -122,7 +122,7 @@ def update_transaction_aggregates(sender, instance, **kwargs):
 
     if (instance.type != 'deposit') and has_coverage:  #exclude deposits
         if instance.method == 'insurance' or prev_method == 'insurance':
-            usedYTD_before = coverage.usedYTD
+            usedYTD_before = coverage.usedYTD or Decimal('0')
 
             #calculate total ytd used from insurance-type payments
             coverage.usedYTD = Transaction.objects.completed().filter(
@@ -132,34 +132,38 @@ def update_transaction_aggregates(sender, instance, **kwargs):
                      total_ytd=Coalesce(Sum('amount'), Decimal('0'))
                 )['total_ytd']
             
-            #account for refunds/deletes to change eligibility back to 'active'
-            if (usedYTD_before > coverage.usedYTD < (coverage.annualMax or float('inf')))\
-             and coverage.eligibilityStatus == 'limit_reached':
-                coverage.eligibilityStatus = coverage.determine_coverage_status(coverage.eligibilityStatus)
-                coverage.eligibilityChecked = timezone.localdate(timezone.now())
-            
-            if (instance.status == 'refunded' or is_deletion) and coverage.deductibleMet\
-             and getattr(coverage.provider, 'deductible', None) not in (None, '')\
-             and coverage.usedYTD < (coverage.provider.deductible):
-                coverage.deductibleMet = False
-    
+            #account for refunds/deletes to change eligibility status and deductible flag
+            if instance.status == 'refunded' or is_deletion:
+                if (usedYTD_before > coverage.usedYTD < (coverage.annualMax or Decimal('inf')))\
+                 and coverage.eligibilityStatus == 'limit_reached':
+                    coverage.eligibilityStatus = coverage.determine_coverage_status(coverage.eligibilityStatus)
+                    coverage.eligibilityChecked = timezone.localdate(timezone.now())
+                
+                if coverage.deductibleMet and coverage.coveragePercent != 100 and coverage.provider\
+                 and isinstance(coverage.provider.deductible, Decimal):
+                    total_paid = _calculate_patient_usedYTD(instance, exclude_ids)
+                    coverage.deductibleMet = total_paid >= coverage.provider.deductible
+        
         #else, check if patient has insurance and deductible amount is met
         elif (coverage.coveragePercent != 100 or not coverage.deductibleMet)\
          and coverage.provider and isinstance(coverage.provider.deductible, Decimal):
-            
-            total_paid = Transaction.objects.completed().filter(
-                    patient=instance.patient, date__year=timezone.now().year
-                ).exclude(
-                    Q(id__in=exclude_ids) | Q(method='insurance') | Q(type='deposit')
-                ).aggregate(
-                    total_paid=Coalesce(Sum('amount'), Decimal('0'))
-                )['total_paid']
-            
-            if total_paid >= coverage.provider.deductible:
-                coverage.deductibleMet = True
+            total_paid = _calculate_patient_usedYTD(instance, exclude_ids)
+            coverage.deductibleMet = total_paid >= coverage.provider.deductible
     
         #update coverage's usedYTD
         coverage.save()
+
+
+def _calculate_patient_usedYTD(instance, exclude_ids=[]):
+    '''Helper function to calculate and return patient's insurance usedYTD.'''
+    
+    return Transaction.objects.completed().filter(
+                patient=instance.patient, date__year=timezone.now().year
+            ).exclude(
+                Q(id__in=exclude_ids) | Q(method='insurance') | Q(type='deposit')
+            ).aggregate(
+                total_paid=Coalesce(Sum('amount'), Decimal('0'))
+            )['total_paid']
 
 
 def _handle_deposit_refunds(instance):   #NOTE - awaiting decision from the frontend
@@ -190,7 +194,7 @@ def _handle_deposit_refunds(instance):   #NOTE - awaiting decision from the fron
     
     #save changes 
     instance.bill.save(update_fields=['isCreditHeld', 'description', 'updatedAt'])
-    
+
 
 
 #     # #Goes with the block:

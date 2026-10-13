@@ -4,7 +4,7 @@ from datetime import timedelta
 from django.utils import timezone
 from django.db import transaction
 from patients.models import PatientCoverage
-from django.db.models import F, Case, When, Value, BooleanField
+from django.db.models import F, Case, When, Value, DateField, BooleanField
 
 
 #Initiate logger 
@@ -89,7 +89,8 @@ def update_patient_insurance_usedYTD_task():
                 ),
                 eligibilityChecked=Case(
                     When(eligibilityStatus='limit_reached', then=Value(today.date())),
-                    default=F('eligibilityChecked')
+                    default=F('eligibilityChecked'),
+                    output_field=DateField()
                 ),
                 deductibleMet=Case(   #when coverage is 100%, deductible is always True
                     When(coveragePercent=100, then=Value(True)),
@@ -101,3 +102,4 @@ def update_patient_insurance_usedYTD_task():
     except Exception as exc:
         logger.error(f"Error updating patient insurance usedYTD: {str(exc)}")
         raise  #raise the exception for Django-Q2's retry mechanism
+
