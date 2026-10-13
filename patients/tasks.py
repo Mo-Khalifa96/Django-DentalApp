@@ -77,12 +77,20 @@ def update_patient_insurance_usedYTD_task():
             today = timezone.localtime(timezone.now())
 
             #get coverages with a set provider
-            coverages_to_update = PatientCoverage.objects.filter(provider__isnull=False).all()
+            coverages_to_update = PatientCoverage.objects.filter(provider__isnull=False)
 
             #update selected coverages 
             coverages_to_update.update(
                 updatedAt=today,
-                usedYTD=Decimal('0'), 
+                usedYTD=Decimal('0'),
+                eligibilityStatus=Case(
+                    When(eligibilityStatus='limit_reached', then=Value('active')),
+                    default=F('eligibilityStatus')
+                ),
+                eligibilityChecked=Case(
+                    When(eligibilityStatus='limit_reached', then=Value(today.date())),
+                    default=F('eligibilityChecked')
+                ),
                 deductibleMet=Case(   #when coverage is 100%, deductible is always True
                     When(coveragePercent=100, then=Value(True)),
                     default=Value(False),

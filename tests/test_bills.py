@@ -276,7 +276,7 @@ class TestListCreateBillsAPIView:
             format='json',
         )
         visit.refresh_from_db()
-        # Signal sets cost = totalAmount of the new bill (350 - 0 = 350)
+
         assert visit.cost != initial_cost
         assert visit.cost == Decimal('350.00')
 
@@ -388,7 +388,7 @@ class TestCreateBillRules:
         self, api_client, admin_user, patient_factory, procedure_factory, treatment_plan_factory
     ):
         patient = patient_factory()
-        treatment = treatment_plan_factory(patient=patient, procedure=procedure_factory())   # totalCost 120.00
+        treatment = treatment_plan_factory(patient=patient, procedure=procedure_factory())   #totalCost 120.00
 
         api_client.force_authenticate(user=admin_user)
         response = api_client.post(
@@ -787,8 +787,8 @@ class TestDepositBills:
 
         bill.refresh_from_db()
         assert bill.isCreditHeld is False
-        assert bill.isDepositBill is True                  # permanent: keeps it out of 'billed' analytics
-        assert bill.totalPaid == Decimal('500.00')         # deliberately not zeroed (frontend note)
+        assert bill.isDepositBill is True  #keeps it out of 'billed' analytics permenantly
+        assert bill.totalPaid == Decimal('500.00')
         assert 'Refunded' in bill.description
         item = _list_item(api_client, bill)
         assert item['isCreditHeld'] is False

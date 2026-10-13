@@ -116,8 +116,8 @@ class TestDashboardStatsAPI:
         api_client.force_authenticate(user=admin_user)
         data = _data(_get(api_client))
 
-        assert data['revenue']['collectedInPeriod'] == '250.00'    # transaction amount
-        assert data['revenue']['collectedInPeriod'] != '999.00'    #ot visit.paid
+        assert data['revenue']['collectedInPeriod'] == '250.00'
+        assert data['revenue']['collectedInPeriod'] != '999.00'
 
     def test_outstanding_is_billed_minus_total_paid(
         self, api_client, admin_user, bill_factory, transaction_factory
@@ -217,7 +217,7 @@ class TestDashboardStatsAPI:
         response = api_client.get(reverse(self.URL), {'dateRange': 'today'})
         data = _data(response)
 
-        assert data['revenue']['collectedInPeriod'] == '0.00'   # yesterday excluded
+        assert data['revenue']['collectedInPeriod'] == '0.00'
 
     def test_today_range_includes_todays_transaction(
         self, api_client, admin_user, bill_factory, transaction_factory
@@ -425,7 +425,7 @@ class TestDashboardRevenueRules:
         assert Decimal(before['collectedInPeriod']) == Decimal('100.00')
         assert Decimal(before['totalOutstanding']) == Decimal('200.00')
 
-        refund_transaction(transaction=txn)   # two-step flip so the signals fire like the real refund flow
+        refund_transaction(transaction=txn)   #two-step flip so the signals fire like the real refund flow
 
         after = self._revenue(api_client)
         assert Decimal(after['collectedInPeriod']) == Decimal('0.00')
@@ -437,7 +437,6 @@ class TestDashboardRevenueRules:
     ):
         bill = bill_factory(subtotal=Decimal('300.00'), totalAmount=Decimal('300.00'))
         txn = transaction_factory(bill=bill, amount=Decimal('100.00'))
-        # Transaction.save() forces status='completed' on create, so flip it afterwards
         txn.status = 'pending_correction'
         txn.correctionReason = 'Wrong amount entered'
         txn.save(update_fields=['status', 'correctionReason'])
@@ -454,21 +453,21 @@ class TestDashboardRevenueRules:
         self, api_client, admin_user, bill_factory, deposit_factory
     ):
         """Fails against the current views; passes once outstanding subtracts non-deposit payments only."""
-        bill_factory(subtotal=Decimal('300.00'), totalAmount=Decimal('300.00'))   # unpaid
+        bill_factory(subtotal=Decimal('300.00'), totalAmount=Decimal('300.00'))
         deposit_factory(amount=Decimal('500.00'))
 
         api_client.force_authenticate(user=admin_user)
         revenue = self._revenue(api_client)
 
-        assert Decimal(revenue['totalOutstanding']) == Decimal('300.00')   # held money isn't payment toward bills
-        assert Decimal(revenue['billedInPeriod']) == Decimal('300.00')     # deposit bill isn't 'billed' work
-        assert Decimal(revenue['collectedInPeriod']) == Decimal('500.00')  # but it is real cash in hand
+        assert Decimal(revenue['totalOutstanding']) == Decimal('300.00')   #Money held isn't payment toward bills -- doesn't show as outstanding
+        assert Decimal(revenue['billedInPeriod']) == Decimal('300.00')     #deposit bill isn't considered in total billed
+        assert Decimal(revenue['collectedInPeriod']) == Decimal('500.00')  #but considered as cash collected by clinic
         assert Decimal(revenue['totalCreditHeld']) == Decimal('500.00')
 
     def test_refunded_deposit_leaves_credit_held_but_stays_out_of_billed(
         self, api_client, admin_user, deposit_factory, refund_transaction
     ):
-        """Guards the two-flag design: isCreditHeld flips on refund, isDepositBill never does."""
+        """Tests guards on the two-flag: isCreditHeld flips on refund, isDepositBill never does."""
         deposit = deposit_factory(amount=Decimal('400.00'))
         api_client.force_authenticate(user=admin_user)
         assert Decimal(self._revenue(api_client)['totalCreditHeld']) == Decimal('400.00')
@@ -478,7 +477,7 @@ class TestDashboardRevenueRules:
         revenue = self._revenue(api_client)
         assert Decimal(revenue['totalCreditHeld']) == Decimal('0.00')
         assert Decimal(revenue['collectedInPeriod']) == Decimal('0.00')
-        assert Decimal(revenue['billedInPeriod']) == Decimal('0.00')   # must NOT creep back in after refund
+        assert Decimal(revenue['billedInPeriod']) == Decimal('0.00')
 
     # ── Installment plans ────────────────────────────────────────────────────
 
@@ -504,21 +503,20 @@ class TestDashboardRevenueRules:
         api_client.force_authenticate(user=admin_user)
         revenue = self._revenue(api_client)
 
-        assert Decimal(revenue['billedInPeriod']) == plan.totalAmount   # not 2x
+        assert Decimal(revenue['billedInPeriod']) == plan.totalAmount
         assert Decimal(revenue['totalOutstanding']) == plan.totalAmount
 
     def test_deposit_bill_on_same_treatment_does_not_hide_plan_from_billed(
         self, api_client, admin_user, installment_plan_factory, deposit_factory
     ):
-        """has_active_bill must ignore deposit bills, or the plan silently drops out of the totals."""
         plan = installment_plan_factory()
         deposit_factory(treatment=plan.treatment, amount=Decimal('50.00'))
 
         api_client.force_authenticate(user=admin_user)
         revenue = self._revenue(api_client)
 
-        assert Decimal(revenue['billedInPeriod']) == plan.totalAmount
-        assert Decimal(revenue['totalOutstanding']) == plan.totalAmount   # deposit must not offset it either
+        assert Decimal(revenue['billedInPeriod']) == plan.totalAmount  #deposit doesn't get billed
+        assert Decimal(revenue['totalOutstanding']) == plan.totalAmount  #deposit doesn't show in outstanding either
 
     def test_installment_plan_in_other_branch_excluded_for_scoped_user(
         self, api_client, user_factory, branch_factory, patient_factory,
@@ -535,7 +533,8 @@ class TestDashboardRevenueRules:
         api_client.force_authenticate(user=accountant)
         revenue = self._revenue(api_client)
 
-        assert Decimal(revenue['billedInPeriod']) == Decimal('120.00')   # only b1's plan
+        #only first branch's plan should show in billing
+        assert Decimal(revenue['billedInPeriod']) == Decimal('120.00')
 
 
 @pytest.mark.django_db

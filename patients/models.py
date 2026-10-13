@@ -1,6 +1,7 @@
 import uuid 
 from decimal import Decimal
 from django.db.models import Q
+from datetime import timedelta
 from django.utils import timezone
 from rest_framework import serializers
 from django.db import models, transaction
@@ -736,6 +737,24 @@ class PatientCoverage(models.Model):
 
         #save changes 
         super().save(*args, **kwargs)
+
+    def determine_coverage_status(self, current_status):
+        print('\n\nI AM HERE!')
+        if self.effectiveTo:
+            today = timezone.localdate()
+            if today > self.effectiveTo:
+                print('\ncondition 1 met')
+                return 'expired'
+            elif today < self.effectiveTo <= today + timedelta(days=30):
+                print('\ncondition 2 met')
+                return 'expiring'
+            else:
+                print('\ncondition 3 met')
+                return 'active'
+        print('\ncondition 4 met')
+        print(self.effectiveTo)
+        return current_status
+
 
     def validate_coverage_for_transaction(self, transaction_amount):
         '''Validates patient insurance can coverage transaction costs.'''

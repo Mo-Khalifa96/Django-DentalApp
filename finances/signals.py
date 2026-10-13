@@ -132,11 +132,16 @@ def update_transaction_aggregates(sender, instance, **kwargs):
                      total_ytd=Coalesce(Sum('amount'), Decimal('0'))
                 )['total_ytd']
             
-            #Account for refunds to change eligibility back to 'active'
-            if (usedYTD_before > coverage.usedYTD < coverage.annualMax)\
+            #account for refunds/deletes to change eligibility back to 'active'
+            if (usedYTD_before > coverage.usedYTD < (coverage.annualMax or float('inf')))\
              and coverage.eligibilityStatus == 'limit_reached':
-                coverage.eligibilityStatus = 'active'
+                coverage.eligibilityStatus = coverage.determine_coverage_status(coverage.eligibilityStatus)
                 coverage.eligibilityChecked = timezone.localdate(timezone.now())
+            
+            if (instance.status == 'refunded' or is_deletion) and coverage.deductibleMet\
+             and getattr(coverage.provider, 'deductible', None) not in (None, '')\
+             and coverage.usedYTD < (coverage.provider.deductible):
+                coverage.deductibleMet = False
     
         #else, check if patient has insurance and deductible amount is met
         elif (coverage.coveragePercent != 100 or not coverage.deductibleMet)\

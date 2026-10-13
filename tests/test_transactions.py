@@ -1,11 +1,13 @@
 import uuid
 import pytest
 from decimal import Decimal
+from datetime import timedelta
 from .utils import render_error
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from finances.models import Transaction
+from patients.tasks import update_patient_insurance_usedYTD_task
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -30,7 +32,6 @@ def _create_payload(bill, visit=None, **overrides):
 # ══════════════════════════════════════════════════════════════════════════════
 # GET | POST  /transactions/
 # ══════════════════════════════════════════════════════════════════════════════
-
 @pytest.mark.django_db
 class TestListCreateTransactionsAPIView:
     LIST_URL = 'list_create_transactions'
@@ -415,6 +416,7 @@ class TestUpdateDeleteTransactionAPIView:
         transaction.refresh_from_db()
         assert transaction.bill_id == original_bill_id   # unchanged
 
+
     # ── DELETE ────────────────────────────────────────────────────────────────
 
     def test_admin_hard_deletes_transaction(
@@ -536,6 +538,18 @@ class TestInsurancePayments:
         return api_client.post(
             reverse(self.URL), _create_payload(bill, method='insurance', **overrides), format='json'
         )
+
+    @pytest.fixture
+    def maxed_out_coverage(self, patient_factory, bill_factory, coverage_factory, transaction_factory):
+        """A patient whose one insurance payment used the whole 10000 allowance."""
+        patient = patient_factory()
+        coverage = coverage_factory(patient)
+        bill = bill_factory(patient=patient, subtotal=Decimal('10000.00'), totalAmount=Decimal('10000.00'))
+        txn = transaction_factory(bill=bill, method='insurance', amount=Decimal('10000.00'))
+        coverage.refresh_from_db()
+        assert coverage.eligibilityStatus == 'limit_reached'
+        return patient, coverage, bill, txn
+
 
     def test_insurance_payment_without_provider_returns_400(self, api_client, admin_user, bill_factory):
         bill = bill_factory()   # the patient's coverage row has no provider
@@ -662,6 +676,106 @@ class TestInsurancePayments:
         coverage.refresh_from_db()
         assert coverage.usedYTD == Decimal('150.00')
 
+    # ── Insurance Coverage Rules ────────────────────────────────────────────────────────────────
+
+    def test_refund_that_frees_allowance_restores_activity(self, maxed_out_coverage, refund_transaction):
+        _, coverage, _, txn = maxed_out_coverage
+        #assign `effectiveTo` date
+        coverage.effectiveTo = timezone.localdate() + timedelta(days=45)
+        coverage.save()
+
+        refund_transaction(transaction=txn)
+        coverage.refresh_from_db()
+        assert coverage.usedYTD == Decimal('0.00')
+        assert coverage.eligibilityStatus == 'active' 
+        assert coverage.eligibilityChecked == timezone.localdate()
+
+    def test_refund_that_leaves_usage_at_the_max_keeps_the_limit(
+        self, maxed_out_coverage, bill_factory, transaction_factory, refund_transaction
+    ):
+        patient, coverage, _, _ = maxed_out_coverage
+        extra = transaction_factory(bill=bill_factory(patient=patient), method='insurance', amount=Decimal('150.00'))
+        refund_transaction(transaction=extra)   # usage is back to exactly 10000
+        coverage.refresh_from_db()
+        assert coverage.usedYTD == Decimal('10000.00')
+        assert coverage.eligibilityStatus == 'limit_reached'
+
+    def test_admin_delete_restores_activity(self, maxed_out_coverage, api_client, admin_user):
+        _, coverage, _, txn = maxed_out_coverage
+        #assign `effectiveTo` date
+        coverage.effectiveTo = timezone.localdate() + timedelta(days=45)
+        coverage.save()
+
+        api_client.force_authenticate(user=admin_user)
+        api_client.delete(_transaction_url(txn.id))
+        coverage.refresh_from_db()
+        assert coverage.eligibilityStatus == 'active'
+
+    def test_changing_method_away_from_insurance_restores_activity(self, maxed_out_coverage, api_client, admin_user):
+        _, coverage, _, txn = maxed_out_coverage
+        #assign `effectiveTo` date
+        coverage.effectiveTo = timezone.localdate() + timedelta(days=15)
+        coverage.save()
+
+        api_client.force_authenticate(user=admin_user)
+        api_client.patch(_transaction_url(txn.id), {'method': 'cash'}, format='json')
+        coverage.refresh_from_db()
+        assert coverage.usedYTD == Decimal('0.00')
+        assert coverage.eligibilityStatus == 'expiring'  #'expiring' bec date within a one-month window
+
+    def test_reversing_the_refund_reinstates_the_limit(self, maxed_out_coverage, refund_transaction):
+        _, coverage, _, txn = maxed_out_coverage
+        refund_transaction(transaction=txn)
+        txn.status = 'completed'
+        txn.save()
+        coverage.refresh_from_db()
+        assert coverage.usedYTD == Decimal('10000.00')
+        assert coverage.eligibilityStatus == 'limit_reached'
+
+    def test_refund_does_not_touch_other_statuses(
+        self, patient_factory, bill_factory, coverage_factory, transaction_factory, refund_transaction
+    ):
+        patient = patient_factory()
+        coverage = coverage_factory(patient, eligibilityStatus='expired')
+        txn = transaction_factory(bill=bill_factory(patient=patient), method='insurance', amount=Decimal('150.00'))
+        refund_transaction(transaction=txn)
+        coverage.refresh_from_db()
+        assert coverage.eligibilityStatus == 'expired'
+
+    def test_refund_with_no_annual_max_does_not_crash(
+        self, patient_factory, bill_factory, coverage_factory, insurance_provider_factory,
+        transaction_factory, refund_transaction
+    ):
+        provider = insurance_provider_factory(annualMax=None)
+        patient = patient_factory()
+        coverage = coverage_factory(patient, provider=provider, eligibilityStatus='limit_reached')        
+        #save eligibility status before
+        coverageEligibility_before = coverage.eligibilityStatus
+
+        txn = transaction_factory(bill=bill_factory(patient=patient), method='insurance', amount=Decimal('150.00'))
+        refund_transaction(transaction=txn)
+        coverage.refresh_from_db()
+        assert coverage.eligibilityStatus == coverageEligibility_before
+
+    @pytest.mark.parametrize('days_from_today, expected', [(-1, 'expired'), (10, 'expiring'), (200, 'active')])
+    def test_restored_status_respects_the_policy_dates(
+        self, maxed_out_coverage, refund_transaction, days_from_today, expected
+    ):
+        _, coverage, _, txn = maxed_out_coverage
+        coverage.effectiveTo = timezone.localdate() + timedelta(days=days_from_today)
+        coverage.save()
+        refund_transaction(transaction=txn)
+        coverage.refresh_from_db()
+        assert coverage.eligibilityStatus == expected
+
+    def test_yearly_reset_lifts_last_years_limit(self, maxed_out_coverage):
+        _, coverage, _, _ = maxed_out_coverage
+        update_patient_insurance_usedYTD_task()
+        coverage.refresh_from_db()
+        assert coverage.usedYTD == Decimal('0.00')
+        assert coverage.eligibilityStatus != 'limit_reached'
+
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Refunds and corrections (status changes; the row stays visible)
@@ -687,7 +801,7 @@ class TestRefundsAndCorrections:
     def test_refunded_transaction_is_not_soft_deleted(self, transaction_factory, refund_transaction):
         txn = refund_transaction(transaction=transaction_factory())
         assert txn.isDeleted is False
-        assert Transaction.objects.filter(id=txn.id).exists()   # still reachable through the default manager
+        assert Transaction.objects.filter(id=txn.id).exists()   #still reachable through the default manager
 
     def test_reversing_a_refund_restores_totals_and_clears_the_reason(
         self, bill_factory, transaction_factory, refund_transaction
