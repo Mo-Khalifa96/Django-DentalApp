@@ -133,12 +133,12 @@ def update_transaction_aggregates(sender, instance, **kwargs):
                 )['total_ytd']
             
             #account for refunds/deletes to change eligibility status and deductible flag
-            if instance.status == 'refunded' or is_deletion:
-                if (usedYTD_before > coverage.usedYTD < (coverage.annualMax or Decimal('inf')))\
-                 and coverage.eligibilityStatus == 'limit_reached':
-                    coverage.eligibilityStatus = coverage.determine_coverage_status(coverage.eligibilityStatus)
-                    coverage.eligibilityChecked = timezone.localdate(timezone.now())
-                
+            if (usedYTD_before > coverage.usedYTD < (coverage.annualMax or Decimal('inf')))\
+                and coverage.eligibilityStatus == 'limit_reached':
+                coverage.eligibilityStatus = coverage.determine_coverage_status(coverage.eligibilityStatus)
+                coverage.eligibilityChecked = timezone.localdate(timezone.now())
+            
+            if instance.status == 'refunded' or is_deletion or (prev_method == 'insurance' != instance.method):
                 if coverage.deductibleMet and coverage.coveragePercent != 100 and coverage.provider\
                  and isinstance(coverage.provider.deductible, Decimal):
                     total_paid = _calculate_patient_usedYTD(instance, exclude_ids)
@@ -156,7 +156,7 @@ def update_transaction_aggregates(sender, instance, **kwargs):
 
 def _calculate_patient_usedYTD(instance, exclude_ids=[]):
     '''Helper function to calculate and return patient's insurance usedYTD.'''
-    
+
     return Transaction.objects.completed().filter(
                 patient=instance.patient, date__year=timezone.now().year
             ).exclude(
