@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.db import transaction
 from patients.models import Patient
 from rest_framework import serializers
+from finances.utils import round_decimal_up
 from utils.mixins import UserPermissionsMixin
 from dateutil.relativedelta import relativedelta
 from utils.swagger_utils import extend_schema_field
@@ -101,11 +102,6 @@ class RetrievePatientInstallmentPlanSerializer(InstallmentPlanSerializer):
             return InstallmentPlan.InstallmentPlanStatusChoices.PARTIAL
 
 
-def round_decimal_up(amount):
-    from decimal import ROUND_HALF_UP
-    return Decimal(str(amount)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-
-
 #Generate installments serializer -- nested serializer
 class GenerateInstallmentsSerializer(InstallmentsSerializer):
     status = serializers.SerializerMethodField()
@@ -176,7 +172,8 @@ class GenerateInstallmentPlanSerializer(InstallmentPlanSerializer):
         existing_plan = getattr(treatment, 'installment_plan', None)
         installmentMonths = validated_data['installmentMonths']
         startDate = validated_data['startDate']
-        downPayment = validated_data.get('downPayment') or Decimal('0')
+        # downPayment = validated_data.get('downPayment') or Decimal('0')
+        downPayment = validated_data.get('downPayment', getattr(existing_plan, 'downPayment', None)) or Decimal('0')
         total_amount = treatment.totalCost
         total_paid = getattr(existing_plan, 'totalPaid', None) or Decimal('0')
         total_remaining = total_amount - total_paid
@@ -198,24 +195,28 @@ class GenerateInstallmentPlanSerializer(InstallmentPlanSerializer):
         #fetch the down payment row separately (if found)
         seq0_installment = plan.installments.filter(sequence=0).first()
         
+        #get old down payment (if found)
+        existing_downPayment, isPaid = (
+            (seq0_installment.amount, seq0_installment.paidAt) 
+            if seq0_installment else (Decimal('0'), False)
+        )
+
+        #determine if the down payment is new/changed/removed (the same value resent counts as untouched)
+        down_payment_changed = 'downPayment' in validated_data and (downPayment != existing_downPayment)
+        
         #Identify any unpaid down payments and re-calculate total remaining
         if created:
             total_remaining = (total_remaining - downPayment) if downPayment else total_remaining
         else:
-            #get old down payment (if found)
-            existing_downPayment, isPaid = (
-                (seq0_installment.amount, seq0_installment.paidAt) 
-                if seq0_installment else (Decimal('0'), False)
-            )
             #check new down payment is provided
-            if 'downPayment' in validated_data and (downPayment != existing_downPayment):
+            if down_payment_changed:
                 total_remaining = total_remaining - downPayment            
             #else, not provided -> check if old unpaid one is found (not covered by 'total_paid')
             elif existing_downPayment and not isPaid:
                 total_remaining = total_remaining - existing_downPayment
 
-            #make sure total remaining is a positive
-            total_remaining = max(total_remaining, Decimal('0'))
+        #make sure total remaining is a positive
+        total_remaining = max(total_remaining, Decimal('0'))
 
 
         #Bulk create installments according to plan
@@ -263,7 +264,8 @@ class GenerateInstallmentPlanSerializer(InstallmentPlanSerializer):
         if created == False:
             plan.installments.filter(sequence__gt=installmentMonths).delete()
 
-        if 'downPayment' in validated_data:   #If update and down payment is provided
+        #if down payment is updated
+        if down_payment_changed:
             if not validated_data.get('downPayment'):  #sent but None/0 --> meant for intentional removal
                 # if not getattr(seq0_installment, 'paidAt', None): #if old down payment doesn't exist or exists but not paid
                 plan.installments.filter(sequence=0).delete()
@@ -337,8 +339,11 @@ class UpdateInstallmentPlanSerializer(InstallmentPlanSerializer):
                 if seq0_installment else (Decimal('0'), False)
             )
         
+        #determine if the down payment is new/changed/removed (the same value resent counts as untouched)
+        down_payment_changed = 'downPayment' in validated_data and (downPayment != existing_downPayment)
+        
         #check new down payment is provided
-        if 'downPayment' in validated_data and (downPayment != existing_downPayment):
+        if down_payment_changed:
             total_remaining = total_remaining - downPayment
         elif existing_downPayment and not isPaid:
             total_remaining = total_remaining - existing_downPayment
@@ -361,12 +366,10 @@ class UpdateInstallmentPlanSerializer(InstallmentPlanSerializer):
                     amount = downPayment
                     installment_type = 'down_payment'
                     #determine due date from payload or old plan
-                    if 'downPayment' in validated_data:
+                    if down_payment_changed and not seq0_installment:
                        dueDate = timezone.localdate(timezone.now())
-                    elif seq0_installment:
+                    else:  #elif seq0_installment:
                         dueDate = seq0_installment.dueDate
-                    else:
-                        dueDate = timezone.localdate(timezone.now())
                 else:
                     continue  #skip this iteration
             else:
@@ -397,7 +400,7 @@ class UpdateInstallmentPlanSerializer(InstallmentPlanSerializer):
         instance.installments.filter(sequence__gt=installmentMonths).delete()
 
         #determine if the downpayment is to be removed too
-        if 'downPayment' in validated_data:  #If update and down payment is provided
+        if down_payment_changed:  #if down payment is provided and update (or to be removed)
             if not validated_data.get('downPayment'):   #sent but None/0 --> meant for 
                 # if not getattr(seq0_installment, 'paidAt', None):  #if old down payment doesn't exist or exists but not paid
                 instance.installments.filter(sequence=0).delete()
@@ -405,7 +408,7 @@ class UpdateInstallmentPlanSerializer(InstallmentPlanSerializer):
                 #new down payment shouldn't have a transaction or paidAt date
                 instance.installments.filter(sequence=0).update(paidAt=None, transaction=None)
 
-        #update associated bill
+        #update associated bill  --> no need -- updated by the signal
         # if instance.active_bill:
         #     instance.active_bill.totalAmount = total_amount
         #     instance.active_bill.totalPaid = total_paid
@@ -421,7 +424,7 @@ class AutogenerateInstallmentsBillSerializer(serializers.ModelSerializer):
     patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
     treatmentId = serializers.PrimaryKeyRelatedField(source='treatment', read_only=True)
     installmentPlanId = serializers.PrimaryKeyRelatedField(source='installmentPlan', queryset=InstallmentPlan.objects.all(), required=False)
-    installmentIds = serializers.PrimaryKeyRelatedField(source='installmentPlan.installments', read_only=True)
+    installmentIds = serializers.PrimaryKeyRelatedField(many=True, source='installmentPlan.installments', read_only=True)
     installmentMonths = serializers.IntegerField(source='installmentPlan.installmentMonths', read_only=True)
     startDate = serializers.DateField(source='installmentPlan.startDate', read_only=True)
     branchId = serializers.PrimaryKeyRelatedField(source='branch', read_only=True)
@@ -477,7 +480,7 @@ class AutogenerateInstallmentsBillSerializer(serializers.ModelSerializer):
 #Create installment(s) transaction serializer
 class CreateInstallmentTransactionSerializer(serializers.ModelSerializer):
     #read-only
-    transactionId = serializers.UUIDField(source='id', read_only=True)  #TODO - document new field
+    transactionId = serializers.UUIDField(source='id', read_only=True)
     billId = serializers.PrimaryKeyRelatedField(source='bill', read_only=True)
     patientId = serializers.PrimaryKeyRelatedField(source='patient', read_only=True)
     treatmentId = serializers.PrimaryKeyRelatedField(source='bill.treatment', read_only=True)

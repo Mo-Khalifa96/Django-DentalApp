@@ -1,14 +1,12 @@
 from datetime import date
-from decimal import Decimal
-
+from decimal import Decimal, ROUND_HALF_UP
 
 #Helper Functions for financial operations
+#Helper method to get current yearly quarter
 def get_quarter(today: date):
     month, year = today.month, today.year
 
     if month in [1,2,3]:
-        # start_date = date(year=year, month=1, day=1)
-        # end_date = date(year=year, month=3, day=31)
         return (date(year, 1, 1), date(year, 3, 31))
     elif month in [4,5,6]:
         return (date(year, 4, 1), date(year, 6, 30))
@@ -17,7 +15,11 @@ def get_quarter(today: date):
     elif month in [10,11,12]:
         return (date(year, 10, 1), date(year, 12, 31))
 
+#Helper method to round decimals up
+def round_decimal_up(amount):
+    return Decimal(str(amount)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
+#Others
 def calculate_subtotal(quantity, unitPrice):
     return round(quantity * unitPrice, 2)
 

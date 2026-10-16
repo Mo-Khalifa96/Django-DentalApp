@@ -718,10 +718,12 @@ class PatientCoverage(models.Model):
                 self.coveragePercent = self.provider.coveragePercent
 
             #determine if deducible is met
-            if not self.deductibleMet:
-                self.deductibleMet = True if (
-                    (not self.provider.deductible) or (self.coveragePercent==100)
-                 ) else self.deductibleMet
+            if self.deductibleMet is None:
+                self.deductibleMet = (not self.provider.deductible or self.coveragePercent==100)
+                # self.deductibleMet = True if (
+                #     (not self.provider.deductible) or (self.coveragePercent==100)
+                # ) else self.deductibleMet
+
 
             #check if the allowance has been used up 
             if isinstance(self.usedYTD, Decimal) and isinstance(self.annualMax, Decimal):

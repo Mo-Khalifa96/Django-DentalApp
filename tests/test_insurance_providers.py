@@ -25,7 +25,7 @@ def _create_payload(**overrides):
     base.update(overrides)
     return base
 
-def _grant(user, permission):
+def _grant_permission(user, permission):
     user.userPermissions.append(permission)
     user.save(update_fields=['userPermissions'])
 
@@ -72,7 +72,7 @@ class TestListCreateInsuranceProvidersAPIView:
         b2 = branch_factory()
         user = user_factory(role='accountant')
         user.branches.set([b1])
-        _grant(user, 'view.insuranceProviders')
+        _grant_permission(user, 'view.insuranceProviders')
 
         p_own = insurance_provider_factory(branch=b1)
         p_other = insurance_provider_factory(branch=b2)
@@ -216,7 +216,7 @@ class TestListCreateInsuranceProvidersAPIView:
         self, api_client, user_factory
     ):
         user = user_factory(role='accountant')
-        _grant(user, 'create.insuranceProvider')
+        _grant_permission(user, 'create.insuranceProvider')
         api_client.force_authenticate(user=user)
         response = api_client.post(
             reverse(self.LIST_URL), _create_payload(), format='json'

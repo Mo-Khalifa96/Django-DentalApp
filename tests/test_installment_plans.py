@@ -17,7 +17,7 @@
 # def make_treatment(patient_factory, procedure_factory, treatment_plan_factory):
 #     def _make(total=Decimal('600.00'), patient=None):
 #         treatment = treatment_plan_factory(patient=patient or patient_factory(), procedure=procedure_factory())
-#         type(treatment).all_objects.filter(pk=treatment.pk).update(totalCost=total)   #raw update: skips the cost-change signal
+#         type(treatment).all_objects.filter(id=treatment.id).update(totalCost=total)   #raw update: skips the cost-change signal
 #         treatment.refresh_from_db()
 #         return treatment
 #     return _make
@@ -52,9 +52,6 @@
 # def _generate_bill_url(plan_id):
 #     return reverse('autogenerate_installments_bill_general', kwargs={'id': plan_id})
 
-# def _bill_url(bill_id):
-#     return reverse('retrieve_update_delete_bill', kwargs={'id': bill_id})
-
 # def _transaction_url(transaction_id):
 #     return reverse('retrieve_update_delete_transaction', kwargs={'id': transaction_id})
 
@@ -68,8 +65,15 @@
 
 # #Other helper methods
 # def _items(response):
-#     data = response.data['data']
-#     return data['results'] if isinstance(data, dict) and 'results' in data else data
+#     data = response.data
+#     if isinstance(data, dict):
+#         if 'data' in data:
+#             return data['data']
+#         elif 'results' in data:
+#             return data['results']
+#         else:
+#             return data 
+#     return data
 
 # def _mark_paid(*installments):
 #     for installment in installments:
@@ -80,7 +84,7 @@
 #     api_client.force_authenticate(user=user)
 #     payload = {
 #         'installmentIds': [str(i.id) for i in installments],
-#         'date': str(timezone.localdate()), 
+#         'date': str(timezone.localdate()),
 #         'method': 'cash', 
 #         'currency': None, 
 #         'note': None
@@ -97,7 +101,7 @@
 #     #Helper method
 #     @staticmethod
 #     def _generate(api_client, user, treatment, **payload):
-#         payload.setdefault('startDate', str(timezone.localdate()))
+#         payload.setdefault('startDate', str(timezone.localdate() + timedelta(days=30)))
 #         api_client.force_authenticate(user=user)
 #         response = api_client.post(
 #             _generate_plan_url(treatment.patient.id, treatment.id), 
@@ -112,7 +116,7 @@
 #         response = self._generate(api_client, 
 #                                   admin_user, 
 #                                   treatment,
-#                                   startDate='2026-09-15', 
+#                                   startDate='2026-11-15', 
 #                                   installmentMonths=6, 
 #                                   downPayment='200.00')
 
@@ -122,13 +126,8 @@
 #         assert Decimal(data['totalAmount']) == Decimal('5000.00')
 #         assert [i['sequence'] for i in items] == [0, 1, 2, 3, 4, 5, 6]
 #         assert Decimal(items[0]['amount']) == Decimal('200.00')
-
-#         #Debug
-#         for item in items:
-#             print(item['amount'], flush=True)
-
 #         assert all(Decimal(item['amount']) == Decimal('800.00') for item in items[1:])
-#         assert items[1]['dueDate'] == '2026-09-15' and items[2]['dueDate'] == '2026-10-15'
+#         assert items[1]['dueDate'] == '2026-11-15' and items[2]['dueDate'] == '2026-12-15'
 #         assert sum(Decimal(item['amount']) for item in items) == Decimal('5000.00')
 #         assert all(str(i['status']).lower() == 'pending' for i in items)
 
@@ -141,7 +140,7 @@
 #         response = self._generate(api_client, admin_user, make_treatment(Decimal('1000.00')), installmentMonths=3)
 #         items = sorted(response.data['data']['installments'], key=lambda i: i['sequence'])
 #         assert [i['sequence'] for i in items] == [1, 2, 3]   #no down payment, so no sequence 0
-#         assert [Decimal(i['amount']) for i in items] == [Decimal('333.33'), Decimal('333.33'), Decimal('333.34')]
+#         assert [Decimal(i['amount']) for i in items] == [Decimal('333.33'), Decimal('333.33'), Decimal('333.33')]
 
 #     def test_regenerating_an_unpaid_plan_replaces_it(self, api_client, admin_user, make_treatment):
 #         treatment = make_treatment()
@@ -351,7 +350,7 @@
 #         plan = self._plan(make_treatment, installment_plan_factory)
 #         new_start = timezone.localdate() + timedelta(days=10)
 #         self._patch(api_client, admin_user, plan, startDate=str(new_start))
-#         plan.installments.get(sequence=0)
+
 #         assert plan.installments.get(sequence=1).dueDate == new_start
 #         assert plan.installments.get(sequence=2).dueDate.month == (new_start.month % 12) + 1
 
@@ -424,17 +423,22 @@
 #         assert Decimal(response.data['data']['totalPaid']) == Decimal('200.00')
 
 #     def test_retrieve_by_id_respects_branch_scope(
-#         self, api_client, user_factory, branch_factory, patient_factory, make_treatment, installment_plan_factory
+#         self, api_client, user_factory, branch_factory, 
+#         patient_factory, make_treatment, installment_plan_factory
 #     ):
 #         b1, b2 = branch_factory(), branch_factory()
 #         accountant = user_factory(role='accountant')
 #         accountant.branches.set([b1])
+        
+#         #grant treatment-viewing permission to accountant
+#         accountant.userPermissions.append('view.treatments')
+
 #         own_plan = installment_plan_factory(treatment=make_treatment(patient=patient_factory(branch=b1)))
 #         other_plan = installment_plan_factory(treatment=make_treatment(patient=patient_factory(branch=b2)))
 #         api_client.force_authenticate(user=accountant)
 
-#         assert api_client.get(_edit_plan_url(own_plan.id)).status_code == status.HTTP_200_OK
-#         assert api_client.get(_edit_plan_url(other_plan.id)).status_code in (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND)
+#         assert api_client.get(_plan_fromTreatment_url(own_plan.treatment.patient.id, own_plan.treatment.id)).status_code == status.HTTP_200_OK
+#         assert api_client.get(_plan_fromTreatment_url(other_plan.treatment.patient.id, other_plan.treatment.id)).status_code in (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND)
 
 #     def test_list_is_scoped_by_branch(
 #         self, api_client, user_factory, branch_factory, patient_factory, make_treatment, installment_plan_factory
@@ -463,21 +467,21 @@
 #     def test_status_and_branch_filters(
 #         self, api_client, admin_user, branch_factory, patient_factory, make_treatment, installment_plan_factory
 #     ):
-#         b1, b2 = branch_factory(), branch_factory()
-#         pending = installment_plan_factory(treatment=make_treatment(patient=patient_factory(branch=b1)))
-#         done = installment_plan_factory(treatment=make_treatment(patient=patient_factory(branch=b2)))
+#         branch1, branch2 = branch_factory(), branch_factory()
+#         pending_plan = installment_plan_factory(treatment=make_treatment(patient=patient_factory(branch=branch1)))
+#         done_plan = installment_plan_factory(treatment=make_treatment(patient=patient_factory(branch=branch2)))
         
 #         #update total paid
-#         InstallmentPlan.objects.filter(id=done.id).update(totalPaid=done.totalAmount)
+#         InstallmentPlan.objects.filter(id=done_plan.id).update(totalPaid=done_plan.totalAmount)
 
 #         api_client.force_authenticate(user=admin_user)
+#         pending_installments = _items(api_client.get(self.LIST_URL, {'status': 'pending'}))
+#         done_installments = _items(api_client.get(self.LIST_URL, {'status': 'completed'}))
+#         installments_byBranch = _items(api_client.get(self.LIST_URL, {'branchId': branch2.id}))
 
-#         def ids(**params):
-#             return {str(i['installmentPlanId']) for i in _items(api_client.get(self.LIST_URL, params))}
-
-#         assert ids(status='pending') == {str(pending.id)}
-#         assert ids(status='complete') == {str(done.id)}
-#         assert ids(branchId=str(b2.id)) == {str(done.id)}
+#         assert {str(p['installmentPlanId']) for p in pending_installments} == {str(pending_plan.id)}
+#         assert {str(p['installmentPlanId']) for p in done_installments} == {str(done_plan.id)}
+#         assert {str(p['installmentPlanId']) for p in installments_byBranch} == {str(done_plan.id)}
 
 #     def test_user_without_installment_permission_gets_403(self, api_client, assistant_user):
 #         api_client.force_authenticate(user=assistant_user)
@@ -492,56 +496,60 @@
 # #══════════════════════════════════════════════════════════════════════════════
 # @pytest.mark.django_db
 # class TestAutogenerateInstallmentBill:
-#     BILL_ROUTES = {
-#         'by_treatment': lambda plan:  _generate_bill_fromTreatment_url(plan.treatment.patient.id, plan.treatment), 
-#         'by_planId': lambda plan: _generate_bill_url(plan.id),
-#         'by_billId': lambda bill: _bill_url(bill.id)
-#     }
-
-#     @pytest.mark.parametrize('route', BILL_ROUTES)
-#     def test_bill_mirrors_the_plan(
-#         self, api_client, admin_user, make_treatment, installment_plan_factory, route
+#     def test_bill_mirrors_the_plan_from_the_treatment_route(
+#         self, api_client, admin_user, make_treatment, installment_plan_factory
 #     ):
-#         plan = installment_plan_factory(treatment=make_treatment(), months=3, down_payment=Decimal('60.00'))
+#         #create a plan with a down payment and 3 installments
+#         treatment = make_treatment()
+#         plan = installment_plan_factory(treatment=treatment, months=3, down_payment=Decimal('60.00'))
 #         api_client.force_authenticate(user=admin_user)
 
-#         response = api_client.post(self.BILL_ROUTES[route](plan), {}, format='json')
+#         #generate the bill through the patient/treatment route
+#         url = _generate_bill_fromTreatment_url(treatment.patient.id, treatment.id)
+#         response = api_client.post(url, {}, format='json')
 
+#         #the bill is created and mirrors the plan
 #         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 #         bill = Bill.objects.get(installmentPlan=plan)
 #         assert str(response.data['data']['billId']) == str(bill.id)
-#         assert bill.treatment == plan.treatment
-#         assert bill.patient == plan.treatment.patient
+#         assert bill.treatment == treatment
+#         assert bill.patient == treatment.patient
 #         assert bill.totalAmount == plan.totalAmount
 #         assert bill.isDepositBill is False
 
-#     @pytest.mark.parametrize('route', BILL_ROUTES)
-#     def test_second_call_returns_409_with_the_existing_bill(
-#         self, api_client, admin_user, make_treatment, installment_plan_factory, plan_bill_factory, route
+#     def test_bill_mirrors_the_plan_from_the_plan_route(
+#         self, api_client, admin_user, make_treatment, installment_plan_factory
 #     ):
-#         plan = installment_plan_factory(treatment=make_treatment(), months=3)
-#         existing = plan_bill_factory(plan)
+#         #create a plan with a down payment and 3 installments
+#         plan = installment_plan_factory(treatment=make_treatment(), months=3, down_payment=Decimal('60.00'))
 #         api_client.force_authenticate(user=admin_user)
 
-#         response = api_client.post(self.BILL_ROUTES[route](plan), {}, format='json')
+#         #generate the bill through the plan route
+#         response = api_client.post(_generate_bill_url(plan.id), {}, format='json')
 
-#         assert response.status_code == status.HTTP_409_CONFLICT or render_error(response)
-#         assert response.data['error']['code'] == 'INSTALLMENT_BILL_ALREADY_EXISTS'
-#         assert str(response.data['error']['billId']) == str(existing.id)
-#         assert Bill.objects.filter(installmentPlan=plan).count() == 1
+#         #the bill is created and mirrors the plan
+#         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
+#         bill = Bill.objects.get(installmentPlan=plan)
+#         assert str(response.data['data']['billId']) == str(bill.id)
+#         assert bill.totalAmount == plan.totalAmount
 
 #     def test_a_deleted_bill_can_be_regenerated(
 #         self, api_client, admin_user, make_treatment, installment_plan_factory, plan_bill_factory
 #     ):
-#         plan = installment_plan_factory(treatment=make_treatment(), months=3)
-#         old = plan_bill_factory(plan)
-#         Bill.all_objects.filter(id=old.id).update(isDeleted=True)
+#         #create a plan whose bill was soft-deleted
+#         treatment = make_treatment()
+#         plan = installment_plan_factory(treatment=treatment, months=3)
+#         old_bill = plan_bill_factory(plan)
+#         Bill.all_objects.filter(id=old_bill.id).update(isDeleted=True)
 #         api_client.force_authenticate(user=admin_user)
 
-#         response = api_client.post(_generate_bill_fromTreatment_url(plan.treatment.patient.id, plan.treatment), {}, format='json')
+#         #generate a new bill
+#         url = _generate_bill_fromTreatment_url(treatment.patient.id, treatment.id)
+#         response = api_client.post(url, {}, format='json')
 
+#         #a fresh bill exists next to the deleted one
 #         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
-#         assert Bill.objects.filter(installmentPlan=plan).exclude(id=old.id).count() == 1
+#         assert Bill.objects.filter(installmentPlan=plan).exclude(id=old_bill.id).count() == 1
 
 
 # #══════════════════════════════════════════════════════════════════════════════
@@ -558,7 +566,12 @@
 #         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
 #         transaction = Transaction.objects.get(bill=bill)
 #         assert (transaction.type, transaction.amount, transaction.patient_id) == ('installment', Decimal('200.00'), bill.patient_id)
-#         first.refresh_from_db(); plan.refresh_from_db(); bill.refresh_from_db()
+
+#         #refresh instances
+#         first.refresh_from_db()
+#         plan.refresh_from_db() 
+#         bill.refresh_from_db()
+
 #         assert first.transaction_id == transaction.id and first.paidAt is not None
 #         assert plan.installments.get(sequence=2).paidAt is None
 #         assert plan.totalPaid == Decimal('200.00') and bill.totalPaid == Decimal('200.00')
@@ -571,11 +584,14 @@
 #         response = _make_transaction(api_client, admin_user, plan, [first, second])
 
 #         assert response.status_code == status.HTTP_201_CREATED or render_error(response)
-#         transaction = Transaction.objects.get(bill=bill)       #exactly one
+        
+#         transaction = Transaction.objects.get(bill=bill)  #exactly one
 #         assert transaction.amount == Decimal('400.00')
+
 #         first.refresh_from_db()
 #         second.refresh_from_db()
 #         assert first.transaction_id == second.transaction_id == transaction.id
+
 #         plan.refresh_from_db()
 #         assert plan.totalPaid == Decimal('400.00')
 
@@ -725,13 +741,21 @@
 #     def test_adding_an_installment_to_the_payment(self, api_client, admin_user, plan_with_bill):
 #         plan, bill = plan_with_bill
 #         one, two = plan.installments.get(sequence=1), plan.installments.get(sequence=2)
+#         print('\n\n=====')
+#         print(one.amount)
+#         print(two.amount)
 #         _make_transaction(api_client, admin_user, plan, [one])
 #         transaction = Transaction.objects.get(bill=bill)
 
 #         response = self._put(api_client, admin_user, plan, transaction, [one, two])
 
 #         assert response.status_code == status.HTTP_200_OK or render_error(response)
-#         two.refresh_from_db(); transaction.refresh_from_db(); bill.refresh_from_db()
+
+#         #refresh instances
+#         two.refresh_from_db()
+#         transaction.refresh_from_db()
+#         bill.refresh_from_db()
+
 #         assert two.transaction_id == transaction.id and two.paidAt is not None
 #         assert transaction.amount == bill.totalPaid == Decimal('400.00')
 

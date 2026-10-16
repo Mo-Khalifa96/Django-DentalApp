@@ -125,7 +125,7 @@ class ResetPasswordSerializer(serializers.Serializer):
             user_id = force_str(urlsafe_base64_decode(uid))
             
             #save user for later update/saving
-            self.user = User.all_objects.get(pk=user_id)
+            self.user = User.all_objects.get(id=user_id)
 
         except (TypeError, ValueError, OverflowError, User.DoesNotExist, Http404):
             raise serializers.ValidationError({'uid': _('Invalid reset link.')})

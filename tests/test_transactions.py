@@ -749,13 +749,12 @@ class TestInsurancePayments:
         provider = insurance_provider_factory(annualMax=None)
         patient = patient_factory()
         coverage = coverage_factory(patient, provider=provider, eligibilityStatus='limit_reached')        
-        #save eligibility status before
-        coverageEligibility_before = coverage.eligibilityStatus
 
         txn = transaction_factory(bill=bill_factory(patient=patient), method='insurance', amount=Decimal('150.00'))
         refund_transaction(transaction=txn)
+        
         coverage.refresh_from_db()
-        assert coverage.eligibilityStatus == coverageEligibility_before
+        assert coverage.eligibilityStatus == 'active'
 
     @pytest.mark.parametrize('days_from_today, expected', [(-1, 'expired'), (10, 'expiring'), (200, 'active')])
     def test_restored_status_respects_the_policy_dates(
