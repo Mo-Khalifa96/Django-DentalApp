@@ -3,6 +3,7 @@ import itertools
 from io import BytesIO
 from decimal import Decimal
 from datetime import time, timedelta
+from dateutil.relativedelta import relativedelta
 
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'DentalTech.settings.dev')
@@ -365,30 +366,41 @@ def plan_bill_factory():
 def installment_plan_factory(treatment_plan_factory, patient_factory, procedure_factory):
     from finances.models import InstallmentPlan, Installment
 
-    def _create(treatment=None, months=3, down_payment=Decimal('0'), **overrides):
+    def _create(treatment=None, months=3, down_payment=Decimal('0'), start_date=None, **overrides):
         treatment = treatment or treatment_plan_factory(
             patient=patient_factory(), procedure=procedure_factory()
         )
         total = treatment.totalCost
-        start = timezone.localdate()
+        start = start_date or timezone.localdate()
         plan = InstallmentPlan.objects.create(
-            treatment=treatment,
-            branch=treatment.patient.branch,
+            treatment=treatment, 
             installmentMonths=months,
-            startDate=start,
-            totalAmount=total,
+            startDate=start, 
+            totalAmount=total, 
             currency=treatment.currency,
-            downPayment=down_payment,
+            downPayment=down_payment, 
+            branch=treatment.patient.branch, 
             **overrides,
         )
-        base = (total / months).quantize(Decimal('0.01'))
+
+        if down_payment:
+            Installment.objects.create(
+                installmentPlan=plan, 
+                amount=down_payment, 
+                sequence=0,
+                type='down_payment',
+                dueDate=timezone.localdate(),
+            )
+
+        remaining = total - down_payment
+        base = (remaining / months).quantize(Decimal('0.01'))
         for seq in range(1, months + 1):
             Installment.objects.create(
                 installmentPlan=plan,
-                amount=total - base * (months - 1) if seq == months else base,
-                sequence=seq,
-                dueDate=start + timedelta(days=30 * seq),
+                sequence=seq, 
                 type='installment',
+                dueDate=start + relativedelta(months=seq - 1), 
+                amount=remaining - base * (months - 1) if seq == months else base,
             )
         return plan
 

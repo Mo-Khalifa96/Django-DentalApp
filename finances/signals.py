@@ -94,6 +94,7 @@ def update_transaction_aggregates(sender, instance, **kwargs):
                 .exclude(Q(id__in=exclude_ids)
                 ).aggregate(total_paid=Coalesce(Sum('amount'), Decimal('0'))
             )['total_paid']
+
             instance.bill.totalPaid = total_paid
             instance.bill.save(update_fields=['totalPaid'])
         
@@ -117,25 +118,31 @@ def update_transaction_aggregates(sender, instance, **kwargs):
 
     #Update patient's inurance 'usedYTD' (if they have coverage)
     prev_method = getattr(instance, '_prev_method', None)
-    coverage = PatientCoverage.objects.filter(patient_id=instance.patient_id).first() #getattr(instance.patient, 'patient_insurance', None)
+    coverage = PatientCoverage.objects.filter(patient_id=instance.patient_id).first()
     has_coverage = bool(coverage and (getattr(coverage, 'provider_id', False) or coverage.providerName))
 
     if (instance.type != 'deposit') and has_coverage:  #exclude deposits
         if instance.method == 'insurance' or prev_method == 'insurance':
             usedYTD_before = coverage.usedYTD or Decimal('0')
 
+            #date filter for payments to account for provider changes within a year
+            effective_from_filter = Q(date__gte=coverage.effectiveFrom) if coverage.effectiveFrom else Q()
+
             #calculate total ytd used from insurance-type payments
             coverage.usedYTD = Transaction.objects.completed().filter(
-                    patient=instance.patient, method='insurance', date__year=timezone.now().year)\
-                .exclude(Q(id__in=exclude_ids))\
+                    Q(patient=instance.patient, method='insurance', 
+                      date__year=timezone.localdate(timezone.now()).year)
+                    & 
+                    effective_from_filter
+                ).exclude(Q(id__in=exclude_ids))\
                 .aggregate(
                      total_ytd=Coalesce(Sum('amount'), Decimal('0'))
                 )['total_ytd']
             
             #account for refunds/deletes to change eligibility status and deductible flag
             if (usedYTD_before > coverage.usedYTD < (coverage.annualMax or Decimal('inf')))\
-                and coverage.eligibilityStatus == 'limit_reached':
-                coverage.eligibilityStatus = coverage.determine_coverage_status(coverage.eligibilityStatus)
+             and coverage.eligibilityStatus == 'limit_reached':
+                coverage.eligibilityStatus = coverage.determine_coverage_status(default_status='active')
                 coverage.eligibilityChecked = timezone.localdate(timezone.now())
             
             if instance.status == 'refunded' or is_deletion or (prev_method == 'insurance' != instance.method):

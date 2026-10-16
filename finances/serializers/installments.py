@@ -99,7 +99,12 @@ class RetrievePatientInstallmentPlanSerializer(InstallmentPlanSerializer):
             return InstallmentPlan.InstallmentPlanStatusChoices.COMPLETED
         else:
             return InstallmentPlan.InstallmentPlanStatusChoices.PARTIAL
-       
+
+
+def round_decimal_up(amount):
+    from decimal import ROUND_HALF_UP
+    return Decimal(str(amount)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
 
 #Generate installments serializer -- nested serializer
 class GenerateInstallmentsSerializer(InstallmentsSerializer):
@@ -159,13 +164,7 @@ class GenerateInstallmentPlanSerializer(InstallmentPlanSerializer):
                 raise InstallmentPlanInProgressError(
                     detail=_('An installment plan already exists for this treatment plan with paid installments marked as complete.')
                 )
-            
-            #add any previous downpayment to total paid
-            # if installments.filter(type=Installment.InstallmentTypeChoices.DOWN_PAYMENT, paidAt__isnull=False).exists():
-            #     # data['totalPaid'] = Decimal(str((treatment.installment_plan.totalPaid or Decimal('0')) + treatment.installment_plan.downPayment))
-            #     # data['totalPaid'] = Decimal(str((treatment.installment_plan.downPayment if not treatment.installment_plan.totalPaid else treatment.installment_plan.totalPaid)))
-            #     data['totalAmount'] = treatment.totalCost #- data['totalPaid']))    
-    
+
         #assign treatment id to data
         data['treatment'] = treatment
         return data 
@@ -179,7 +178,6 @@ class GenerateInstallmentPlanSerializer(InstallmentPlanSerializer):
         startDate = validated_data['startDate']
         downPayment = validated_data.get('downPayment') or Decimal('0')
         total_amount = treatment.totalCost
-        # total_paid = treatment.installment_plan.totalPaid or Decimal('0')
         total_paid = getattr(existing_plan, 'totalPaid', None) or Decimal('0')
         total_remaining = total_amount - total_paid
 
@@ -198,8 +196,28 @@ class GenerateInstallmentPlanSerializer(InstallmentPlanSerializer):
         )
 
         #fetch the down payment row separately (if found)
-        seq0_installment = plan.installments.filter(sequence=0).first() #if plan.installments else None
+        seq0_installment = plan.installments.filter(sequence=0).first()
         
+        #Identify any unpaid down payments and re-calculate total remaining
+        if created:
+            total_remaining = (total_remaining - downPayment) if downPayment else total_remaining
+        else:
+            #get old down payment (if found)
+            existing_downPayment, isPaid = (
+                (seq0_installment.amount, seq0_installment.paidAt) 
+                if seq0_installment else (Decimal('0'), False)
+            )
+            #check new down payment is provided
+            if 'downPayment' in validated_data and (downPayment != existing_downPayment):
+                total_remaining = total_remaining - downPayment            
+            #else, not provided -> check if old unpaid one is found (not covered by 'total_paid')
+            elif existing_downPayment and not isPaid:
+                total_remaining = total_remaining - existing_downPayment
+
+            #make sure total remaining is a positive
+            total_remaining = max(total_remaining, Decimal('0'))
+
+
         #Bulk create installments according to plan
         installments_to_create = []
         for n in range(installmentMonths+1):
@@ -217,9 +235,9 @@ class GenerateInstallmentPlanSerializer(InstallmentPlanSerializer):
                 else:
                     continue  #skip this iteration
             else:
-                amount = Decimal(str(total_remaining / installmentMonths))
+                amount = round_decimal_up(amount=(total_remaining/installmentMonths))
                 installment_type = 'installment'
-                dueDate = startDate + relativedelta(months=n)
+                dueDate = startDate + relativedelta(months=n-1)  #dueDate == startDate for first installment (n=1)
 
             #create installments iteratively
             installments_to_create.append(
@@ -288,7 +306,6 @@ class UpdateInstallmentPlanSerializer(InstallmentPlanSerializer):
         else:
             return InstallmentPlan.InstallmentPlanStatusChoices.PARTIAL
     
-
     def validate(self, data):
         #get current plan instance 
         installment_plan = self.instance
@@ -300,12 +317,6 @@ class UpdateInstallmentPlanSerializer(InstallmentPlanSerializer):
                 detail=_('This installment plan cannot be modified because one or more installments have already been paid.')
             )
         
-        #add any previous downpayment to total paid
-        # if installments.filter(type=Installment.InstallmentTypeChoices.DOWN_PAYMENT, paidAt__isnull=False).exists():
-        #     data['totalPaid'] = Decimal(str((installment_plan.totalPaid or Decimal('0')) + installment_plan.downPayment))
-        #     # data['totalPaid'] = Decimal(str((installment_plan.downPayment if not installment_plan.totalPaid else installment_plan.totalPaid)))
-        #     data['totalAmount'] = Decimal(str(installment_plan.totalAmount)) #- data['totalPaid']))
-
         return data 
 
     @transaction.atomic
@@ -313,23 +324,32 @@ class UpdateInstallmentPlanSerializer(InstallmentPlanSerializer):
         #Fetch data for updating the plan
         installmentMonths = validated_data.get('installmentMonths', instance.installmentMonths)
         startDate = validated_data.get('startDate', instance.startDate)
-        downPayment = validated_data.get('downPayment', instance.downPayment)
-
-        # total_amount = validated_data.get('totalAmount', instance.totalAmount)
-        # total_paid = instance.totalPaid or Decimal('0')
-        # total_paid = validated_data.get('totalPaid', instance.totalPaid) or Decimal('0')
+        downPayment = validated_data.get('downPayment', instance.downPayment) or Decimal('0')
         total_remaining = instance.totalAmount - (instance.totalPaid or Decimal('0'))
 
         #fetch the down payment row separately (if found)
         seq0_installment = instance.installments.filter(sequence=0).first()
 
+        #Identify any unpaid down payments
+        #get old down payment (if found)
+        existing_downPayment, isPaid = (
+                (seq0_installment.amount, seq0_installment.paidAt) 
+                if seq0_installment else (Decimal('0'), False)
+            )
+        
+        #check new down payment is provided
+        if 'downPayment' in validated_data and (downPayment != existing_downPayment):
+            total_remaining = total_remaining - downPayment
+        elif existing_downPayment and not isPaid:
+            total_remaining = total_remaining - existing_downPayment
+
+        #make sure total remaining is a positive        
+        total_remaining = max(total_remaining, Decimal('0'))
+
         #update instance values 
         instance.installmentMonths = installmentMonths
         instance.startDate = startDate
         instance.downPayment = downPayment
-        # instance.totalAmount = total_amount
-        # instance.totalPaid = total_paid
-
         #save new changes
         instance.save()
 
@@ -350,9 +370,9 @@ class UpdateInstallmentPlanSerializer(InstallmentPlanSerializer):
                 else:
                     continue  #skip this iteration
             else:
-                amount = Decimal(str(total_remaining / installmentMonths))
+                amount = round_decimal_up(amount=(total_remaining/installmentMonths))
                 installment_type = 'installment'
-                dueDate = startDate + relativedelta(months=n)
+                dueDate = startDate + relativedelta(months=n-1)  #dueDate == startDate for first installment (n=1)
             
             #update iteratively
             installments_to_update.append(

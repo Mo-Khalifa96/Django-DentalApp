@@ -711,7 +711,7 @@ class PatientCoverage(models.Model):
 
             #determine annual max from provider
             if not self.annualMax and self.provider.annualMax:
-                self.annualMax = self.provider.annualMax
+                self.annualMax = self.provider.annualMax or None
 
             #determine coverage percent
             if not self.coveragePercent:
@@ -719,7 +719,9 @@ class PatientCoverage(models.Model):
 
             #determine if deducible is met
             if not self.deductibleMet:
-                self.deductibleMet = self.deductibleMet if (self.coveragePercent != 100) else True
+                self.deductibleMet = True if (
+                    (not self.provider.deductible) or (self.coveragePercent==100)
+                 ) else self.deductibleMet
 
             #check if the allowance has been used up 
             if isinstance(self.usedYTD, Decimal) and isinstance(self.annualMax, Decimal):
@@ -733,27 +735,29 @@ class PatientCoverage(models.Model):
 
         #handle status
         if not self.eligibilityStatus:
-            self.eligibilityStatus = 'none'
+            today_date = timezone.localdate(timezone.now())
+            if ((self.effectiveFrom and self.effectiveTo) and
+               (self.effectiveFrom <= today_date <= self.effectiveTo))\
+             or (self.provider):
+                self.eligibilityStatus = 'active'
+                self.eligibilityChecked = today_date
+            else:
+                self.eligibilityStatus = 'none'
 
         #save changes 
         super().save(*args, **kwargs)
 
-    def determine_coverage_status(self, current_status):
-        print('\n\nI AM HERE!')
+    def determine_coverage_status(self, default_status):
         if self.effectiveTo:
-            today = timezone.localdate()
+            today = timezone.localdate(timezone.now())
             if today > self.effectiveTo:
-                print('\ncondition 1 met')
                 return 'expired'
-            elif today < self.effectiveTo <= today + timedelta(days=30):
-                print('\ncondition 2 met')
+            elif today <= self.effectiveTo <= today + timedelta(days=30):
                 return 'expiring'
             else:
-                print('\ncondition 3 met')
                 return 'active'
-        print('\ncondition 4 met')
-        print(self.effectiveTo)
-        return current_status
+    
+        return default_status
 
 
     def validate_coverage_for_transaction(self, transaction_amount):

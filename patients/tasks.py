@@ -57,7 +57,7 @@ def update_patient_insurance_details_task():
 
             #update selected coverages
             maxed_out_coverages.update(eligibilityStatus='limit_reached',
-                                       deductibleMet=None,
+                                    #    deductibleMet=None,
                                        eligibilityChecked=today.date(),
                                        updatedAt=today
                                     )

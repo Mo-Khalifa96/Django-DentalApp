@@ -1,5 +1,6 @@
 from django.db import transaction
 from clinic.models import Branch
+from django.utils import timezone
 from patients.models import Patient
 from rest_framework import serializers
 from patients.models import PatientCoverage
@@ -12,10 +13,32 @@ from finances.serializers.insurance_providers import CreateNewProviderSerializer
 from patients.docs import patient_coverage_stats_schema, patient_insurance_options_schema
 
 
+#Helpers
 #Reference object to patient coverage fields
 COVERAGE_FIELDS = ('provider', 'providerName', 'memberId', 'annualMax', 'usedYTD', 'coveragePercent', 
-                   'deductibleMet', 'currency', 'effectiveFrom', 'effectiveTo', 'eligibilityChecked', 
-                   'eligibilityStatus')
+                   'deductibleMet', 'currency', 'effectiveFrom', 'effectiveTo', 'eligibilityStatus',
+                   'eligibilityChecked')
+
+def determine_branch(user, coverage):
+    '''Helper function to determine branch.'''
+    if user.branches.count() == 1:
+        return user.branches.first()
+    elif getattr(coverage.patient, 'branch_id', None):
+        return coverage.patient.branch
+    elif getattr(user, 'branch_id', None):
+        return user.branch
+    elif Branch.objects.exists() and user.branches.exists():
+        return user.branches.first()
+    else:
+        return None
+
+def validate_provider_duplicate(name, branch):
+    '''Helper function to validate provider duplication.'''
+    #validate provider name/branch duplication
+    if InsuranceProvider.objects.filter(name__iexact=name, branch=branch).exists():
+        raise serializers.ValidationError({
+            'newProviderDetails':  _('A provider with this name already exists. Select it from the list instead.')
+        })
 
 
 #PATIENT INSURANCE COVERAGE SERIALIZERS 
@@ -30,7 +53,7 @@ class ListPatientCoverageSerializer(serializers.ModelSerializer):
         model = PatientCoverage
         fields = ['id', 'patientId', 'patientName', 'providerId', 'providerName', 'memberId', 
                   'annualMax', 'coveragePercent', 'deductibleMet', 'usedYTD', 'effectiveFrom', 
-                  'effectiveTo', 'eligibilityChecked', 'eligibilityStatus', 'updatedAt']
+                  'effectiveTo', 'eligibilityStatus', 'eligibilityChecked', 'updatedAt']
 
 
 #Create patient insurance coverage serializer
@@ -46,51 +69,50 @@ class CreatePatientCoverageSerializer(serializers.ModelSerializer):
         model = PatientCoverage
         fields = ['id', 'patientName', 'patientId', 'providerName', 'providerId', 'is_newProvider', 
                   'newProviderDetails', 'memberId', 'annualMax', 'usedYTD', 'deductibleMet', 'currency',
-                  'effectiveFrom', 'effectiveTo', 'eligibilityChecked', 'eligibilityStatus']
+                  'effectiveFrom', 'effectiveTo', 'eligibilityStatus']
         read_only_fields = ['id', 'patientName', 'patientId', 'providerName']
         extra_kwargs = {
             'memberId': {'required': True, 'allow_null': False, 'allow_blank': False},
-            'deductibleMet': {'required': False, 'default': False},
-            **{field: {'required': True} for field in ('annualMax', 'effectiveFrom', 'effectiveTo', 'eligibilityStatus')},
+            **{field: {'required': True} for field in ('effectiveFrom', 'effectiveTo', 'eligibilityStatus')},
             **{field: {'required': False} for field in (
-               'providerId', 'is_newProvider', 'newProviderDetails', 'usedYTD', 'currency', 'eligibilityChecked'
+               'providerId', 'is_newProvider', 'newProviderDetails', 'deductibleMet',
+               'annualMax', 'usedYTD', 'currency'
                )
             }
         }
 
     #validate insurer-related data
     def validate(self, data):
-        provider = data.get('provider')
+        #fetch necessary data for validation
         coverage = self.context.get('coverage')
+        existing_provider = data.get('provider')
         is_new_provider = data.get('is_newProvider', False)
-        new_provider_details = data.get('newProviderDetails')
-
+        new_provider_details = data.get('newProviderDetails')        
+        
         if is_new_provider:
             if not new_provider_details:
                 raise serializers.ValidationError({'newProviderDetails': _("Insurance provider's details are required if creating a new provider.")})
-            if provider:
+            if existing_provider:
                 raise serializers.ValidationError({'providerId': _('Cannot assign an existing insurance provider if choosing to create a new one.')})
         else:
-            if not provider:
+            if not existing_provider:
+                #update flag if missed or misassigned
                 if new_provider_details:
-                    data['is_newProvider'] = True
-
-                    #try to identify current branch for new the provider
-                    user = self.context.get('request').user
-                    if user.branches.count() == 1:
-                        data['branch'] = user.branches.first()
-                    elif getattr(coverage.patient, 'branch_id', None):
-                        data['branch'] = coverage.patient.branch
-                    elif getattr(user, 'branch_id', None):
-                        data['branch'] = user.branch
-                    elif Branch.objects.exists() and user.branches.exists():
-                        data['branch'] = user.branches.first()
-                
+                    data['is_newProvider'] = is_new_provider = True
                 else:
                     raise serializers.ValidationError({'providerId': _('An insurance provider is required to create a new insurance plan.')})
         
+
+        if is_new_provider:
+            #identify and assign current branch from user
+            user = self.context.get('request').user
+            data['branch'] = determine_branch(user, coverage)
+            #validate provider name/branch duplication
+            validate_provider_duplicate(name=new_provider_details['name'], 
+                                        branch=data['branch'])
+                    
         #anticipate insurance provider change
-        if new_provider_details or provider:
+        if new_provider_details or existing_provider:
             for field in COVERAGE_FIELDS:
                 setattr(coverage, field, None)
                 # coverage.save()
@@ -109,8 +131,8 @@ class CreatePatientCoverageSerializer(serializers.ModelSerializer):
         coverage = validated_data.pop('coverage')
 
         if is_new_provider and new_provider_details:
-            provider = InsuranceProvider.objects.create(**new_provider_details,
-                                                  branch=(branch if branch else None))
+            provider = InsuranceProvider.objects.create(**new_provider_details, 
+                                                        branch=branch)
 
             #override provider object to assign the new provider
             validated_data['provider'] = provider
@@ -142,9 +164,9 @@ class RetrieveUpdatePatientCoverageSerializer(UserPermissionsMixin, serializers.
         read_only_fields = ['id', 'patientName', 'patientId', 'providerName', 'coveragePercent', 'updatedAt']
         extra_kwargs = {
             'memberId': {'allow_null': False, 'allow_blank': False},
-            'deductibleMet': {'required': False, 'default': False},
             **{field: {'required': False} for field in (
-               'providerId', 'is_newProvider', 'newProviderDetails', 'usedYTD', 'currency', 'eligibilityChecked'
+               'providerId', 'is_newProvider', 'newProviderDetails', 'deductibleMet', 
+               'annualMax', 'usedYTD', 'currency', 'eligibilityChecked'
                )
             }
         }
@@ -156,13 +178,11 @@ class RetrieveUpdatePatientCoverageSerializer(UserPermissionsMixin, serializers.
             return 
         if request.method == 'PUT':
             self.fields['memberId'].required = True
-            self.fields['annualMax'].required = True
             self.fields['effectiveFrom'].required = True
             self.fields['effectiveTo'].required = True
             self.fields['eligibilityStatus'].required = True
         else:
             self.fields['memberId'].required = False
-            self.fields['annualMax'].required = False
             self.fields['effectiveFrom'].required = False
             self.fields['effectiveTo'].required = False
             self.fields['eligibilityStatus'].required = False
@@ -172,7 +192,7 @@ class RetrieveUpdatePatientCoverageSerializer(UserPermissionsMixin, serializers.
         rep = super().to_representation(instance)
         request = self.context.get('request')
         if request.method == 'GET':
-            if instance and instance.updatedAt.date() == instance.patient.createdAt.date():
+            if instance and (instance.updatedAt.date() == instance.patient.createdAt.date()):
                 rep['updatedAt'] = None
         return rep
 
@@ -182,38 +202,45 @@ class RetrieveUpdatePatientCoverageSerializer(UserPermissionsMixin, serializers.
             return data 
 
         coverage = self.instance
-        current_provider = data.get('provider') #or self.instance.provider
+        existing_provider = data.get('provider') #or self.instance.provider
         is_new_provider = data.get('is_newProvider', False)
         new_provider_details = data.get('newProviderDetails')
 
         if is_new_provider:
             if not new_provider_details:
                 raise serializers.ValidationError({'newProviderDetails': _("Insurance provider's details are required if creating a new provider.")})
-            if current_provider:
+            if existing_provider:
                 raise serializers.ValidationError({'providerId': _('Cannot assign an existing insurance provider if choosing to create a new one.')})
         else:
-            if not current_provider:
+            if not existing_provider:
                 if new_provider_details:
-                    data['is_newProvider'] = True
-    
-                    #try to identify current branch for new the provider
-                    user = self.context.get('request').user
-                    if user.branches.count() == 1:
-                        data['branch'] = user.branches.first()
-                    elif getattr(coverage.patient, 'branch_id', None):
-                        data['branch'] = coverage.patient.branch
-                    elif getattr(user, 'branch_id', None):
-                        data['branch'] = user.branch
-                    elif Branch.objects.exists() and user.branches.exists():
-                        data['branch'] = user.branches.first()
-                
-                elif 'provider' in data:
-                    #if removing insurance coverage -- set field values to None
+                    data['is_newProvider'] = is_new_provider = True
+                elif 'provider' in data:  #i.e., intentional clearing
+                    #if intentionally removing insurance coverage -- set field values to None
                     for field in COVERAGE_FIELDS:
                         data[field] = None
         
+        if is_new_provider:
+            #identify and assign current branch from user
+            user = self.context.get('request').user
+            data['branch'] = determine_branch(user, coverage)
+            #validate provider name/branch duplication
+            validate_provider_duplicate(name=new_provider_details['name'],
+                                        branch=data['branch'])
+        
         #anticipate insurance provider change
-        if new_provider_details or (current_provider and current_provider != self.instance.provider):
+        if new_provider_details or (existing_provider and existing_provider != self.instance.provider):
+            #check if they supply the necessary information with the new provider
+            required_fields = ('memberId', 'effectiveFrom', 'effectiveTo', 'eligibilityStatus')
+            missing_fields = {
+                field: _('This field is required when assigning a new insurance provider.')
+                 for field in required_fields if field not in data
+            }
+
+            if missing_fields:
+                raise serializers.ValidationError(missing_fields)
+            
+            #null out current coverage details
             for field in COVERAGE_FIELDS:
                 setattr(self.instance, field, None)
         
@@ -229,11 +256,18 @@ class RetrieveUpdatePatientCoverageSerializer(UserPermissionsMixin, serializers.
         #handle new insurance provider
         if is_new_provider and new_provider_details:
             provider = InsuranceProvider.objects.create(**new_provider_details,
-                                                  branch=(branch if branch else None))
+                                                  branch=branch)
 
             #add new provider object to validated data
             validated_data['provider'] = provider
-        
+
+        else:
+            if ('effectiveTo' in validated_data and 'eligibilityStatus' not in validated_data
+             and instance.eligibilityStatus in ('active', 'expiring', 'expired')):
+                instance.effectiveTo = validated_data.pop('effectiveTo')
+                validated_data['eligibilityStatus'] = instance.determine_coverage_status(instance.eligibilityStatus)
+                validated_data['eligibilityChecked'] = timezone.localdate(timezone.now())
+
         #update with the validated data 
         for field, value in validated_data.items():
             setattr(instance, field, value)  #i.e. instance.field = value

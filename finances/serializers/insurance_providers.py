@@ -17,8 +17,9 @@ class InsuranceProviderSerializer(ValidateBranchMixin, serializers.ModelSerializ
 
     class Meta:
         model = InsuranceProvider
-        fields = ['id', 'name', 'fullName', 'tier', 'contact', 'coveragePercent',
-            'annualMax', 'deductible', 'currency', 'responseDays', 'color', 'branchId', 'notes']
+        fields = ['id', 'name', 'fullName', 'tier', 'contact', 'coveragePercent', 
+                  'annualMax', 'deductible', 'currency', 'responseDays', 'color', 
+                  'branchId', 'notes']
         read_only_fields = ['id']
         extra_kwargs = {'contact': {'required': True, 'allow_null': False, 'allow_blank': False}}
 
@@ -30,7 +31,8 @@ class RetrieveUpdateDeleteInsuranceProviderSerializer(UserPermissionsMixin, Insu
     
     class Meta(InsuranceProviderSerializer.Meta):
         fields = ['id', 'name', 'fullName', 'tier', 'contact', 'coveragePercent',
-            'annualMax', 'deductible', 'currency', 'responseDays', 'color', 'branchId', 'notes']
+                  'annualMax', 'deductible', 'currency', 'responseDays', 'color', 
+                  'branchId', 'notes']
         read_only_fields = ['id', 'branchId']
         extra_kwargs = {'contact': {'allow_null': False, 'allow_blank': False}}
 
@@ -106,7 +108,8 @@ class CreateNewProviderSerializer(InsuranceProviderSerializer):
         }
     
     def validate(self, data):
-        data.setdefault('coveragePercent', 0)
+        if data.get('coveragePercent') is None:
+            data['coveragePercent'] = 100
         data.setdefault('annualMax', None)
         data.setdefault('deductible', None)
         data.setdefault('currency', None)

@@ -13,7 +13,6 @@ from finances.models import InsuranceProvider
 # Factory
 # ─────────────────────────────────────────────────────────────────────────────
 
-
 @pytest.fixture
 def coverage_factory(patient_factory):
     '''Returns the PatientCoverage instance auto-created by Patient.save().'''
@@ -464,7 +463,7 @@ class TestUpdatePatientCoverageAPIView:
         assert coverage.memberId is None
         assert coverage.annualMax is None
 
-    def test_switching_provider_clears_stale_fields_from_old_insurer(
+    def test_switching_provider_requires_important_fields_to_be_filled(
         self, api_client, admin_user, coverage_factory, insurance_provider_factory
     ):
         '''validate(): when provider changes, all COVERAGE_FIELDS are cleared
@@ -480,14 +479,15 @@ class TestUpdatePatientCoverageAPIView:
         coverage.save()
 
         api_client.force_authenticate(user=admin_user)
-        api_client.patch(
+        response = api_client.patch(
             _coverage_url(coverage.patient.id),
             {'providerId': str(new_provider.id)},
             format='json',
         )
         coverage.refresh_from_db()
-        assert coverage.provider == new_provider
-        assert coverage.memberId is None   # cleared by validate()
+        assert response.status_code == status.HTTP_400_BAD_REQUEST or render_error(response)
+        # assert coverage.provider == new_provider or render_error(response)
+        # assert coverage.memberId is None   # cleared by validate()
 
     def test_update_with_inline_new_provider_creates_and_reassigns(
         self, api_client, admin_user, coverage_factory, insurance_provider_factory
@@ -499,6 +499,10 @@ class TestUpdatePatientCoverageAPIView:
 
         payload = {
             'is_newProvider': True,
+            'memberId':        'fakeid-xxxx0112',
+            'effectiveFrom':   '2025-01-01', 
+            'effectiveTo':     '2026-10-10', 
+            'eligibilityStatus': 'active',
             'newProviderDetails': {
                 'name':            'Brand New Co',
                 'tier':            'universal',
