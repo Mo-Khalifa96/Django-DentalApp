@@ -38,7 +38,14 @@ def update_treatment_relations_upon_cost_updates(sender, instance, **kwargs):
         if plan:
             #Else, update the installment plan
             #update amount per installment on the plan
-            remaining_installments = plan.installments.filter(type='installment', paidAt__isnull=True)
+            remaining_installments = plan.installments.filter(
+                type='installment', paidAt__isnull=True
+            ).order_by('-sequence')
+
+            # Installment.objects.filter(
+            #     installmentPlan=plan, type='installment', paidAt__isnull=True
+            # ).order_by('-sequence')
+
             if remaining_installments:
                 #update installment plan's total amount
                 plan.totalAmount = Decimal(str(plan.totalAmount + cost_difference))
@@ -52,7 +59,7 @@ def update_treatment_relations_upon_cost_updates(sender, instance, **kwargs):
                 else:  #negative decrease
                     #subtract from remaining installments (in reverse order)
                     cost_difference = abs(cost_difference)  #turn to positive
-                    for installment in remaining_installments.order_by('-sequence'):  #last comes out first
+                    for installment in remaining_installments:  #last comes out first
                         if cost_difference <= 0:
                             break
                         amount_to_remove = min(installment.amount, cost_difference)

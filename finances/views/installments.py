@@ -335,17 +335,20 @@ class RetrieveUpdateDeleteInstallmentTransactionAPIView(RetrieveUpdateDeleteAPIV
         #admin gets all objects
         user = self.request.user
         if getattr(user, 'role', None) == 'admin':
+            #keep only transactions associated with the plan
             transactions = Transaction.all_objects.prefetch_related('installments')\
              .select_related('patient', 'bill', 'bill__installmentPlan', 'branch')\
-             .filter(Q(bill__installmentPlan_id=plan.id) | Q(installments__installmentPlan_id=plan.id)).all()  #keep only transactions associated with the plan
+             .filter(Q(bill__installmentPlan_id=plan.id) | Q(installments__installmentPlan_id=plan.id))\
+             .distinct()
         else:
             transactions = Transaction.objects.prefetch_related('installments')\
              .select_related('patient', 'bill', 'bill__installmentPlan', 'branch')\
-             .filter(Q(bill__installmentPlan_id=plan.id) | Q(installments__installmentPlan_id=plan.id)).all()
+             .filter(Q(bill__installmentPlan_id=plan.id) | Q(installments__installmentPlan_id=plan.id))\
+             .distinct()
         return transactions
 
     def get_serializer_class(self):
-        if self.request.method == 'PATCH':
+        if self.request.method == 'PUT':
             return UpdateInstallmentTransactionSerializer
         return RetrieveInstallmentTransactionSerializer
 

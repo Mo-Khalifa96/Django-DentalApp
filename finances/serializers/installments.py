@@ -669,6 +669,10 @@ class UpdateInstallmentTransactionSerializer(CreateInstallmentTransactionSeriali
             #add installment id
             ids_list.append(installment.id)
 
+            #validate the passed installments belong to the plan in the url
+            if installment.installmentPlan.id != plan.id:
+                raise serializers.ValidationError({'installmentIds': _('At least one or more of the chosen installments does not belong to the current installment plan.')})
+
             #determine lowest sequence
             if lowest_sequence is None or installment.sequence < lowest_sequence:
                 lowest_sequence = installment.sequence
@@ -724,6 +728,9 @@ class UpdateInstallmentTransactionSerializer(CreateInstallmentTransactionSeriali
         #save changes
         instance.save()
 
+        #early return on refunds
+        if instance.status == 'refunded':
+            return instance
 
         #get datetime now
         datetime_now = timezone.localtime(timezone.now())        
