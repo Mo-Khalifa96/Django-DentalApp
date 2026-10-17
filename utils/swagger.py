@@ -261,7 +261,7 @@ if settings.DEBUG:
                     continue 
                 
                 #paths to exclude
-                is_excluded = any([pattern in path for pattern in ['/roles/', '/permissions/', '/upload/', '/options/']]) # False if '/auth/me/' in path else any([pattern in path for pattern in ['/auth/', '/roles/', '/permissions/', '/options/']])
+                is_excluded = any([pattern in path for pattern in ['/roles/', '/permissions/', '/upload/', '/options/']])
                 if is_excluded:
                     continue
 
@@ -284,20 +284,22 @@ if settings.DEBUG:
 
                     has_pagination = (operation.get('parameters') and str(operation['operationId']).endswith('_list'))
                     has_page_pagination = has_pagination and any(param.get('name') == 'page' for param in operation.get('parameters', []))
-                    is_cursor = has_pagination and any(param.get('name') == 'cursor' for param in operation.get('parameters', []))
+                    has_cusrsor_pagination = has_pagination and any(param.get('name') == 'cursor' for param in operation.get('parameters', []))
 
-                    if is_cursor:
-                        _wrap_cursor_paginated_responses_with_metadata(path, result, operation)
-                        continue
+                    # if has_cusrsor_pagination:
+                    #     _wrap_cursor_paginated_responses_with_metadata(path, result, operation)
+                    #     continue
 
-                    if has_page_pagination:
+                    #if list view, ...
+                    if has_page_pagination or has_cusrsor_pagination:
                         if 'treatment-plans' not in path:
                             _wrap_paginated_responses_with_metadata(path, result, operation)
                         else:
                             _wrap_special_pagination_responses_with_metadata(path, result, operation)
+                    
+                    #if retrieve view, ...
                     else:
-                        if 'treatment-plans' not in path:
-                            _wrap_get_responses_with_metadata(result, operation)
+                        _wrap_get_responses_with_metadata(result, operation)
         
                 else:
                     #for POST/PUT/PATCH responses 
@@ -321,6 +323,12 @@ if settings.DEBUG:
                     if 'schema' in content:
                         original_schema = content['schema']
 
+                         #if view has custom documentation, ...
+                        if 'examples' in content: 
+                            for example in content['examples'].values():
+                                example['value'] = example['value']['results'][0]
+                            return result
+                        
                         #Create paginated response structure
                         content['schema'] = {
                             'type': 'object',
@@ -374,7 +382,12 @@ if settings.DEBUG:
                 for media_type, content in response['content'].items():
                     if 'schema' in content:
                         original_schema = content['schema']
-                        content.pop('examples', None)  #remove examples - keep schema
+
+                        #if view has custom documentation, ...
+                        if 'examples' in content: 
+                            for example in content['examples'].values():
+                                example['value'] = example['value']['results'][0]
+                            return result
 
                         content['schema'] = {
                             'type': 'object',

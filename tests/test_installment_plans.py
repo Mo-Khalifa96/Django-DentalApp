@@ -874,11 +874,6 @@ class TestTreatmentPlanRelations:
         #the last installment absorbs the whole decrease, the earlier one is untouched
         plan.refresh_from_db()
         assert plan.totalAmount == Decimal('400.00')
-
-        print("\n\nDEBUG:")
-        for installment in plan.installments.all():
-            print(installment.amount)
-
         assert plan.installments.get(sequence=1).amount == Decimal('200.00')
         assert plan.installments.get(sequence=2).amount == Decimal('200.00')
         assert plan.installments.get(sequence=3).amount == Decimal('0.00')
