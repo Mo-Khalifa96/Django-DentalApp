@@ -140,7 +140,7 @@ class TestGenerateInstallmentPlan:
         response = self._generate(api_client, admin_user, make_treatment(Decimal('1000.00')), installmentMonths=3)
         items = sorted(response.data['data']['installments'], key=lambda i: i['sequence'])
         assert [i['sequence'] for i in items] == [1, 2, 3]   #no down payment, so no sequence 0
-        assert [Decimal(i['amount']) for i in items] == [Decimal('333.33'), Decimal('333.33'), Decimal('333.33')]
+        assert [Decimal(i['amount']) for i in items] == [Decimal('333.33'), Decimal('333.33'), Decimal('333.34')]
 
     def test_regenerating_an_unpaid_plan_replaces_it(self, api_client, admin_user, make_treatment):
         treatment = make_treatment()
@@ -841,6 +841,7 @@ class TestInstallmentOptions:
 #════════════════════════════════════════════════════════════════════════════════════════
 @pytest.mark.django_db
 class TestTreatmentPlanRelations:
+    #Fixtures
     @pytest.fixture
     def partly_paid(self, make_treatment, installment_plan_factory):
         treatment = make_treatment(Decimal('600.00'))
@@ -850,6 +851,16 @@ class TestTreatmentPlanRelations:
         InstallmentPlan.objects.filter(id=plan.id).update(totalPaid=Decimal('200.00'))
         return treatment, plan
 
+    @pytest.fixture
+    def fully_paid(self, make_treatment, installment_plan_factory):
+        #a plan with all 3 installments paid
+        treatment = make_treatment(Decimal('600.00'))
+        plan = installment_plan_factory(treatment=treatment, months=3)
+        _mark_paid(*plan.installments.all())
+        InstallmentPlan.objects.filter(id=plan.id).update(totalPaid=Decimal('600.00'))
+        return treatment, plan
+
+    #Tests
     def test_unpaid_installments_absorb_a_cost_increase_evenly(self, partly_paid):
         treatment, plan = partly_paid
 
@@ -893,3 +904,82 @@ class TestTreatmentPlanRelations:
         #whatever the split, the unpaid installments add up to what is still owed
         unpaid_total = plan.installments.get(sequence=2).amount + plan.installments.get(sequence=3).amount
         assert unpaid_total == plan.totalAmount - plan.totalPaid
+
+    def test_a_decrease_beyond_every_unpaid_installment_creates_a_deposit(self, partly_paid):
+        treatment, plan = partly_paid
+
+        #lower the cost from 600 to 100 (a decrease of 500, but only 400 is unpaid)
+        treatment.totalCost = Decimal('100.00')
+        treatment.save()
+
+        #both unpaid installments are emptied and the plan total follows the new cost
+        plan.refresh_from_db()
+        assert plan.totalAmount == Decimal('100.00')
+        assert plan.installments.get(sequence=2).amount == Decimal('0.00')
+        assert plan.installments.get(sequence=3).amount == Decimal('0.00')
+
+        #the 100 the patient overpaid is held as a deposit
+        deposit = Transaction.objects.get(type='deposit')
+        assert deposit.amount == Decimal('100.00')
+        assert deposit.patient == treatment.patient
+
+    def test_an_increase_after_everything_is_paid_issues_a_new_bill(self, fully_paid):
+        treatment, plan = fully_paid
+
+        #raise the cost from 600 to 800
+        treatment.totalCost = Decimal('800.00')
+        treatment.save()
+
+        #a separate bill covers the extra 200, and the plan itself is left alone
+        extra_bill = Bill.objects.get(treatment=treatment, installmentPlan__isnull=True)
+        assert extra_bill.totalAmount == Decimal('200.00')
+        assert extra_bill.totalPaid == Decimal('0.00')
+        assert extra_bill.isDepositBill is False
+        plan.refresh_from_db()
+        assert plan.totalAmount == Decimal('600.00')
+        assert plan.installments.count() == 3
+
+    def test_a_decrease_after_everything_is_paid_creates_a_deposit(self, fully_paid):
+        treatment, plan = fully_paid
+
+        #lower the cost from 600 to 500
+        treatment.totalCost = Decimal('500.00')
+        treatment.save()
+
+        #the plan total follows, and the 100 overpaid is held as a deposit
+        plan.refresh_from_db()
+        assert plan.totalAmount == Decimal('500.00')
+        assert Transaction.objects.get(type='deposit').amount == Decimal('100.00')
+
+    def test_the_plans_bill_follows_the_new_total(self, partly_paid, plan_bill_factory):
+        treatment, plan = partly_paid
+        bill = plan_bill_factory(plan)
+
+        #raise the cost from 600 to 900
+        treatment.totalCost = Decimal('900.00')
+        treatment.save()
+
+        #the bill carries the plan's new total
+        plan.refresh_from_db()
+        bill.refresh_from_db()
+
+        assert plan.totalAmount == Decimal('900.00')
+        assert bill.totalAmount == Decimal('900.00')
+
+    def test_an_unpaid_down_payment_is_not_split_across_the_installments(
+        self, make_treatment, installment_plan_factory
+    ):
+        #a plan with an unpaid 60 down payment and 3 installments of 180
+        treatment = make_treatment(Decimal('600.00'))
+        plan = installment_plan_factory(treatment=treatment, months=3, down_payment=Decimal('60.00'))
+
+        #raise the cost from 600 to 900
+        treatment.totalCost = Decimal('900.00')
+        treatment.save()
+
+        #the installments share 900 - 60 = 840, so 280 each, and the down payment stays 60
+        plan.refresh_from_db()
+        assert plan.installments.get(sequence=0).amount == Decimal('60.00')
+        assert plan.installments.get(sequence=1).amount == Decimal('280.00')
+        assert plan.installments.get(sequence=2).amount == Decimal('280.00')
+        assert plan.installments.get(sequence=3).amount == Decimal('280.00')

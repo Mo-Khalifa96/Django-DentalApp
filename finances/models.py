@@ -150,6 +150,11 @@ class Bill(models.Model):
                     item.procedureName for item in self.treatment.treatment_items.all()
                     if item.procedureName
                 ]
+        
+        #adjust overpayments by fractions
+        if self.totalPaid and self.totalPaid > self.totalAmount\
+         and (self.totalPaid - self.totalAmount) < 1:
+            self.totalPaid = self.totalAmount
 
         #save changes 
         super().save(*args, **kwargs)
@@ -415,11 +420,22 @@ class InstallmentPlan(models.Model):
         ordering = ['-updatedAt']
 
     @property
-    def active_bill(self):
+    def active_bill(self): 
         return self.bill.filter(isDeleted=False).first()
 
     # def __str__(self):
     #     return f'Installment plan for {self.treatment.patient.name} ({self.installmentMonths} months)'
+
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        #adjust overpayments by fractions
+        if self.totalPaid and self.totalPaid > self.totalAmount\
+         and (self.totalPaid - self.totalAmount) < 1:
+            self.totalPaid = self.totalAmount
+
+        #save changes 
+        super().save(*args, **kwargs)
+
 
 #Installments Manager
 class InstallmentsManager(models.Manager):

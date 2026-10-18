@@ -4,7 +4,7 @@ from decimal import Decimal
 from .utils import render_error
 from django.urls import reverse
 from rest_framework import status
-from finances.models import InstallmentPlan
+from finances.models import Transaction, InstallmentPlan
 from patients.models import TreatmentPlan, TreatmentPlanItem
 
 
@@ -633,3 +633,67 @@ class TestRetrieveTreatmentPlansOptionsAPIView:
     def test_unauthenticated_returns_401(self, api_client):
         response = api_client.get(reverse(self.URL))
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
+
+
+#════════════════════════════════════════════════════════════════════════════════════════
+# Treatment signal tests -- Treatment cost changes when the treatment has no installment plan
+#════════════════════════════════════════════════════════════════════════════════════════
+@pytest.mark.django_db
+class TestTreatmentCostChange:
+    @pytest.fixture
+    def make_treatment(self, patient_factory, procedure_factory, treatment_plan_factory):
+        def _make(total=Decimal('600.00'), patient=None):
+            treatment = treatment_plan_factory(patient=patient or patient_factory(), procedure=procedure_factory())
+            type(treatment).all_objects.filter(id=treatment.id).update(totalCost=total)   #raw update: skips the cost-change signal
+            treatment.refresh_from_db()
+            return treatment
+        return _make
+
+    #Helper method
+    @staticmethod
+    def _bill(bill_factory, treatment):
+        #a plain bill for the treatment's full cost, with no visits attached
+        return bill_factory(patient=treatment.patient, treatment=treatment, visits=[],
+                            subtotal=Decimal('600.00'), totalAmount=Decimal('600.00'))
+
+    #Tests
+    def test_an_increase_updates_the_bill(self, make_treatment, bill_factory):
+        treatment = make_treatment(Decimal('600.00'))
+        bill = self._bill(bill_factory, treatment)
+
+        #raise the cost from 600 to 800
+        treatment.totalCost = Decimal('800.00')
+        treatment.save()
+
+        #the bill carries the new cost
+        bill.refresh_from_db()
+        assert bill.totalAmount == Decimal('800.00')
+
+    def test_a_decrease_within_what_is_unpaid_only_lowers_the_bill(self, make_treatment, bill_factory):
+        treatment = make_treatment(Decimal('600.00'))
+        bill = self._bill(bill_factory, treatment)
+
+        #lower the cost from 600 to 500 (nothing was paid yet)
+        treatment.totalCost = Decimal('500.00')
+        treatment.save()
+
+        #the bill goes down and no deposit is created
+        bill.refresh_from_db()
+        assert bill.totalAmount == Decimal('500.00')
+        assert not Transaction.objects.filter(type='deposit').exists()
+
+    def test_a_decrease_below_what_is_paid_creates_a_deposit(
+        self, make_treatment, bill_factory, transaction_factory
+    ):
+        treatment = make_treatment(Decimal('600.00'))
+        bill = self._bill(bill_factory, treatment)
+        transaction_factory(bill=bill, amount=Decimal('400.00'))   #400 of the 600 is paid
+
+        #lower the cost from 600 to 300 (a decrease of 300, but only 200 is unpaid)
+        treatment.totalCost = Decimal('300.00')
+        treatment.save()
+
+        #the bill can't go below what was paid, and the 100 overpaid is held as a deposit
+        bill.refresh_from_db()
+        assert bill.totalAmount == Decimal('400.00')
+        assert Transaction.objects.get(type='deposit').amount == Decimal('100.00')

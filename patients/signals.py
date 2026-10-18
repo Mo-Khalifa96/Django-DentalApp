@@ -1,7 +1,8 @@
-from decimal import Decimal
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.dispatch import receiver
+from decimal import Decimal, ROUND_UP
 from patients.models import TreatmentPlan
+from finances.utils import round_decimal_up
 from django.db.models.signals import pre_save, post_save
 from finances.models import Bill, Transaction, InstallmentPlan, Installment
 
@@ -25,7 +26,6 @@ def update_treatment_relations_upon_cost_updates(sender, instance, **kwargs):
 
     #Get treatment's installment plan (if any)
     plan = InstallmentPlan.objects.filter(treatment=instance).first()
-    # plan = getattr(instance, 'installment_plan', None)  #may lead to problems related to caching
 
     #Determine if treatment cost changed
     totalCost_old = getattr(instance, 'totalCost_old', None)
@@ -52,9 +52,21 @@ def update_treatment_relations_upon_cost_updates(sender, instance, **kwargs):
                 
                 #Determine the direction of change
                 if cost_difference > 0:  #positive increase
-                    total_remaining = plan.totalAmount - (plan.totalPaid or Decimal('0'))
-                    amount_per_installment = Decimal(str(total_remaining / len(remaining_installments)))
+                    #get any unpaid down payment
+                    unpaid_downPayment = plan.installments.filter(
+                        type='down_payment', paidAt__isnull=True
+                    ).aggregate(down_payment=Sum('amount', default=Decimal('0')))['down_payment']
+
+                    #calculate total remaining
+                    total_remaining = plan.totalAmount - (plan.totalPaid or Decimal('0')) - unpaid_downPayment
+                    total_remaining = max(total_remaining, Decimal('0'))
+
+                    #calculate amount per installment (normal rounding)
+                    amount_per_installment = round_decimal_up(total_remaining/len(remaining_installments))
                     remaining_installments.update(amount=amount_per_installment)
+
+                    #account for last installment's rounding
+                    remaining_installments[0].amount = round_decimal_up(remaining_installments[0].amount, rounding=ROUND_UP)
                 
                 else:  #negative decrease
                     #subtract from remaining installments (in reverse order)
@@ -107,9 +119,10 @@ def update_treatment_relations_upon_cost_updates(sender, instance, **kwargs):
             plan.save(update_fields=['totalAmount', 'updatedAt'])
 
             #update the total amount on the associated bill too (if found)
-            if plan.active_bill:
-                plan.active_bill.totalAmount = plan.totalAmount
-                plan.active_bill.save(update_fields=['totalAmount', 'treatmentTitle', 'procedures', 'updatedAt'])
+            active_bill = plan.active_bill  #retrieve once to avoid caching
+            if active_bill:
+                active_bill.totalAmount = plan.totalAmount
+                active_bill.save(update_fields=['totalAmount', 'treatmentTitle', 'procedures', 'updatedAt'])
         
         else:
             #Else, treatment has no installment plan...

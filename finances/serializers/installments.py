@@ -1,5 +1,4 @@
 import logging
-from decimal import Decimal
 from django.db.models import Q
 from clinic.models import Branch
 from django.utils import timezone
@@ -10,6 +9,7 @@ from finances.utils import round_decimal_up
 from utils.mixins import UserPermissionsMixin
 from dateutil.relativedelta import relativedelta
 from utils.swagger_utils import extend_schema_field
+from decimal import Decimal, ROUND_UP, ROUND_HALF_UP
 from django.utils.translation import gettext_lazy as _
 from utils.exceptions import InstallmentPlanInProgressError
 from services.translation.serializers import TranslatedChoiceField
@@ -236,7 +236,8 @@ class GenerateInstallmentPlanSerializer(InstallmentPlanSerializer):
                 else:
                     continue  #skip this iteration
             else:
-                amount = round_decimal_up(amount=(total_remaining/installmentMonths))
+                rounding = ROUND_UP if n == installmentMonths else ROUND_HALF_UP
+                amount = round_decimal_up(amount=(total_remaining/installmentMonths), rounding=rounding)
                 installment_type = 'installment'
                 dueDate = startDate + relativedelta(months=n-1)  #dueDate == startDate for first installment (n=1)
 
@@ -275,10 +276,11 @@ class GenerateInstallmentPlanSerializer(InstallmentPlanSerializer):
 
 
         #see if the associated bill needs to be updated
-        if plan.active_bill:
+        active_bill = plan.active_bill
+        if active_bill:
             #update total amount
-            plan.active_bill.totalAmount = total_amount
-            plan.active_bill.save(update_fields=['totalAmount'])
+            active_bill.totalAmount = total_amount
+            active_bill.save(update_fields=['totalAmount'])
         
         return plan
 
@@ -373,7 +375,8 @@ class UpdateInstallmentPlanSerializer(InstallmentPlanSerializer):
                 else:
                     continue  #skip this iteration
             else:
-                amount = round_decimal_up(amount=(total_remaining/installmentMonths))
+                rounding = ROUND_UP if n == installmentMonths else ROUND_HALF_UP
+                amount = round_decimal_up(amount=(total_remaining/installmentMonths), rounding=rounding)
                 installment_type = 'installment'
                 dueDate = startDate + relativedelta(months=n-1)  #dueDate == startDate for first installment (n=1)
             

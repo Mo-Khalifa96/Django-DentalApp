@@ -115,10 +115,11 @@ class CreateBillSerializer(ValidateBranchMixin, serializers.ModelSerializer):
             
             #check treatment has an installment plan with an existing bill
             plan = getattr(treatment, 'installment_plan', None)
-            if plan and plan.active_bill:
+            active_bill = getattr(plan, 'active_bill', None)
+            if plan and active_bill:
                 raise InstallmentBillExistsError(detail={
                         'detail': _('An installment bill already exists for this treatment plan.'),
-                        'billId': plan.active_bill.id
+                        'billId': active_bill.id
                     }
                 )
 
