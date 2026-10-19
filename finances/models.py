@@ -152,8 +152,12 @@ class Bill(models.Model):
                 ]
         
         #adjust overpayments by fractions
-        if self.totalPaid and self.totalPaid > self.totalAmount\
-         and (self.totalPaid - self.totalAmount) < 1:
+        # if self.totalPaid and self.totalPaid > self.totalAmount\
+        #  and (self.totalPaid - self.totalAmount) <= Decimal('0.1'):  #tolerate up to 10 cents
+        #     self.totalPaid = self.totalAmount
+
+        #correct for fractions for both under and overpayments
+        if self.totalPaid and abs(self.totalPaid - self.totalAmount) <= Decimal('0.1'):  #tolerate up to 10 cents
             self.totalPaid = self.totalAmount
 
         #save changes 
@@ -428,9 +432,13 @@ class InstallmentPlan(models.Model):
 
     @transaction.atomic
     def save(self, *args, **kwargs):
-        #adjust overpayments by fractions
-        if self.totalPaid and self.totalPaid > self.totalAmount\
-         and (self.totalPaid - self.totalAmount) < 1:
+        # #adjust overpayments by fractions
+        # if self.totalPaid and self.totalPaid > self.totalAmount\
+        #  and (self.totalPaid - self.totalAmount) <= Decimal('0.1'):  #tolerate up to 10 cents
+        #     self.totalPaid = self.totalAmount
+
+        #correct for fractions for both under and overpayments
+        if self.totalPaid and abs(self.totalPaid - self.totalAmount) <= Decimal('0.1'):  #tolerate up to 10 cents
             self.totalPaid = self.totalAmount
 
         #save changes 

@@ -236,8 +236,9 @@ class GenerateInstallmentPlanSerializer(InstallmentPlanSerializer):
                 else:
                     continue  #skip this iteration
             else:
-                rounding = ROUND_UP if n == installmentMonths else ROUND_HALF_UP
-                amount = round_decimal_up(amount=(total_remaining/installmentMonths), rounding=rounding)
+                # rounding = ROUND_UP if n == installmentMonths else ROUND_HALF_UP
+                amount = round_decimal_up(amount=(total_remaining/installmentMonths))
+                amount = amount if n != installmentMonths else (total_remaining - amount * (installmentMonths - 1))
                 installment_type = 'installment'
                 dueDate = startDate + relativedelta(months=n-1)  #dueDate == startDate for first installment (n=1)
 
@@ -375,8 +376,9 @@ class UpdateInstallmentPlanSerializer(InstallmentPlanSerializer):
                 else:
                     continue  #skip this iteration
             else:
-                rounding = ROUND_UP if n == installmentMonths else ROUND_HALF_UP
-                amount = round_decimal_up(amount=(total_remaining/installmentMonths), rounding=rounding)
+                # rounding = ROUND_UP if n == installmentMonths else ROUND_HALF_UP
+                amount = round_decimal_up(amount=(total_remaining/installmentMonths))
+                amount = amount if n != installmentMonths else (total_remaining - amount * (installmentMonths - 1))
                 installment_type = 'installment'
                 dueDate = startDate + relativedelta(months=n-1)  #dueDate == startDate for first installment (n=1)
             

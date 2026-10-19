@@ -66,7 +66,10 @@ def update_treatment_relations_upon_cost_updates(sender, instance, **kwargs):
                     remaining_installments.update(amount=amount_per_installment)
 
                     #account for last installment's rounding
-                    remaining_installments[0].amount = round_decimal_up(remaining_installments[0].amount, rounding=ROUND_UP)
+                    last_installment = remaining_installments[0]
+                    # last_installment.amount = round_decimal_up(amount_per_installment, rounding=ROUND_UP)
+                    last_installment.amount = total_remaining - amount_per_installment * (len(remaining_installments) - 1)
+                    last_installment.save(update_fields=['amount'])
                 
                 else:  #negative decrease
                     #subtract from remaining installments (in reverse order)

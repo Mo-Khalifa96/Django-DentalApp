@@ -198,6 +198,17 @@ class TestGenerateInstallmentPlan:
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED or render_error(response)
 
+    def test_installments_add_up_exactly_when_the_total_does_not_divide_evenly(
+        self, api_client, admin_user, make_treatment
+    ):
+        #generate a 6-month plan for 5000 (5000 / 6 = 833.333...)
+        treatment = make_treatment(Decimal('5000.00'))
+        self._generate(api_client, admin_user, treatment, installmentMonths=6)
+
+        #the installments add up to the total, to the cent
+        plan = InstallmentPlan.objects.get(treatment=treatment)
+        assert sum(i.amount for i in plan.installments.all()) == Decimal('5000.00')
+
 
 #══════════════════════════════════════════════════════════════════════════════
 #In-progress rules (generate / PATCH / DELETE)
@@ -983,3 +994,26 @@ class TestTreatmentPlanRelations:
         assert plan.installments.get(sequence=1).amount == Decimal('280.00')
         assert plan.installments.get(sequence=2).amount == Decimal('280.00')
         assert plan.installments.get(sequence=3).amount == Decimal('280.00')
+
+    def test_a_plan_whose_split_rounds_low_still_completes(
+        self, api_client, admin_user, make_treatment, plan_bill_factory
+    ):
+        #generate a 6-month plan for 5000 through the endpoint (5000 / 6 = 833.333...)
+        treatment = make_treatment(Decimal('5000.00'))
+        api_client.force_authenticate(user=admin_user)
+        api_client.post(
+            _generate_plan_url(treatment.patient.id, treatment.id), 
+            {'startDate': str(timezone.localdate()), 'installmentMonths': 6}, 
+            format='json'
+        )
+        plan = InstallmentPlan.objects.get(treatment=treatment)
+        plan_bill_factory(plan)
+
+        #pay every installment in one transaction
+        _make_transaction(api_client, admin_user, plan, list(plan.installments.order_by('sequence')))
+
+        #the plan is complete, to the cent
+        plan.refresh_from_db()
+        assert plan.totalPaid == plan.totalAmount
+        status_label = api_client.get(_plan_fromTreatment_url(treatment.patient.id, treatment.id)).data['data']['status']
+        assert str(status_label).lower().startswith('complet')
