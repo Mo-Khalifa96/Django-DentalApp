@@ -18,6 +18,9 @@ Running a dental clinic involves juggling a lot of moving pieces at once: patien
 
 ## Key Features
 
+### Live Dashboard
+- A real-time overview of patient counts, today's appointments, inventory stock, monthly revenue, and outstanding balances — tailored to what each role is permitted to see. 
+  
 ### Patient Records & Dental Charts
 - Full patient profiles with contact details, allergies, blood type, and insurance information.
 - An interactive dental chart (using standard international tooth numbering) that tracks the condition of every tooth — healthy, filled, cracked, missing, and more — created automatically the moment a patient is registered.
@@ -57,9 +60,6 @@ Running a dental clinic involves juggling a lot of moving pieces at once: patien
 ### Multi-Branch Support
 - Every piece of data — patients, appointments, bills, inventory — is tied to a specific branch.
 - Staff only ever see and act on the branch (or branches) they're assigned to, keeping multi-location clinics organised and secure.
-
-### Live Dashboard
-- A real-time overview of patient counts, today's appointments, monthly revenue, and outstanding balances — tailored to what each role is permitted to see.
 
 ---
 
