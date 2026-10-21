@@ -67,22 +67,24 @@ Running a dental clinic involves juggling a lot of moving pieces at once: patien
 
 | Module | What it does |
 |---|---|
+| **Dashboard & Analytics** | Clinic-wide statistics and financial overview |
 | **Patients** | Patient records, dental charts, contact and medical information |
 | **Appointments** | Scheduling, conflict checking, WhatsApp reminders |
 | **Visit History** | Record of every patient visit, procedures performed, and X-rays |
 | **Treatment Plans** | Multi-step treatment planning with cost tracking |
+| **Periodontal Exams** | Patient perio records and perio exams |
 | **Billing** | Bill generation tied to patient visits |
 | **Invoices** | Tax-compliant, sequentially numbered invoices |
 | **Transactions** | Payment recording across all payment methods |
 | **Insurance** | Insurance provider directory and per-patient coverage tracking |
 | **Patient Recalls** | Follow-up and recall scheduling |
+| **Referrals** | Inbound and outbound patient referrals management |
 | **Labs & Lab Orders** | Outsourced lab work tracking |
 | **Sterilization Logs** | Instrument sterilization records |
 | **Doctor Schedules** | Weekly doctor availability and exceptions |
 | **Waiting Room** | Live patient waiting queue per branch |
 | **Procedures & Inventory** | Clinic procedure catalogue and their standard prices |
 | **Inventory** | Clinic supply stock |
-| **Dashboard** | Clinic-wide statistics and financial overview |
 
 ---
 
